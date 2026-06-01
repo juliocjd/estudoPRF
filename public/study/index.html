@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Estudo PRF</title>
+    <link rel="stylesheet" href="/study.css?v=20260601-mobile1">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <strong>PRF Study</strong>
+          <span>Banco local de questões</span>
+        </div>
+        <section class="stats" id="stats" aria-label="Resumo do banco"></section>
+      </header>
+
+      <section class="filter-bar" aria-label="Filtros">
+        <label class="field field-search">
+          <span>Busca</span>
+          <input id="searchInput" type="search" placeholder="Texto, assunto ou ID">
+        </label>
+        <label class="field">
+          <span>Matéria</span>
+          <select id="matterSelect">
+            <option value="">Todas</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Assunto</span>
+          <select id="subjectSelect">
+            <option value="">Todos</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Perfil de prova</span>
+          <select id="profileSelect">
+            <option value="">Carregando</option>
+          </select>
+        </label>
+        <div class="filter-actions">
+          <button id="advancedFilterToggle" class="button button-secondary" type="button" aria-expanded="false" aria-controls="advancedFilters">
+            Filtros avançados <span id="activeFiltersLabel">(0 ativos)</span>
+          </button>
+          <button id="clearFilters" class="button button-ghost" type="button">Limpar filtros</button>
+        </div>
+      </section>
+
+      <section class="advanced-filters" id="advancedFilters" hidden aria-label="Filtros avançados">
+        <label class="checkline">
+          <input id="commentedOnly" type="checkbox">
+          <span>Com comentário</span>
+        </label>
+        <label class="checkline">
+          <input id="unansweredOnly" type="checkbox">
+          <span>Não resolvidas</span>
+        </label>
+        <label class="checkline">
+          <input id="wrongOnly" type="checkbox">
+          <span>Errei por último</span>
+        </label>
+        <label class="checkline">
+          <input id="hideOutdated" type="checkbox">
+          <span>Ocultar desatualizadas</span>
+        </label>
+        <label class="checkline">
+          <input id="hideDuplicates" type="checkbox">
+          <span>Ocultar duplicadas</span>
+        </label>
+        <label class="checkline">
+          <input id="representativeOnly" type="checkbox">
+          <span>Representativas</span>
+        </label>
+        <label class="field compact-field">
+          <span>Atualização normativa</span>
+          <select id="normativeFilter">
+            <option value="">Todas</option>
+            <option value="safe">Somente seguras</option>
+            <option value="hide-manual">Ocultar revisão manual</option>
+            <option value="hide-discarded">Ocultar descartadas</option>
+            <option value="changed">Somente gabarito alterado</option>
+          </select>
+        </label>
+        <label class="checkline">
+          <input id="resumeLast" type="checkbox">
+          <span>Continuar estudo</span>
+        </label>
+      </section>
+
+      <main class="workspace">
+        <section class="context-bar" aria-label="Contexto da questão">
+          <div class="context-main">
+            <span class="eyebrow" id="questionMeta">Carregando</span>
+            <h1 id="questionTitle" hidden>Questão</h1>
+            <div class="question-badges" id="questionBadges" hidden></div>
+          </div>
+
+          <div class="study-actions">
+            <div class="study-now-group" aria-label="Plano de estudo">
+              <span id="studyPlanLabel" title="Plano PRF Otimizado">Plano PRF</span>
+              <button id="studyNow" class="button button-primary" type="button">Estudar agora</button>
+              <button id="viewAllQuestions" class="button button-secondary" type="button">Ver todas</button>
+            </div>
+
+            <div class="pager-group" aria-label="Navegação da questão">
+              <button id="prevPage" class="button button-secondary icon-button" type="button" aria-label="Questão anterior">&lt;</button>
+              <span class="page-chip" id="pageLabel">0 / 0</span>
+              <button id="nextPage" class="button button-secondary icon-button" type="button" aria-label="Próxima questão">&gt;</button>
+            </div>
+
+            <div class="dropdown" data-dropdown>
+              <button id="modeMenuButton" class="button button-secondary" type="button" aria-expanded="false" title="Escolher outro modo de estudo">
+                Mais modos
+              </button>
+              <div class="dropdown-menu" role="menu" hidden>
+                <button id="smartQueue" class="menu-item" type="button">Estudar agora</button>
+                <button id="dueReviews" class="menu-item" type="button">Revisar hoje</button>
+                <button id="repairQueue" class="menu-item" type="button">Corrigir erros</button>
+                <button id="nextUnanswered" class="menu-item" type="button">Próxima não resolvida</button>
+                <button id="nextSubject" class="menu-item" type="button">Trocar assunto</button>
+              </div>
+            </div>
+
+            <div class="dropdown" data-dropdown>
+              <button id="reportsMenuButton" class="button button-ghost" type="button" aria-expanded="false">
+                Relatórios
+              </button>
+              <div class="dropdown-menu" role="menu" hidden>
+                <button id="toggleCoverage" class="menu-item" type="button">Base x Prova</button>
+                <button id="toggleSubjects" class="menu-item" type="button">Ranking de assuntos</button>
+                <button id="toggleNormative" class="menu-item" type="button">Revisão normativa</button>
+              </div>
+            </div>
+
+            <div class="dropdown" data-dropdown>
+              <button id="supportMenuButton" class="button button-ghost" type="button" aria-expanded="false">
+                Apoio
+              </button>
+              <div class="dropdown-menu" role="menu" hidden>
+                <button id="toggleComment" class="menu-item" type="button" disabled>Ver explicação</button>
+                <button id="showSimilar" class="menu-item" type="button" disabled>Ver semelhantes</button>
+                <button id="toggleNormativeSupport" class="menu-item" type="button" disabled>Ver análise normativa</button>
+                <button id="openTheory" class="menu-item" type="button" disabled>Abrir teoria</button>
+                <button id="openHistory" class="menu-item" type="button">Histórico da questão</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="study-layout">
+          <article class="question-card">
+            <div class="question-card-head">
+              <strong>Enunciado</strong>
+              <span id="questionQuickStatus">Preparando estudo</span>
+            </div>
+            <div id="normativeAlert" class="normative-alert" hidden></div>
+            <div class="statement" id="statement">
+              <p>Carregando banco local...</p>
+            </div>
+          </article>
+
+          <form class="answer-panel" id="answerForm">
+            <div class="answer-head">
+              <div>
+                <strong>Sua resposta</strong>
+                <span id="answerHint">Escolha uma alternativa</span>
+              </div>
+              <button id="answerStatus" class="status-button" type="button" disabled></button>
+            </div>
+
+            <div id="answerDetails" class="answer-details" hidden></div>
+
+            <div class="study-metrics">
+              <span class="metric-card">
+                <strong id="timerLabel">00:00</strong>
+                <small>Tempo</small>
+              </span>
+              <span class="metric-card">
+                <strong id="masteryScore">0%</strong>
+                <small id="masteryLabel">Novo</small>
+              </span>
+              <span class="metric-card">
+                <strong id="nextDue">sem data</strong>
+                <small>Revisão</small>
+              </span>
+            </div>
+
+            <fieldset class="confidence-field">
+              <legend>Confiança</legend>
+              <input id="confidenceSelect" type="hidden" value="sure">
+              <div class="segmented-control" id="confidenceOptions">
+                <button class="segment is-active" type="button" data-confidence="sure">Certeza</button>
+                <button class="segment" type="button" data-confidence="doubt">Dúvida</button>
+                <button class="segment" type="button" data-confidence="guess">Chute</button>
+              </div>
+            </fieldset>
+
+            <div class="alternatives" id="alternatives"></div>
+
+            <div id="answerResult" class="answer-result" hidden></div>
+
+            <label class="error-type-field" id="errorTypeWrapper" hidden>
+              <span>Tipo de erro</span>
+              <select id="errorTypeSelect">
+                <option value="other">Outro</option>
+                <option value="content">Conteúdo</option>
+                <option value="interpretation">Interpretação</option>
+                <option value="confusion">Confusão entre conceitos</option>
+                <option value="memory">Memorização</option>
+                <option value="outdated">Desatualizada</option>
+                <option value="misclick">Clique errado</option>
+              </select>
+            </label>
+
+            <div class="answer-actions">
+              <button id="submitAnswer" class="button button-primary" type="submit" disabled>Responder</button>
+              <button id="secondaryExplain" class="button button-secondary" type="button" disabled>Ver explicação</button>
+              <button id="similarQuestions" class="button button-secondary" type="button" disabled>Ver semelhantes</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="subjects-panel" id="subjectsPanel" hidden>
+          <div class="subjects-head">
+            <strong>Ranking de assuntos</strong>
+            <span id="subjectsInfo"></span>
+          </div>
+          <div class="subjects-list" id="subjectsList"></div>
+        </section>
+
+        <section class="coverage-panel" id="coveragePanel" hidden>
+          <div class="subjects-head">
+            <strong>Base x Prova PRF</strong>
+            <span id="coverageInfo"></span>
+          </div>
+          <div id="coverageAlerts" class="coverage-alerts"></div>
+          <div class="coverage-table" id="coverageTable"></div>
+        </section>
+
+        <section class="normative-panel" id="normativePanel" hidden>
+          <div class="subjects-head">
+            <strong>Revisão normativa</strong>
+            <span id="normativeInfo"></span>
+          </div>
+          <div id="normativeStats" class="normative-stats"></div>
+          <div class="normative-filters">
+            <label class="field">
+              <span>Recomendação</span>
+              <select id="normativeRecommendationFilter">
+                <option value="">Todas</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Segurança</span>
+              <select id="normativeSecurityFilter">
+                <option value="">Todos</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Mudança</span>
+              <select id="normativeChangedFilter">
+                <option value="">Todas</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Status</span>
+              <select id="normativeReviewStatusFilter">
+                <option value="">Todos</option>
+                <option value="pending">Pendente</option>
+                <option value="approved">Aprovada</option>
+                <option value="rejected">Rejeitada</option>
+                <option value="manual_review">Revisão manual</option>
+                <option value="needs_research">Pesquisar</option>
+                <option value="adapted">Adaptada</option>
+                <option value="discarded">Descartada</option>
+              </select>
+            </label>
+          </div>
+          <div id="normativeTable" class="normative-table"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="supportOverlay" class="support-overlay" hidden></div>
+    <aside id="supportDrawer" class="support-drawer" role="dialog" aria-modal="true" aria-labelledby="supportTitle" hidden>
+      <header class="support-head">
+        <div>
+          <strong id="supportTitle">Apoio da questão</strong>
+          <span id="supportSubtitle">Explicação, teoria e histórico</span>
+        </div>
+        <button id="closeSupport" class="button button-ghost icon-button" type="button" aria-label="Fechar painel">X</button>
+      </header>
+
+      <nav class="support-tabs" aria-label="Abas de apoio">
+        <button id="supportTabComment" class="support-tab is-active" type="button" data-support-tab="comment">Explicação</button>
+        <button id="supportTabNormative" class="support-tab" type="button" data-support-tab="normative">Atualização</button>
+        <button id="supportTabTheory" class="support-tab" type="button" data-support-tab="theory">Teoria</button>
+        <button id="supportTabHistory" class="support-tab" type="button" data-support-tab="history">Histórico</button>
+        <button id="supportTabSimilar" class="support-tab" type="button" data-support-tab="similar">Semelhantes</button>
+      </nav>
+
+      <article class="support-tab-panel comment-panel" id="commentPanel">
+        <div class="comment-head">
+          <strong>Explicação do professor</strong>
+          <span id="commentInfo"></span>
+        </div>
+        <div id="commentBody" class="support-body"></div>
+      </article>
+
+      <article class="support-tab-panel" id="supportNormativePanel" hidden>
+        <div class="comment-head">
+          <strong>Atualização normativa</strong>
+          <span id="normativeSupportInfo"></span>
+        </div>
+        <div id="supportNormativeBody" class="support-body"></div>
+      </article>
+
+      <article class="support-tab-panel" id="supportTheoryPanel" hidden>
+        <div class="comment-head">
+          <strong>Teoria relacionada</strong>
+          <span id="theoryInfo"></span>
+        </div>
+        <div id="supportTheoryBody" class="support-body"></div>
+      </article>
+
+      <article class="support-tab-panel" id="supportHistoryPanel" hidden>
+        <div class="comment-head">
+          <strong>Histórico da questão</strong>
+          <span id="historyInfo"></span>
+        </div>
+        <div id="supportHistoryBody" class="support-body"></div>
+      </article>
+
+      <article class="support-tab-panel" id="supportSimilarPanel" hidden>
+        <div class="comment-head">
+          <strong>Questões semelhantes</strong>
+          <span id="similarInfo"></span>
+        </div>
+        <div id="supportSimilarBody" class="support-body"></div>
+      </article>
+    </aside>
+
+    <script src="/study.js?v=20260601-adaptive1" type="module"></script>
+  </body>
+</html>

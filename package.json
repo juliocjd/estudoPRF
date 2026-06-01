@@ -1,0 +1,42 @@
+{
+  "name": "materiais-tec-pdf",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "login": "node src/tec-to-pdf.mjs login",
+    "pdf": "node src/tec-to-pdf.mjs pdf",
+    "pdf-prf": "node src/tec-to-pdf.mjs pdf-prf",
+    "organize-prf": "node src/tec-to-pdf.mjs organize-prf",
+    "order-prf": "node src/tec-to-pdf.mjs order-prf",
+    "questions-prf": "node --no-warnings src/tec-to-pdf.mjs questions-prf",
+    "questions-restante-prf": "node --no-warnings src/tec-to-pdf.mjs questions-prf --config config.restante.json",
+    "questions-restante-slow-prf": "node --no-warnings src/tec-to-pdf.mjs questions-prf --config config.restante-dormir.json --skip-comments --limit 10000",
+    "comments-prf-manual": "node --no-warnings src/tec-to-pdf.mjs questions-prf --config config.local.json --comments-only --skip-assets --manual-on-block",
+    "backfill-answers-prf": "node --no-warnings src/tec-to-pdf.mjs backfill-answers-prf",
+    "migrate-study-db": "node --no-warnings scripts/migrate-study-db.mjs --db questoes-prf.sqlite",
+    "diagnose-study-db": "node --no-warnings scripts/diagnose-study-db.mjs --db questoes-prf.sqlite",
+    "seed-question-skills": "node --no-warnings scripts/seed-question-skills.mjs --db questoes-prf.sqlite",
+    "migrate-exam-profiles": "node --no-warnings scripts/migrate-exam-profiles.mjs --db questoes-prf.sqlite",
+    "seed-prf-exam-profiles": "node --no-warnings scripts/seed-prf-exam-profiles.mjs --db questoes-prf.sqlite",
+    "map-exam-subjects": "node --no-warnings scripts/map-question-subjects-to-exam-profile.mjs --db questoes-prf.sqlite",
+    "diagnose-exam-coverage": "node --no-warnings scripts/diagnose-exam-coverage.mjs --db questoes-prf.sqlite",
+    "migrate-normative-updates": "node --no-warnings scripts/migrate-normative-updates.mjs --db questoes-prf.sqlite",
+    "import-normative-updates": "node --no-warnings scripts/import-normative-updates.mjs --db questoes-prf.sqlite --json data/analise_atualizacao_questoes_transito.json --source-version transito-2026-05-31 --report data/import-normative-updates-report.json",
+    "diagnose-normative-updates": "node --no-warnings scripts/diagnose-normative-updates.mjs --db questoes-prf.sqlite --md data/diagnostico_normativo.md --json data/diagnostico_normativo.json",
+    "migrate-adaptive-study": "node --no-warnings scripts/migrate-adaptive-study-engine.mjs --db questoes-prf.sqlite",
+    "build-question-clusters": "node --no-warnings scripts/build-question-clusters.mjs --db questoes-prf.sqlite --profile prf_2021_qconcursos_disciplina",
+    "diagnose-study-efficiency": "node --no-warnings scripts/diagnose-study-efficiency.mjs --db questoes-prf.sqlite --profile prf_2021_qconcursos_disciplina --md data/diagnostico_eficiencia_estudo.md --json data/diagnostico_eficiencia_estudo.json",
+    "diagnose-study-flow": "node --no-warnings scripts/diagnose-study-flow.mjs --db questoes-prf.sqlite",
+    "ai-comments-prf": "node --no-warnings src/tec-to-pdf.mjs ai-comments-prf",
+    "ai-comments-missing-prf": "node --no-warnings src/tec-to-pdf.mjs ai-comments-prf --config config.local.json --limit 1000 --delay 1500 --model gpt-5-mini",
+    "assets-prf": "node --no-warnings src/tec-to-pdf.mjs assets-prf",
+    "study": "node --no-warnings src/study-server.mjs",
+    "dev": "node --no-warnings src/study-server.mjs",
+    "collect": "node src/tec-to-pdf.mjs collect",
+    "collect-prf": "node src/tec-to-pdf.mjs collect-prf"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

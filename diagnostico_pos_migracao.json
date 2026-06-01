@@ -1,0 +1,1735 @@
+{
+  "dbPath": "C:\\Users\\Justi\\Documents\\GitHub\\Materiais\\questoes-prf.sqlite",
+  "generatedAt": "2026-05-31T12:10:23.498Z",
+  "totals": {
+    "questions": 12073,
+    "realComments": 11292,
+    "aiComments": 0,
+    "markedCommentMissing": 0,
+    "officialAnswers": 79,
+    "notebookAnswers": 79,
+    "commentExtractedAnswers": 6348,
+    "noKnownAnswer": 5713,
+    "canceled": 281,
+    "outdated": 862,
+    "answeredQuestions": 5,
+    "answeredPercent": 0.04
+  },
+  "duplicates": {
+    "extraByContentHash": 71,
+    "extraByStatementHash": 95,
+    "topGroups": [
+      {
+        "duplicate_key": "content:6e9ca89228a104effaaba5665bd41fcc947b06bfd99552de6490e885c292544e",
+        "total": 5,
+        "representative_id": 686891
+      },
+      {
+        "duplicate_key": "content:163d4588958d40bd3c446c00c7b4b762fc0789ad1b2bfe9922f96d941121c5cb",
+        "total": 5,
+        "representative_id": 49678
+      },
+      {
+        "duplicate_key": "content:e96a76020abf7703b4eb87aeb0fe4696c8c5884249f33f38859508d7838b46ac",
+        "total": 3,
+        "representative_id": 778114
+      },
+      {
+        "duplicate_key": "content:4bae42768acce58c80d6e37d91f8c09de7ae63db093ce9c2e22918c168cd6647",
+        "total": 3,
+        "representative_id": 619953
+      },
+      {
+        "duplicate_key": "content:ff72c04a7c15f2d2c3fbc72b95fa9b476e5b570e51b456da1449761c6ca8ef20",
+        "total": 2,
+        "representative_id": 2115627
+      },
+      {
+        "duplicate_key": "content:fc39953d9d5921f62fa8ca93d0ae5bf2690f2d262d8aa6b6fc79df82e6434b48",
+        "total": 2,
+        "representative_id": 1058226
+      },
+      {
+        "duplicate_key": "content:efe0db93efb0a0605cf40e10b1caa51501a8c0d02d92a22a3e2ed0899459e723",
+        "total": 2,
+        "representative_id": 1576566
+      },
+      {
+        "duplicate_key": "content:edeeb8ec2171545ae298930eaaa6b91bf9de18118c5ff92680d04ede80a82ac5",
+        "total": 2,
+        "representative_id": 1091830
+      },
+      {
+        "duplicate_key": "content:eda47a130d46c91c2d7a25a62deb7546c532ad562554bb547bb0e0208fa06a47",
+        "total": 2,
+        "representative_id": 1089565
+      },
+      {
+        "duplicate_key": "content:ed77efaf1e43f4a6e38129a8b26fbd64e7422447b3c8ad0dc74e09addb6a9e2d",
+        "total": 2,
+        "representative_id": 1576539
+      },
+      {
+        "duplicate_key": "content:ec24d7424b4e8d2efbabe0813021d32a9bcc780ed2116a71509777a6df9c84b0",
+        "total": 2,
+        "representative_id": 1576693
+      },
+      {
+        "duplicate_key": "content:e5c1d0c7b2d14bdc622bca2590dc6bb5d721c56b6830f62348ada0074e1c79cf",
+        "total": 2,
+        "representative_id": 1576554
+      },
+      {
+        "duplicate_key": "content:e07869f8c0caf42204e999544c00bbb547c603e0b8f980dbe1a0ac6dd0fb7e3f",
+        "total": 2,
+        "representative_id": 1091826
+      },
+      {
+        "duplicate_key": "content:deced2813fc748a3e82de2701a18ef8f7c41938cd14ef7a76531095a6869d9a4",
+        "total": 2,
+        "representative_id": 1765226
+      },
+      {
+        "duplicate_key": "content:d131aeda2562e4fd2f2302ab82c3459f150ddb65935a778383cca56b4f916811",
+        "total": 2,
+        "representative_id": 1576570
+      },
+      {
+        "duplicate_key": "content:cd2c4fed3d9eae963b3a216a401da6c5f7f3f7f6ba929018ce72c578ee028015",
+        "total": 2,
+        "representative_id": 1576562
+      },
+      {
+        "duplicate_key": "content:cc9389fd6764766772433b09c627a0fdb1d7dd40c61d092027c602163cde48e8",
+        "total": 2,
+        "representative_id": 1576564
+      },
+      {
+        "duplicate_key": "content:c904d68f731727995fc2c417c2188878e014533b07d26f140bb2d20647b46e4f",
+        "total": 2,
+        "representative_id": 1576685
+      },
+      {
+        "duplicate_key": "content:c861c8250d2304011b61dcef8d9c38bfe6c9f62a4e8e6f34a7c9b1fc538a1540",
+        "total": 2,
+        "representative_id": 1576571
+      },
+      {
+        "duplicate_key": "content:c828c94ac23df8b9ee7b0da8073ef92f3293c4dfb263f0580aca6b9e53e91de1",
+        "total": 2,
+        "representative_id": 1576585
+      },
+      {
+        "duplicate_key": "content:c7f1ecbab12ba6ecfff5e0e91a5462e73ca56eba44cff6ee5ddd02bcef1d0024",
+        "total": 2,
+        "representative_id": 2111704
+      },
+      {
+        "duplicate_key": "content:c7ed59b9f718f4d2e189f0dcc56415a68ed417251849102736ed213cae991b65",
+        "total": 2,
+        "representative_id": 1765224
+      },
+      {
+        "duplicate_key": "content:c4938f27b31cc3e2404241fe9c6d14f5068d3597745475fd37489c128d19968b",
+        "total": 2,
+        "representative_id": 1576583
+      },
+      {
+        "duplicate_key": "content:c2e38ceb2eb226905354e8c83cc581d59685d732a55519b00d0ef3d74af04b79",
+        "total": 2,
+        "representative_id": 970023
+      },
+      {
+        "duplicate_key": "content:b4c9ac6f1981f3f8e06797a8cedb701b0d6ec71dab76307a7ea8e298ebf06f42",
+        "total": 2,
+        "representative_id": 1343082
+      },
+      {
+        "duplicate_key": "content:afaf7918323b58d27fca980512089964fef9177b815f1421eefb718a0991bbd4",
+        "total": 2,
+        "representative_id": 1401698
+      },
+      {
+        "duplicate_key": "content:addac6701c6bd470a20a5ff344f3b6f01637c1801bdc40355426b4e111125d91",
+        "total": 2,
+        "representative_id": 971505
+      },
+      {
+        "duplicate_key": "content:ad92057b98f515803c175a1f535598aaedce43e2c6a22c33e3cb9ddb294959af",
+        "total": 2,
+        "representative_id": 1576552
+      },
+      {
+        "duplicate_key": "content:aa214a81ba52d1dba6a3ecbf227de04fbc3acaabfbaf3afe506286f43c5fca45",
+        "total": 2,
+        "representative_id": 1576569
+      },
+      {
+        "duplicate_key": "content:a829a0bf0880d1dacf6ddac947df582f56063a9c56ea0c669addd174f8ba32d1",
+        "total": 2,
+        "representative_id": 1576561
+      },
+      {
+        "duplicate_key": "content:a4ed66db2ab3817131ea5c8c527b66e8dd6bd9129f8b746949d83b429a9b500d",
+        "total": 2,
+        "representative_id": 1576716
+      },
+      {
+        "duplicate_key": "content:9f5d5cac8ac087700428e742d4f739e428eeb3a6d94c3fc77958351de397a553",
+        "total": 2,
+        "representative_id": 1576553
+      },
+      {
+        "duplicate_key": "content:9a6ff565f5caee2fcd2dd219e6eee63f8c3b1d6bdc066e7993e8277a3f1b6820",
+        "total": 2,
+        "representative_id": 1576540
+      },
+      {
+        "duplicate_key": "content:99030db27d4e02e1c8f08c737a7d99b052d7ef5d30641821e9368c7113e26720",
+        "total": 2,
+        "representative_id": 1576559
+      },
+      {
+        "duplicate_key": "content:97202c61f244c42f86a88ded9e3b85840c5867e3e6aba61dbb18c3d2f789f587",
+        "total": 2,
+        "representative_id": 1576594
+      },
+      {
+        "duplicate_key": "content:915b2ab20ae10ce654b4b8254598df6bf2aac229c83005f1156ab707943e2fac",
+        "total": 2,
+        "representative_id": 1576572
+      },
+      {
+        "duplicate_key": "content:8b8ff7c8cbf9b208ad3f5752f9579de105a6ce8c4edc2b3d8540623b5b40652c",
+        "total": 2,
+        "representative_id": 1576558
+      },
+      {
+        "duplicate_key": "content:88dddc1a0d8d76c6e24fdeb39818a11ff1d9b644994fde9a087287f97ceb69a7",
+        "total": 2,
+        "representative_id": 1576541
+      },
+      {
+        "duplicate_key": "content:8519235e2a3ea50cd8471876400f900e4ea1a11b28383d9e68eb123730dc4db6",
+        "total": 2,
+        "representative_id": 2022893
+      },
+      {
+        "duplicate_key": "content:84cdd491aedd0c3ee58a98883a00a6d139259cb958b98796423b63da2d2ec0e6",
+        "total": 2,
+        "representative_id": 203055
+      },
+      {
+        "duplicate_key": "content:83e3aafd3ed690f572a7f262aefc88aa8296aceaddbbc3871b075d523541b59f",
+        "total": 2,
+        "representative_id": 1765222
+      },
+      {
+        "duplicate_key": "content:7e495a5d93add29ec98acae51bbffb9aef0edc4a28a3813ba980ddd10af8438d",
+        "total": 2,
+        "representative_id": 1576538
+      },
+      {
+        "duplicate_key": "content:7727082c8b5c5e4f570c5603b38282071e6747217ecfdef28450f6227582dbb6",
+        "total": 2,
+        "representative_id": 1576542
+      },
+      {
+        "duplicate_key": "content:76b1af9e4960587ccbffdf7e3b28db342353e7da47ce3267cddb7f8260d6b654",
+        "total": 2,
+        "representative_id": 155590
+      },
+      {
+        "duplicate_key": "content:743f97773d624f89e05e68f69e00b3578ec2ab1433d280a7b5542239a0fafefa",
+        "total": 2,
+        "representative_id": 1576687
+      },
+      {
+        "duplicate_key": "content:73ff847c477e1ae971e9c5cd7bf7f72d13f9fb7252a5cb81571b5b517753f1e1",
+        "total": 2,
+        "representative_id": 1576563
+      },
+      {
+        "duplicate_key": "content:71621f624b541f9726dcd04f76ca4abb1a04e8490d1e19764f0cdde7ffc9d79f",
+        "total": 2,
+        "representative_id": 1912671
+      },
+      {
+        "duplicate_key": "content:67fe3737588abddf1d15f57190071518301b8e20c6a79277ceb84d94558d88d4",
+        "total": 2,
+        "representative_id": 1576568
+      },
+      {
+        "duplicate_key": "content:652903d30566cc6e3f969993988b510140377309dd671e89e70d78485e71f885",
+        "total": 2,
+        "representative_id": 1576727
+      },
+      {
+        "duplicate_key": "content:5910b467849b7c860b90ef65db5bbd9888aa1fbe5d4f7e2ff9dfba9db8a8f8b5",
+        "total": 2,
+        "representative_id": 1610562
+      }
+    ]
+  },
+  "byMatter": [
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "total": 2000,
+      "outdated": 441,
+      "canceled": 24
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "total": 1369,
+      "outdated": 202,
+      "canceled": 27
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "total": 1365,
+      "outdated": 0,
+      "canceled": 27
+    },
+    {
+      "materia": "Direito Penal",
+      "total": 1224,
+      "outdated": 17,
+      "canceled": 39
+    },
+    {
+      "materia": "Informática",
+      "total": 1194,
+      "outdated": 65,
+      "canceled": 40
+    },
+    {
+      "materia": "Direito Constitucional (CF/1988 e Doutrina)",
+      "total": 964,
+      "outdated": 8,
+      "canceled": 15
+    },
+    {
+      "materia": "Matemática",
+      "total": 813,
+      "outdated": 0,
+      "canceled": 29
+    },
+    {
+      "materia": "Redação Oficial",
+      "total": 794,
+      "outdated": 118,
+      "canceled": 23
+    },
+    {
+      "materia": "Direito Processual Penal",
+      "total": 709,
+      "outdated": 10,
+      "canceled": 21
+    },
+    {
+      "materia": "Física",
+      "total": 654,
+      "outdated": 0,
+      "canceled": 18
+    },
+    {
+      "materia": "Direitos Humanos",
+      "total": 242,
+      "outdated": 0,
+      "canceled": 7
+    },
+    {
+      "materia": "Ética no Serviço Público",
+      "total": 229,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Estatística",
+      "total": 221,
+      "outdated": 0,
+      "canceled": 6
+    },
+    {
+      "materia": "TI - Ciência de Dados e Inteligência Artificial",
+      "total": 110,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Legislação Penal e Processual Penal Especial",
+      "total": 81,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Segurança Pública e Legislação Policial",
+      "total": 53,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Raciocínio Lógico",
+      "total": 14,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Legislação Geral Federal",
+      "total": 9,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Administrativo Estadual e do DF",
+      "total": 4,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "TI - Redes de Computadores",
+      "total": 3,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Pedagogia",
+      "total": 2,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Segurança Privada e Transportes",
+      "total": 2,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "TI - Banco de Dados",
+      "total": 2,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Administração Geral e Pública",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Biblioteconomia",
+      "total": 1,
+      "outdated": 1,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Administrativo Municipal",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Digital",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Internacional Público e Privado",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Sanitário e Saúde",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Finanças e Conhecimentos Bancários",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Legislação Civil e Processual Civil Especial",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Legislação Específica dos Ministérios Públicos",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Medicina",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Serviço Social",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "TI - Desenvolvimento de Sistemas",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "TI - Organização e Arquitetura dos Computadores",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "TI - Segurança da Informação",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "TI - Sistemas Operacionais",
+      "total": 1,
+      "outdated": 0,
+      "canceled": 0
+    }
+  ],
+  "bySubjectTop": [
+    {
+      "materia": "Direito Constitucional (CF/1988 e Doutrina)",
+      "assunto": "Dos Direitos e Deveres Individuais e Coletivos (art. 5º da CF/1988)",
+      "total": 194,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Demais Resoluções CONTRAN",
+      "total": 181,
+      "outdated": 129,
+      "canceled": 6
+    },
+    {
+      "materia": "Física",
+      "assunto": "Energia Cinética, Potencial e Mecânica. Trabalho e Potência",
+      "total": 171,
+      "outdated": 0,
+      "canceled": 4
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Formatação (Páginas, Texto, Numeração)",
+      "total": 168,
+      "outdated": 73,
+      "canceled": 4
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Interpretação de Textos (Compreensão)",
+      "total": 151,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Direito Constitucional (CF/1988 e Doutrina)",
+      "assunto": "Segurança Pública (art. 144 da CF/1988)",
+      "total": 138,
+      "outdated": 2,
+      "canceled": 4
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Reescrita de Frases. Substituição de Palavras ou Trechos de Texto.",
+      "total": 130,
+      "outdated": 0,
+      "canceled": 4
+    },
+    {
+      "materia": "Direito Processual Penal",
+      "assunto": "Da Ação Penal (arts. 24 a 62 do CPP)",
+      "total": 129,
+      "outdated": 4,
+      "canceled": 3
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Coerência. Coesão (Anáfora, Catáfora, Uso dos Conectores - Pronomes Relativos, Conjunções, etc)",
+      "total": 128,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Direito Processual Penal",
+      "assunto": "Do Exame de Corpo de Delito, da Cadeia de Custódia e das Perícias em Geral (arts. 158 a 184 do CPP)",
+      "total": 125,
+      "outdated": 0,
+      "canceled": 4
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Pontuação (Ponto, Vírgula, Travessão, Aspas, Parênteses, etc)",
+      "total": 124,
+      "outdated": 0,
+      "canceled": 4
+    },
+    {
+      "materia": "Direito Processual Penal",
+      "assunto": "Da Prisão em Flagrante (arts. 301 a 310 do CPP)",
+      "total": 114,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Matemática",
+      "assunto": "Equações de Segundo Grau e Equações Biquadradas",
+      "total": 109,
+      "outdated": 0,
+      "canceled": 4
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Definição e Atributos da Redação Oficial",
+      "total": 105,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Das Infrações (arts. 161 a 255 da Lei nº 9.503/1997)",
+      "total": 101,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Administração Indireta",
+      "total": 97,
+      "outdated": 1,
+      "canceled": 3
+    },
+    {
+      "materia": "Direitos Humanos",
+      "assunto": "Declaração Universal dos Direitos Humanos (DUDH)",
+      "total": 97,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Física",
+      "assunto": "Cinemática Escalar (MU, MUV, Movimento Vertical, Diagramas Horários)",
+      "total": 95,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Matemática",
+      "assunto": "Frações e Dízimas Periódicas",
+      "total": 93,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Volume III - Sinalização Vertical de Indicação (Anexo III da Res. CONTRAN nº 973/2022)",
+      "total": 92,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Matemática",
+      "assunto": "Quadriláteros (Propriedades, Área, Perímetro, Soma dos Ângulos, etc)",
+      "total": 92,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Sinais Sonoros (Antiga Res. CONTRAN 160/2004)",
+      "total": 90,
+      "outdated": 2,
+      "canceled": 2
+    },
+    {
+      "materia": "Ética no Serviço Público",
+      "assunto": "Decreto nº 1.171/1994 - Código de Conduta do Servidor Público Civil do Poder Executivo Federal",
+      "total": 88,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Fechos e Identificação do Signatário",
+      "total": 84,
+      "outdated": 0,
+      "canceled": 4
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Julgamento de Trechos quanto à Correção (Red. Oficial)",
+      "total": 82,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "TI - Ciência de Dados e Inteligência Artificial",
+      "assunto": "Conceitos de Big Data",
+      "total": 82,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Das Normas Gerais de Circulação e Conduta (arts. 26 a 67 da Lei nº 9.503/1997)",
+      "total": 80,
+      "outdated": 3,
+      "canceled": 1
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows 2000 e Versões Anteriores",
+      "total": 79,
+      "outdated": 18,
+      "canceled": 1
+    },
+    {
+      "materia": "Legislação Penal e Processual Penal Especial",
+      "assunto": "Lei nº 9.503/1997 - Crimes no Código de Trânsito Brasileiro - CTB (arts. 291 a 312-B)",
+      "total": 76,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Física",
+      "assunto": "Cinemática Vetorial, Composição de Movimentos e Lançamento Não Vertical",
+      "total": 75,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Física",
+      "assunto": "Quantidade de Movimento, Impulso e Colisões",
+      "total": 75,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 985/2022 - Manual Brasileiro de Fiscalização de Trânsito",
+      "total": 74,
+      "outdated": 32,
+      "canceled": 1
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Concordância (Verbal e Nominal)",
+      "total": 71,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Matemática",
+      "assunto": "Análise Combinatória (Princípio Fundamental da Contagem, Arranjos, Combinações, Permutações)",
+      "total": 71,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 882/2021 - Limites de Peso e Dimensões que Transitem por Vias Terrestres",
+      "total": 69,
+      "outdated": 68,
+      "canceled": 1
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows Vista",
+      "total": 67,
+      "outdated": 4,
+      "canceled": 4
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Clareza e Correção",
+      "total": 67,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Direitos Humanos",
+      "assunto": "Direitos Humanos na Constituição Federal",
+      "total": 66,
+      "outdated": 0,
+      "canceled": 4
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Do Sistema Nacional de Trânsito (arts. 5º a 25 da Lei nº 9.503/1997)",
+      "total": 66,
+      "outdated": 1,
+      "canceled": 1
+    },
+    {
+      "materia": "Física",
+      "assunto": "Conceitos Iniciais de Dinâmica e Leis de Newton",
+      "total": 65,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Poder de Polícia",
+      "total": 63,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Outlook 2010",
+      "total": 63,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows 10",
+      "total": 63,
+      "outdated": 1,
+      "canceled": 4
+    },
+    {
+      "materia": "Direito Processual Penal",
+      "assunto": "Teoria Geral da Prova Penal (arts. 155 a 157 do CPP)",
+      "total": 62,
+      "outdated": 1,
+      "canceled": 1
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Ameaças (Vírus, Worms, Trojans, Malware, etc.)",
+      "total": 61,
+      "outdated": 2,
+      "canceled": 5
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Volume II - Sinalização Vertical de Advertência (Anexo II da Res. CONTRAN nº 973/2022)",
+      "total": 61,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Tipologia e Gênero Textual",
+      "total": 59,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Do Regime Disciplinar (arts. 116 a 142 da Lei nº 8.112/1990)",
+      "total": 58,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Volume I - Sinalização Vertical de Regulamentação (Anexo I da Res. CONTRAN nº 973/2022)",
+      "total": 58,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Processual Penal",
+      "assunto": "Da Comunicação dos Atos Processuais (arts. 351 a 372 do CPP)",
+      "total": 56,
+      "outdated": 2,
+      "canceled": 1
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Conceitos, Uso e Concordância (Pronomes de Tratamento)",
+      "total": 54,
+      "outdated": 1,
+      "canceled": 2
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Do Furto (arts. 155 e 156 do CP)",
+      "total": 52,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Imputabilidade Penal (arts. 26 a 28 do CP)",
+      "total": 52,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Física",
+      "assunto": "Cinemática Angular (MCU, MCUV)",
+      "total": 52,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Conceitos de Internet",
+      "total": 52,
+      "outdated": 4,
+      "canceled": 0
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Outlook 2013",
+      "total": 52,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Questões Mescladas sobre Padrão Ofício",
+      "total": 52,
+      "outdated": 32,
+      "canceled": 5
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Do Roubo e da Extorsão (arts. 157 a 160 do CP)",
+      "total": 51,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows XP",
+      "total": 51,
+      "outdated": 6,
+      "canceled": 0
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Da Habilitação (arts. 140 a 160 da Lei nº 9.503/1997)",
+      "total": 51,
+      "outdated": 1,
+      "canceled": 1
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Atos Administrativos: Espécies, Classificação, Fases de Constituição",
+      "total": 50,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Ética no Serviço Público",
+      "assunto": "Ética, Moral, Princípios e Valores",
+      "total": 50,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Contratação Direta, Inexigibilidade e Dispensa (arts. 72 a 75 da Lei nº 14.133/2021)",
+      "total": 48,
+      "outdated": 48,
+      "canceled": 0
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Protocolos de Redes",
+      "total": 48,
+      "outdated": 1,
+      "canceled": 0
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Crase",
+      "total": 47,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Direitos Humanos",
+      "assunto": "Deveres dos Estados e Direitos Protegidos (arts. 1º a 32 da CADH-OAS)",
+      "total": 46,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Questões Mescladas de Internet",
+      "total": 46,
+      "outdated": 1,
+      "canceled": 1
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Princípios Expressos, Explícitos ou Constitucionais",
+      "total": 45,
+      "outdated": 0,
+      "canceled": 3
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Homicídio (art. 121 do CP)",
+      "total": 45,
+      "outdated": 3,
+      "canceled": 3
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Vocativos",
+      "total": 45,
+      "outdated": 1,
+      "canceled": 1
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Do Processo Administrativo (arts. 280 a 290 da Lei nº 9.503/1997)",
+      "total": 44,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Volume IV - Sinalização Horizontal (Anexo IV da Res. CONTRAN nº 973/2022)",
+      "total": 44,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Exposição de Motivos e Mensagem",
+      "total": 44,
+      "outdated": 1,
+      "canceled": 1
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Conceitos e Tipos de Computação em Nuvem (Cloud Computing)",
+      "total": 42,
+      "outdated": 0,
+      "canceled": 4
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Firewall e Proxy",
+      "total": 42,
+      "outdated": 2,
+      "canceled": 3
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows 7",
+      "total": 42,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Das Penalidades (arts. 256 a 268-A da Lei nº 9.503/1997)",
+      "total": 42,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 960/2022 - Requisitos de Segurança de Vidros e Outros",
+      "total": 42,
+      "outdated": 42,
+      "canceled": 1
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Do Procedimento de Acesso à Informação (arts. 10 a 20 da Lei nº 12.527/2011)",
+      "total": 41,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Constitucional (CF/1988 e Doutrina)",
+      "assunto": "Das Atribuições do Presidente da República (art. 84 da CF/1988)",
+      "total": 41,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Constitucional (CF/1988 e Doutrina)",
+      "assunto": "União: Bens e Competências Exclusivas, Privativas, Comuns e Concorrentes (arts. 20 a 24 da CF/1988)",
+      "total": 41,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Física",
+      "assunto": "Elevadores em Movimento Vertical",
+      "total": 41,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Disposições Finais e Transitórias do CTB (arts. 313 a 341 da Lei nº 9.503/1997)",
+      "total": 41,
+      "outdated": 3,
+      "canceled": 0
+    },
+    {
+      "materia": "Matemática",
+      "assunto": "Área do Círculo, do Setor Circular e do Segmento Circular",
+      "total": 41,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Do Âmbito de Aplicação, Definições e Agentes Públicos (arts. 1º a 4º, 6º a 10 da Lei nº 14.133/2021)",
+      "total": 40,
+      "outdated": 40,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Modalidades de Licitação (arts. 28 a 32 da Lei nº 14.133/2021)",
+      "total": 40,
+      "outdated": 40,
+      "canceled": 0
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Conflitos de Leis Penais no Tempo (arts. 1º e 2º do CP)",
+      "total": 40,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Matemática",
+      "assunto": "Área e Perímetro de Um Polígono Qualquer",
+      "total": 40,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Significação de Vocábulo e Expressões",
+      "total": 39,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Definição de Padrão Ofício e Documentos",
+      "total": 39,
+      "outdated": 8,
+      "canceled": 2
+    },
+    {
+      "materia": "Ética no Serviço Público",
+      "assunto": "Lei nº 12.813/2013 - Conflito de Interesses",
+      "total": 39,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Sites de Busca (Google, Bing, Yahoo, etc.)",
+      "total": 38,
+      "outdated": 2,
+      "canceled": 1
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 993/2023 - Equipamentos Obrigatórios para a Frota de Veículos em Circulação",
+      "total": 38,
+      "outdated": 37,
+      "canceled": 1
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Desconcentração e Descentralização",
+      "total": 37,
+      "outdated": 0,
+      "canceled": 1
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Peculato (art. 312 do CP)",
+      "total": 37,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 623/2016 - Remoção, Custódia e Leilão de Veículos Removidos e Recolhidos",
+      "total": 37,
+      "outdated": 1,
+      "canceled": 0
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Conjunção",
+      "total": 37,
+      "outdated": 0,
+      "canceled": 0
+    },
+    {
+      "materia": "Física",
+      "assunto": "Decomposição de Forças. Plano Inclinado.",
+      "total": 36,
+      "outdated": 0,
+      "canceled": 2
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Conceitos, Modelos, Tipos e Topologias de Redes",
+      "total": 36,
+      "outdated": 2,
+      "canceled": 3
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Sinônimos e Antônimos",
+      "total": 36,
+      "outdated": 0,
+      "canceled": 0
+    }
+  ],
+  "weakCommentSubjects": [
+    {
+      "materia": "Física",
+      "assunto": "Energia Cinética, Potencial e Mecânica. Trabalho e Potência",
+      "total": 171,
+      "comments": 102,
+      "comment_percent": 59.65
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Formatação (Páginas, Texto, Numeração)",
+      "total": 168,
+      "comments": 112,
+      "comment_percent": 66.67
+    },
+    {
+      "materia": "Física",
+      "assunto": "Cinemática Escalar (MU, MUV, Movimento Vertical, Diagramas Horários)",
+      "total": 95,
+      "comments": 74,
+      "comment_percent": 77.89
+    },
+    {
+      "materia": "Matemática",
+      "assunto": "Frações e Dízimas Periódicas",
+      "total": 93,
+      "comments": 66,
+      "comment_percent": 70.97
+    },
+    {
+      "materia": "Matemática",
+      "assunto": "Quadriláteros (Propriedades, Área, Perímetro, Soma dos Ângulos, etc)",
+      "total": 92,
+      "comments": 71,
+      "comment_percent": 77.17
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows 2000 e Versões Anteriores",
+      "total": 79,
+      "comments": 42,
+      "comment_percent": 53.16
+    },
+    {
+      "materia": "Física",
+      "assunto": "Quantidade de Movimento, Impulso e Colisões",
+      "total": 75,
+      "comments": 48,
+      "comment_percent": 64
+    },
+    {
+      "materia": "Física",
+      "assunto": "Cinemática Vetorial, Composição de Movimentos e Lançamento Não Vertical",
+      "total": 75,
+      "comments": 49,
+      "comment_percent": 65.33
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows Vista",
+      "total": 67,
+      "comments": 36,
+      "comment_percent": 53.73
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Clareza e Correção",
+      "total": 67,
+      "comments": 51,
+      "comment_percent": 76.12
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Questões Mescladas sobre Padrão Ofício",
+      "total": 52,
+      "comments": 22,
+      "comment_percent": 42.31
+    },
+    {
+      "materia": "Física",
+      "assunto": "Cinemática Angular (MCU, MCUV)",
+      "total": 52,
+      "comments": 34,
+      "comment_percent": 65.38
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Outlook 2013",
+      "total": 52,
+      "comments": 41,
+      "comment_percent": 78.85
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows XP",
+      "total": 51,
+      "comments": 34,
+      "comment_percent": 66.67
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Questões Mescladas de Internet",
+      "total": 46,
+      "comments": 31,
+      "comment_percent": 67.39
+    },
+    {
+      "materia": "Física",
+      "assunto": "Elevadores em Movimento Vertical",
+      "total": 41,
+      "comments": 24,
+      "comment_percent": 58.54
+    },
+    {
+      "materia": "Matemática",
+      "assunto": "Área e Perímetro de Um Polígono Qualquer",
+      "total": 40,
+      "comments": 27,
+      "comment_percent": 67.5
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Significação de Vocábulo e Expressões",
+      "total": 39,
+      "comments": 28,
+      "comment_percent": 71.79
+    },
+    {
+      "materia": "Física",
+      "assunto": "Decomposição de Forças. Plano Inclinado.",
+      "total": 36,
+      "comments": 16,
+      "comment_percent": 44.44
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Equipamentos, Meios de Transmissão e Conexão",
+      "total": 33,
+      "comments": 26,
+      "comment_percent": 78.79
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Tópicos Variados do MRPR",
+      "total": 26,
+      "comments": 16,
+      "comment_percent": 61.54
+    },
+    {
+      "materia": "Física",
+      "assunto": "Polias Fixas e Móveis. Tração de Fios.",
+      "total": 24,
+      "comments": 17,
+      "comment_percent": 70.83
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 927/2022 - Exame de Aptidão, Avaliação Psicológica e Credenciamento",
+      "total": 21,
+      "comments": 16,
+      "comment_percent": 76.19
+    },
+    {
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Outras Questões de Português e Questões Mescladas (Interpretação de Textos ou Gramática)",
+      "total": 21,
+      "comments": 16,
+      "comment_percent": 76.19
+    }
+  ],
+  "outdatedSubjects": [
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Demais Resoluções CONTRAN",
+      "total": 181,
+      "outdated": 129,
+      "outdated_percent": 71.27
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Formatação (Páginas, Texto, Numeração)",
+      "total": 168,
+      "outdated": 73,
+      "outdated_percent": 43.45
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 882/2021 - Limites de Peso e Dimensões que Transitem por Vias Terrestres",
+      "total": 69,
+      "outdated": 68,
+      "outdated_percent": 98.55
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Contratação Direta, Inexigibilidade e Dispensa (arts. 72 a 75 da Lei nº 14.133/2021)",
+      "total": 48,
+      "outdated": 48,
+      "outdated_percent": 100
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 960/2022 - Requisitos de Segurança de Vidros e Outros",
+      "total": 42,
+      "outdated": 42,
+      "outdated_percent": 100
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Do Âmbito de Aplicação, Definições e Agentes Públicos (arts. 1º a 4º, 6º a 10 da Lei nº 14.133/2021)",
+      "total": 40,
+      "outdated": 40,
+      "outdated_percent": 100
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Modalidades de Licitação (arts. 28 a 32 da Lei nº 14.133/2021)",
+      "total": 40,
+      "outdated": 40,
+      "outdated_percent": 100
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 993/2023 - Equipamentos Obrigatórios para a Frota de Veículos em Circulação",
+      "total": 38,
+      "outdated": 37,
+      "outdated_percent": 97.37
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Fases da Licitação - Julgamento, Habilitação e Encerramento (arts. 55 a 71 da Lei nº 14.133/2021)",
+      "total": 33,
+      "outdated": 33,
+      "outdated_percent": 100
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Questões Mescladas sobre Padrão Ofício",
+      "total": 52,
+      "outdated": 32,
+      "outdated_percent": 61.54
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 985/2022 - Manual Brasileiro de Fiscalização de Trânsito",
+      "total": 74,
+      "outdated": 32,
+      "outdated_percent": 43.24
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 965/2022 - Áreas de Segurança e de Estacionamento Específicos de Veículos",
+      "total": 19,
+      "outdated": 19,
+      "outdated_percent": 100
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 927/2022 - Exame de Aptidão, Avaliação Psicológica e Credenciamento",
+      "total": 21,
+      "outdated": 19,
+      "outdated_percent": 90.48
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows 2000 e Versões Anteriores",
+      "total": 79,
+      "outdated": 18,
+      "outdated_percent": 22.78
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 970/2022 - Sistemas de Sinalização, Iluminação e Uso de Lanternas Especiais",
+      "total": 16,
+      "outdated": 16,
+      "outdated_percent": 100
+    },
+    {
+      "materia": "Direito Administrativo (Doutrina e Leis Federais)",
+      "assunto": "Critérios de Julgamento (arts. 33 a 39 da Lei nº 14.133/2021)",
+      "total": 11,
+      "outdated": 11,
+      "outdated_percent": 100
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 911/2022 - Permissão para Trânsito de Veículos Novos e Usados Incompletos",
+      "total": 11,
+      "outdated": 11,
+      "outdated_percent": 100
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 819/2021 - Transporte de Crianças em Veículos",
+      "total": 15,
+      "outdated": 11,
+      "outdated_percent": 73.33
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 918/2022 - Procedimentos para Aplicação de Multas por Infrações",
+      "total": 10,
+      "outdated": 8,
+      "outdated_percent": 80
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Definição de Padrão Ofício e Documentos",
+      "total": 39,
+      "outdated": 8,
+      "outdated_percent": 20.51
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 967/2022 - Critérios para a Baixa do Registro de Veículos",
+      "total": 16,
+      "outdated": 6,
+      "outdated_percent": 37.5
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows XP",
+      "total": 51,
+      "outdated": 6,
+      "outdated_percent": 11.76
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 941/2022 - Prestação dos Serviços de Vistoria Veicular",
+      "total": 26,
+      "outdated": 5,
+      "outdated_percent": 19.23
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Equipamentos, Meios de Transmissão e Conexão",
+      "total": 33,
+      "outdated": 5,
+      "outdated_percent": 15.15
+    },
+    {
+      "materia": "Direito Constitucional (CF/1988 e Doutrina)",
+      "assunto": "Perda da Nacionalidade",
+      "total": 10,
+      "outdated": 4,
+      "outdated_percent": 40
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Do Licenciamento (arts. 130 e 135 da Lei nº 9.503/1997)",
+      "total": 17,
+      "outdated": 4,
+      "outdated_percent": 23.53
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Conceitos de Internet",
+      "total": 52,
+      "outdated": 4,
+      "outdated_percent": 7.69
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Windows Vista",
+      "total": 67,
+      "outdated": 4,
+      "outdated_percent": 5.97
+    },
+    {
+      "materia": "Direito Processual Penal",
+      "assunto": "Da Ação Penal (arts. 24 a 62 do CPP)",
+      "total": 129,
+      "outdated": 4,
+      "outdated_percent": 3.1
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Google Chrome",
+      "total": 35,
+      "outdated": 3,
+      "outdated_percent": 8.57
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Disposições Finais e Transitórias do CTB (arts. 313 a 341 da Lei nº 9.503/1997)",
+      "total": 41,
+      "outdated": 3,
+      "outdated_percent": 7.32
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Homicídio (art. 121 do CP)",
+      "total": 45,
+      "outdated": 3,
+      "outdated_percent": 6.67
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Das Normas Gerais de Circulação e Conduta (arts. 26 a 67 da Lei nº 9.503/1997)",
+      "total": 80,
+      "outdated": 3,
+      "outdated_percent": 3.75
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Grupos Colaborativos e de Discussão",
+      "total": 10,
+      "outdated": 2,
+      "outdated_percent": 20
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Dos Crimes contra a Liberdade Pessoal (arts. 146 a 149-A do CP)",
+      "total": 12,
+      "outdated": 2,
+      "outdated_percent": 16.67
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Demais Recursos (IDS, VPN, etc.)",
+      "total": 13,
+      "outdated": 2,
+      "outdated_percent": 15.38
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Dos Crimes contra a Honra (arts. 138 a 145 do CP)",
+      "total": 14,
+      "outdated": 2,
+      "outdated_percent": 14.29
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Mozilla Firefox",
+      "total": 20,
+      "outdated": 2,
+      "outdated_percent": 10
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Resolução CONTRAN nº 957/2022 - Requisitos para Registro e Licenciamento de Veículo de Coleção",
+      "total": 24,
+      "outdated": 2,
+      "outdated_percent": 8.33
+    },
+    {
+      "materia": "Direito Constitucional (CF/1988 e Doutrina)",
+      "assunto": "Espécies de Nacionalidade (Brasileiros Natos e Naturalizados)",
+      "total": 26,
+      "outdated": 2,
+      "outdated_percent": 7.69
+    },
+    {
+      "materia": "Direito Penal",
+      "assunto": "Da Prescrição (arts. 108 a 119 do CP)",
+      "total": 26,
+      "outdated": 2,
+      "outdated_percent": 7.69
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Conceitos, Modelos, Tipos e Topologias de Redes",
+      "total": 36,
+      "outdated": 2,
+      "outdated_percent": 5.56
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Sites de Busca (Google, Bing, Yahoo, etc.)",
+      "total": 38,
+      "outdated": 2,
+      "outdated_percent": 5.26
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Firewall e Proxy",
+      "total": 42,
+      "outdated": 2,
+      "outdated_percent": 4.76
+    },
+    {
+      "materia": "Direito Processual Penal",
+      "assunto": "Da Comunicação dos Atos Processuais (arts. 351 a 372 do CPP)",
+      "total": 56,
+      "outdated": 2,
+      "outdated_percent": 3.57
+    },
+    {
+      "materia": "Informática",
+      "assunto": "Ameaças (Vírus, Worms, Trojans, Malware, etc.)",
+      "total": 61,
+      "outdated": 2,
+      "outdated_percent": 3.28
+    },
+    {
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Sinais Sonoros (Antiga Res. CONTRAN 160/2004)",
+      "total": 90,
+      "outdated": 2,
+      "outdated_percent": 2.22
+    },
+    {
+      "materia": "Direito Constitucional (CF/1988 e Doutrina)",
+      "assunto": "Segurança Pública (art. 144 da CF/1988)",
+      "total": 138,
+      "outdated": 2,
+      "outdated_percent": 1.45
+    },
+    {
+      "materia": "Direito Processual Penal",
+      "assunto": "Jurisprudência dos Tribunais Superiores sobre Provas em Espécie",
+      "total": 10,
+      "outdated": 1,
+      "outdated_percent": 10
+    },
+    {
+      "materia": "Redação Oficial",
+      "assunto": "Variações dos Documentos Oficiais",
+      "total": 14,
+      "outdated": 1,
+      "outdated_percent": 7.14
+    }
+  ],
+  "mastery": {
+    "available": true,
+    "questionMasteryRows": 0,
+    "averageMastery": 0,
+    "dueReviews": 0,
+    "repairCandidates": 0
+  }
+}
