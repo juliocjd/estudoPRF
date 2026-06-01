@@ -163,6 +163,12 @@ boot();
 async function boot() {
   const [studyState] = await Promise.all([loadStudyState(), loadStats(), loadFilters(), loadExamProfiles()]);
   bindEvents();
+  const initialTargetId = getInitialTargetId();
+  if (initialTargetId) {
+    setStudyMode('all');
+    await openQuestionDirect(initialTargetId, { replaceUrl: true });
+    return;
+  }
   if (studyState.resumeLast) {
     await loadResumeTarget();
   } else {
@@ -450,26 +456,28 @@ function bindEvents() {
   });
 
   els.normativeTable.addEventListener('click', async (event) => {
-    const button = event.target.closest('button[data-question-id]');
-    if (!button) return;
+    const trigger = event.target.closest('[data-question-id]');
+    if (!trigger) return;
     event.preventDefault();
     event.stopPropagation();
-    const questionId = Number(button.dataset.questionId || 0);
+    const questionId = Number(trigger.dataset.questionId || 0);
     if (!questionId) return;
     state.normativeVisible = false;
     renderNormativeVisibility();
-    await openQuestionDirect(questionId);
-    openSupportPanel('normative');
+    await openQuestionDirect(questionId, { fallbackHref: trigger.href });
+    if (state.selectedId === questionId) {
+      openSupportPanel('normative');
+    }
   });
 
   els.supportSimilarBody.addEventListener('click', async (event) => {
-    const button = event.target.closest('button[data-question-id]');
-    if (!button) return;
+    const trigger = event.target.closest('[data-question-id]');
+    if (!trigger) return;
     event.preventDefault();
     event.stopPropagation();
-    const questionId = Number(button.dataset.questionId || 0);
+    const questionId = Number(trigger.dataset.questionId || 0);
     if (!questionId) return;
-    await openQuestionDirect(questionId);
+    await openQuestionDirect(questionId, { fallbackHref: trigger.href });
   });
 
   els.closeSupport.addEventListener('click', () => closeSupportPanel());
@@ -703,6 +711,25 @@ async function loadStudyState() {
   return studyState;
 }
 
+function getInitialTargetId() {
+  const params = new URLSearchParams(window.location.search);
+  return Number(params.get('targetId') || params.get('questionId') || params.get('q_id') || 0) || null;
+}
+
+function questionLink(questionId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('targetId', String(questionId));
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function updateQuestionUrl(questionId, options = {}) {
+  if (!window.history?.pushState) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set('targetId', String(questionId));
+  const method = options.replace ? 'replaceState' : 'pushState';
+  window.history[method]({}, '', `${url.pathname}${url.search}${url.hash}`);
+}
+
 async function saveStudyState(payload) {
   return api('/api/study-state', {
     method: 'POST',
@@ -716,12 +743,11 @@ async function loadStats() {
   els.stats.innerHTML = [
     statMarkup(stats.questions, 'questões'),
     statMarkup(stats.comments, 'comentários do professor'),
-    statMarkup(stats.knownAnswers, 'com gabarito'),
-    statMarkup(stats.missingAnswers, 'sem gabarito'),
     statMarkup(stats.aiLocalComments ?? stats.aiComments, 'comentários IA locais'),
     statMarkup(stats.normativeUpdates, 'análises normativas'),
     statMarkup(stats.normativeTeachingComments, 'comentários atualizados'),
-    statMarkup(stats.normativeTeachingPending, 'pendentes de revisão normativa'),
+    statMarkup(stats.normativeTeachingPending, 'revisão normativa'),
+    statMarkup(stats.normativeTeachingDiscard, 'descartar'),
     statMarkup(stats.outOfStudyQuestions, 'fora do estudo'),
     statMarkup(stats.dueReviews, 'revisões')
   ].join('');
@@ -1142,25 +1168,40 @@ async function selectQuestion(questionId, options = {}) {
     profile: state.activeProfile || '',
     materia: question.metadata?.materia || '',
     assunto: question.metadata?.assunto || ''
+  }).catch((error) => {
+    console.warn('Nao foi possivel salvar o estado de estudo.', error);
   });
   recordQuestionEvent('started_question');
 }
 
-async function openQuestionDirect(questionId) {
+async function openQuestionDirect(questionId, options = {}) {
+  const targetId = Number(questionId || 0);
+  if (!targetId) return;
+
   closeSupportPanel();
   closeAllDropdowns();
-  await selectQuestion(questionId);
-  const rowIndex = state.rows.findIndex((row) => Number(row.id) === Number(questionId));
-  if (rowIndex >= 0) {
-    state.rowIndex = rowIndex;
-  } else {
-    state.rows = [{ id: questionId }];
-    state.rowIndex = 0;
-    state.page = 1;
-    state.total = 1;
-    state.totalPages = 1;
+  try {
+    await selectQuestion(targetId);
+    const rowIndex = state.rows.findIndex((row) => Number(row.id) === targetId);
+    if (rowIndex >= 0) {
+      state.rowIndex = rowIndex;
+    } else {
+      state.rows = [{ id: targetId }];
+      state.rowIndex = 0;
+      state.page = 1;
+      state.total = 1;
+      state.totalPages = 1;
+    }
+    updateQuestionUrl(targetId, { replace: Boolean(options.replaceUrl) });
+    renderPager();
+  } catch (error) {
+    console.error('Nao foi possivel abrir a questao.', error);
+    if (options.fallbackHref) {
+      window.location.assign(options.fallbackHref);
+      return;
+    }
+    els.answerHint.textContent = 'Nao foi possivel abrir esta questao. Recarregue a pagina e tente novamente.';
   }
-  renderPager();
 }
 
 function renderQuestion(question, options = {}) {
@@ -1282,50 +1323,98 @@ function renderNormativeTeachingPanel(question) {
     return;
   }
 
+  const isDiscard = teaching.status === 'discard' || teaching.answerPolicy === 'discard_original';
+  const needsManual = teaching.status === 'needs_manual_review'
+    || teaching.answerPolicy === 'not_assertive_manual_review'
+    || teaching.reviewStatus === 'needs_manual_review';
   const confidence = Number(teaching.currentAnswerConfidence || 0);
   els.teachingInfo.textContent = [
     teaching.status ? teachingStatusLabel(teaching.status) : '',
     teaching.currentAnswer ? `gabarito atual: ${teaching.currentAnswer}` : 'sem gabarito atual seguro',
-    teaching.safetyLevel ? `segurança ${teaching.safetyLevel}` : '',
-    teaching.studyRecommendation ? teachingRecommendationLabel(teaching.studyRecommendation) : ''
+    teaching.displayVersion || teaching.sourceVersion || ''
   ].filter(Boolean).join(' - ');
 
-  const currentAnswerMessage = teaching.currentAnswer
-    ? `<p class="normative-warning is-info">Pela regra atual, o gabarito provável seria: <strong>${escapeHtml(teaching.currentAnswer)}</strong>${confidence ? ` (${Math.round(confidence * 100)}% de confiança)` : ''}.</p>`
-    : '<p class="normative-warning is-warning">Não há segurança suficiente para definir gabarito atual. Revisão manual necessária.</p>';
-  const policyMessage = teaching.status === 'discard' || teaching.studyRecommendation === 'discard' || teaching.answerPolicy === 'discard_original'
+  const policyMessage = isDiscard
     ? '<p class="normative-warning is-danger">Questão não recomendada para estudo sem reformulação.</p>'
-    : teaching.status === 'needs_manual_review' || teaching.answerPolicy === 'not_assertive_manual_review' || teaching.studyRecommendation === 'manual_review'
-      ? '<p class="normative-warning is-warning">Comentário atualizado ainda pendente de revisão manual.</p>'
-      : teaching.adaptationStatus && teaching.adaptationStatus !== 'no_adaptation_needed'
-        ? '<p class="normative-warning is-warning">Esta questão pode ser estudada, mas o enunciado deve ser adaptado.</p>'
-        : '';
+    : needsManual
+      ? '<p class="normative-warning is-warning">Esta questão precisa de revisão manual antes de ser usada para correção segura.</p>'
+      : '';
+  const answer = teaching.currentAnswer
+    ? `${currentAnswerLabel(teaching.currentAnswer)}${confidence ? ` (${Math.round(confidence * 100)}% de confiança)` : ''}`
+    : 'não definido com segurança';
 
   els.supportTeachingBody.innerHTML = `
-    <div class="normative-card teaching-card">
-      ${currentAnswerMessage}
+    <div class="teaching-v3-card">
       ${policyMessage}
-      <div class="normative-summary-grid">
-        ${normativeField('Gabarito histórico', teaching.historicalAnswer)}
-        ${normativeField('Gabarito pela regra atual', teaching.currentAnswer || 'não definido')}
-        ${normativeField('Status', teachingStatusLabel(teaching.status))}
-        ${normativeField('Segurança', safetyLabel(teaching.safetyLevel))}
-        ${normativeField('Recomendação', teachingRecommendationLabel(teaching.studyRecommendation))}
-        ${normativeField('Política de correção', answerPolicyLabel(teaching.answerPolicy))}
-        ${normativeField('Status de adaptação', adaptationStatusLabel(teaching.adaptationStatus))}
-      </div>
-      ${teaching.shortExplanation ? `<p class="teaching-short">${escapeHtml(teaching.shortExplanation)}</p>` : ''}
-      ${teaching.adaptedStatement ? normativeTextBlock('Enunciado adaptado sugerido', teaching.adaptedStatement) : ''}
-      <section class="teaching-comment">
-        ${teaching.teachingCommentHtml || '<p class="empty">Comentário atualizado sem corpo didático.</p>'}
-      </section>
-      ${teachingAlternativesMarkup(teaching.alternativesAnalysis)}
-      ${normativeTextBlock('Fundamento atual', teaching.legalBasis)}
-      ${normativeTextBlock('Regra atual em linguagem simples', teaching.currentRuleSummary)}
-      ${normativeTextBlock('Por que ficou desatualizada', teaching.whyOutdated)}
-      ${normativeTextBlock('Alerta sobre literalidade', teaching.literalStatementWarning)}
-      <p class="normative-note">Comentário normativo auxiliar. Não é gabarito oficial. Conferir manualmente antes de usar como atualização definitiva.</p>
+      ${teachingV3Section('Gabarito pela regra atual', answer, { highlight: true })}
+      ${teachingLegalBasisMarkup(teaching)}
+      ${teachingV3Section('Explicação', teaching.shortExplanationMd || teaching.shortExplanation)}
+      ${teachingV3Section('Regra atual em resumo', teaching.currentRuleSummaryMd || teaching.currentRuleSummary)}
+      ${teachingV3Section('Complementação de professor', teaching.professorComplementMd)}
+      ${teachingV3Section('Conclusão para estudo', teaching.studyConclusionMd)}
+      ${teachingTechnicalDetailsMarkup(teaching)}
     </div>
+  `;
+}
+
+function teachingV3Section(title, markdown, options = {}) {
+  const text = String(markdown || '').trim();
+  if (!text) return '';
+  return `
+    <section class="teaching-v3-section ${options.highlight ? 'is-highlight' : ''}">
+      <strong>${escapeHtml(title)}</strong>
+      <div>${markdownLiteToHtml(text)}</div>
+    </section>
+  `;
+}
+
+function teachingLegalBasisMarkup(teaching) {
+  const reference = teaching.legalArticleReference || teaching.mainLegalBasis || teaching.legalBasis;
+  const excerpt = teaching.articleExcerptCanQuote ? teaching.legalArticleExcerpt : '';
+  const note = teaching.legalArticleExcerpt && !teaching.articleExcerptCanQuote
+    ? '<p class="teaching-v3-note">Trecho literal não exibido porque o seed não marcou a transcrição como exata ou segura por tema.</p>'
+    : '';
+  if (!reference && !excerpt && !note) return '';
+  return `
+    <section class="teaching-v3-section">
+      <strong>Artigo/fundamento aplicável</strong>
+      ${reference ? `<p>${escapeHtml(reference)}</p>` : ''}
+      ${excerpt ? `<blockquote>${escapeHtml(excerpt)}</blockquote>` : ''}
+      ${note}
+    </section>
+  `;
+}
+
+function teachingTechnicalDetailsMarkup(teaching) {
+  const details = teaching.technicalDetailsJson && typeof teaching.technicalDetailsJson === 'object'
+    ? teaching.technicalDetailsJson
+    : {};
+  const rows = [
+    ['Versão', teaching.displayVersion || teaching.sourceVersion],
+    ['Status', teachingStatusLabel(teaching.status)],
+    ['Política de correção', answerPolicyLabel(teaching.answerPolicy)],
+    ['Gabarito histórico', teaching.historicalAnswer],
+    ['Resposta bruta', teaching.currentAnswerRaw],
+    ['Exatidão do artigo', articleExactnessLabel(teaching.articleExactness)],
+    ['Revisão', reviewStatusLabel(teaching.reviewStatus)]
+  ].filter(([, value]) => value);
+  const technicalJson = Object.keys(details).length
+    ? `<pre>${escapeHtml(JSON.stringify(details, null, 2))}</pre>`
+    : '';
+  if (!rows.length && !technicalJson) return '';
+  return `
+    <details class="teaching-technical">
+      <summary>Mostrar detalhes técnicos</summary>
+      <div class="teaching-technical-grid">
+        ${rows.map(([label, value]) => `
+          <span>
+            <small>${escapeHtml(label)}</small>
+            <strong>${escapeHtml(value)}</strong>
+          </span>
+        `).join('')}
+      </div>
+      ${technicalJson}
+    </details>
   `;
 }
 
@@ -2111,12 +2200,13 @@ function similarMemberMarkup(member) {
   const role = member.role === 'representative' ? 'representante' : 'variação';
   const mastery = Math.round(Number(member.mastery_score || 0) * 100);
   const last = member.last_result === 1 ? 'última correta' : member.last_result === 0 ? 'última errada' : 'não resolvida';
+  const href = questionLink(member.questionId);
   return `
     <div class="similar-item">
       <strong>${escapeHtml(role)} • ${escapeHtml(member.materia || '')}</strong>
       <span>${escapeHtml(member.assunto || '')}</span>
       <span>Domínio ${mastery}% • ${escapeHtml(last)}${member.similarity ? ` • similaridade ${Math.round(Number(member.similarity || 0) * 100)}%` : ''}</span>
-      <button class="button button-secondary" type="button" data-question-id="${escapeAttr(member.questionId)}">Abrir</button>
+      <a class="button button-secondary" href="${escapeAttr(href)}" data-question-id="${escapeAttr(member.questionId)}">Abrir</a>
     </div>
   `;
 }
@@ -2352,6 +2442,7 @@ function coverageRowMarkup(row) {
 
 function normativeRowMarkup(row) {
   const tone = normativeRowTone(row);
+  const href = questionLink(row.questionId);
   const details = [
     row.banca || '',
     row.ano || '',
@@ -2373,7 +2464,7 @@ function normativeRowMarkup(row) {
       <span>${escapeHtml(row.teachingStudyRecommendation ? teachingRecommendationLabel(row.teachingStudyRecommendation) : row.recomendacao || '-')}</span>
       <span>${escapeHtml(row.teachingSafetyLevel ? safetyLabel(row.teachingSafetyLevel) : row.nivelSeguranca || '-')}</span>
       <span>${escapeHtml(details)}</span>
-      <button class="button button-secondary" type="button" data-question-id="${escapeAttr(row.questionId)}">Abrir</button>
+      <a class="button button-secondary" href="${escapeAttr(href)}" data-question-id="${escapeAttr(row.questionId)}">Abrir</a>
     </div>
   `;
 }
@@ -2448,6 +2539,23 @@ function teachingStatusLabel(value) {
   }[value] || value || 'não informado';
 }
 
+function articleExactnessLabel(value) {
+  return {
+    exact: 'artigo exato',
+    topic_safe: 'tema seguro',
+    topic_only: 'somente fundamento geral',
+    manual: 'revisão manual'
+  }[value] || value || 'não informado';
+}
+
+function currentAnswerLabel(value) {
+  const answer = String(value || '').trim();
+  if (!answer) return 'não definido com segurança';
+  if (answer === 'CERTO' || answer === 'ERRADO') return answer;
+  if (/^[A-E]$/.test(answer)) return `alternativa ${answer}`;
+  return answer;
+}
+
 function safetyLabel(value) {
   return {
     high: 'alta',
@@ -2463,6 +2571,49 @@ function normalizeAnswerText(value) {
     .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toLowerCase();
+}
+
+function markdownLiteToHtml(markdown) {
+  const lines = String(markdown || '').replace(/\r/g, '').split('\n');
+  const chunks = [];
+  let paragraph = [];
+  let list = [];
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    chunks.push(`<p>${inlineMarkdown(paragraph.join(' '))}</p>`);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (!list.length) return;
+    chunks.push(`<ul>${list.map((item) => `<li>${inlineMarkdown(item)}</li>`).join('')}</ul>`);
+    list = [];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+    const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+    if (bullet) {
+      flushParagraph();
+      list.push(bullet[1]);
+      continue;
+    }
+    flushList();
+    paragraph.push(trimmed.replace(/^#{1,4}\s+/, ''));
+  }
+
+  flushParagraph();
+  flushList();
+  return chunks.join('');
+}
+
+function inlineMarkdown(value) {
+  return escapeHtml(value).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 }
 
 async function api(url, options) {

@@ -356,8 +356,10 @@ function getStats() {
       WHERE ${bestAnswerSql('q', 'c')} != ''
     `).get().n,
     normativeUpdates: getNormativeUpdateCount(),
-    normativeTeachingComments: getNormativeTeachingCount(),
-    normativeTeachingPending: getNormativeTeachingPendingCount(),
+    normativeTeachingComments: getNormativeTeachingReadyCount(),
+    normativeTeachingTotal: getNormativeTeachingCount(),
+    normativeTeachingPending: getNormativeTeachingManualReviewCount(),
+    normativeTeachingDiscard: getNormativeTeachingDiscardCount(),
     outOfStudyQuestions: getQuestionStudyStatusCount('excluded'),
     reviewLaterQuestions: getQuestionStudyStatusCount('review_later'),
     missingAnswers: db.prepare(`
@@ -464,6 +466,20 @@ function columnExists(tableName, columnName) {
     .some((column) => column.name === columnName);
 }
 
+function tableColumnExists(tableName, columnName) {
+  try {
+    return columnExists(tableName, columnName);
+  } catch {
+    return false;
+  }
+}
+
+function qntcColumn(columnName, fallback = "''") {
+  return tableColumnExists('question_normative_teaching_comments', columnName)
+    ? columnName
+    : `${fallback} AS ${columnName}`;
+}
+
 function getQuestionsAiFlagCount() {
   if (!columnExists('questions', 'possui_comentario_ia')) {
     return 0;
@@ -487,6 +503,42 @@ function getNormativeTeachingCount() {
     return 0;
   }
   return db.prepare('SELECT COUNT(*) AS n FROM question_normative_teaching_comments').get().n || 0;
+}
+
+function getNormativeTeachingReadyCount() {
+  if (!hasNormativeTeachingTable()) {
+    return 0;
+  }
+  return db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM question_normative_teaching_comments
+    WHERE status = 'ready'
+  `).get().n || 0;
+}
+
+function getNormativeTeachingManualReviewCount() {
+  if (!hasNormativeTeachingTable()) {
+    return 0;
+  }
+  return db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM question_normative_teaching_comments
+    WHERE status = 'needs_manual_review'
+      OR review_status = 'needs_manual_review'
+      OR answer_policy = 'not_assertive_manual_review'
+  `).get().n || 0;
+}
+
+function getNormativeTeachingDiscardCount() {
+  if (!hasNormativeTeachingTable()) {
+    return 0;
+  }
+  return db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM question_normative_teaching_comments
+    WHERE status = 'discard'
+      OR answer_policy = 'discard_original'
+  `).get().n || 0;
 }
 
 function getNormativeTeachingPendingCount() {
@@ -1220,6 +1272,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
   }
   if (hideStudyExcluded) {
     applyQuestionStudyStatusFilter(where);
+    applyNormativeTeachingDiscardFilter(where);
   }
   applyNormativeQuestionFilters(where, normative, { hideDiscarded, hideManualReview, onlyChangedAnswer });
 
@@ -1238,6 +1291,21 @@ function applyQuestionStudyStatusFilter(where) {
     FROM question_study_status qss
     WHERE qss.question_id = q.id_question
       AND qss.status IN ('excluded', 'review_later')
+  )`);
+}
+
+function applyNormativeTeachingDiscardFilter(where) {
+  if (!hasNormativeTeachingTable()) {
+    return;
+  }
+  where.push(`NOT EXISTS (
+    SELECT 1
+    FROM question_normative_teaching_comments qntc_excluded
+    WHERE qntc_excluded.question_id = q.id_question
+      AND (
+        qntc_excluded.status = 'discard'
+        OR qntc_excluded.answer_policy = 'discard_original'
+      )
   )`);
 }
 
@@ -1795,6 +1863,17 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
   if (resolvedPlan !== 'ver_todas') {
     filters.push(`${answerSql} != ''`);
     filters.push('COALESCE(q.anulada, 0) = 0');
+    if (hasNormativeTeachingTable()) {
+      filters.push(`NOT EXISTS (
+        SELECT 1
+        FROM question_normative_teaching_comments qntc_excluded
+        WHERE qntc_excluded.question_id = q.id_question
+          AND (
+            qntc_excluded.status = 'discard'
+            OR qntc_excluded.answer_policy = 'discard_original'
+          )
+      )`);
+    }
   }
   if (resolvedPlan === 'revisar_erros') {
     filters.push('(last_answer.is_correct = 0 OR qm.last_result = 0 OR cm.last_result = 0)');
@@ -3133,35 +3212,46 @@ function getNormativeTeachingComment(questionId) {
   const row = db.prepare(`
     SELECT
       question_id,
-      source_version,
-      generated_at,
-      generated_by,
-      generation_method,
-      status,
-      historical_answer,
-      historical_answer_raw,
-      current_answer,
-      current_answer_raw,
-      current_answer_confidence,
-      changed_answer,
-      answer_policy,
-      adaptation_status,
-      study_recommendation,
-      safety_level,
-      recommendation,
-      title,
-      teaching_comment_md,
-      teaching_comment_html,
-      legal_basis,
-      current_rule_summary,
-      why_outdated,
-      literal_statement_note,
-      source_base,
-      alternatives_analysis,
-      review_status,
-      reviewed_by,
-      reviewed_at,
-      reviewer_notes
+      ${qntcColumn('display_version')},
+      ${qntcColumn('source_version')},
+      ${qntcColumn('generated_at')},
+      ${qntcColumn('generated_by')},
+      ${qntcColumn('generation_method')},
+      ${qntcColumn('generation_status')},
+      ${qntcColumn('status')},
+      ${qntcColumn('historical_answer')},
+      ${qntcColumn('historical_answer_raw')},
+      ${qntcColumn('current_answer')},
+      ${qntcColumn('current_answer_raw')},
+      ${qntcColumn('current_answer_confidence', '0')},
+      ${qntcColumn('changed_answer')},
+      ${qntcColumn('answer_policy')},
+      ${qntcColumn('adaptation_status')},
+      ${qntcColumn('study_recommendation')},
+      ${qntcColumn('safety_level')},
+      ${qntcColumn('recommendation')},
+      ${qntcColumn('title')},
+      ${qntcColumn('teaching_comment_md')},
+      ${qntcColumn('teaching_comment_html')},
+      ${qntcColumn('legal_basis')},
+      ${qntcColumn('main_legal_basis')},
+      ${qntcColumn('legal_article_reference')},
+      ${qntcColumn('legal_article_excerpt')},
+      ${qntcColumn('article_exactness')},
+      ${qntcColumn('short_explanation_md')},
+      ${qntcColumn('current_rule_summary')},
+      ${qntcColumn('current_rule_summary_md')},
+      ${qntcColumn('professor_complement_md')},
+      ${qntcColumn('study_conclusion_md')},
+      ${qntcColumn('why_outdated')},
+      ${qntcColumn('literal_statement_note')},
+      ${qntcColumn('source_base')},
+      ${qntcColumn('alternatives_analysis', 'NULL')},
+      ${qntcColumn('technical_details_json', 'NULL')},
+      ${qntcColumn('review_status')},
+      ${qntcColumn('reviewed_by')},
+      ${qntcColumn('reviewed_at')},
+      ${qntcColumn('reviewer_notes')}
     FROM question_normative_teaching_comments
     WHERE question_id = ?
     LIMIT 1
@@ -3174,10 +3264,12 @@ function getNormativeTeachingComment(questionId) {
   return {
     exists: true,
     questionId: row.question_id,
+    displayVersion: row.display_version || '',
     sourceVersion: row.source_version || '',
     generatedAt: row.generated_at || '',
     generatedBy: row.generated_by || '',
     generationMethod: row.generation_method || '',
+    generationStatus: row.generation_status || '',
     status: row.status || 'needs_manual_review',
     historicalAnswer: row.historical_answer || '',
     historicalAnswerRaw: row.historical_answer_raw || '',
@@ -3197,16 +3289,26 @@ function getNormativeTeachingComment(questionId) {
     recommendation: row.recommendation || '',
     title: row.title || '',
     adaptedStatement: '',
-    shortExplanation: row.title || '',
+    shortExplanation: row.short_explanation_md || row.title || '',
+    shortExplanationMd: row.short_explanation_md || '',
     teachingCommentMd: row.teaching_comment_md || '',
     teachingCommentHtml: sanitizeStoredHtml(row.teaching_comment_html),
-    legalBasis: row.legal_basis || '',
-    currentRuleSummary: row.current_rule_summary || '',
+    legalBasis: row.legal_article_reference || row.main_legal_basis || row.legal_basis || '',
+    mainLegalBasis: row.main_legal_basis || '',
+    legalArticleReference: row.legal_article_reference || '',
+    legalArticleExcerpt: row.legal_article_excerpt || '',
+    articleExactness: row.article_exactness || '',
+    articleExcerptCanQuote: Boolean(row.legal_article_excerpt && ['exact', 'topic_safe'].includes(row.article_exactness)),
+    currentRuleSummary: row.current_rule_summary_md || row.current_rule_summary || '',
+    currentRuleSummaryMd: row.current_rule_summary_md || '',
+    professorComplementMd: row.professor_complement_md || '',
+    studyConclusionMd: row.study_conclusion_md || '',
     whyOutdated: row.why_outdated || '',
     literalStatementWarning: row.literal_statement_note || '',
     literalStatementNote: row.literal_statement_note || '',
     sourceBase: row.source_base || '',
     alternativesAnalysis: safeJsonParse(row.alternatives_analysis, []),
+    technicalDetailsJson: safeJsonParse(row.technical_details_json, {}),
     reviewStatus: row.review_status || 'pending',
     reviewedBy: row.reviewed_by || '',
     reviewedAt: row.reviewed_at || '',

@@ -26,6 +26,8 @@
     "diagnose-normative-updates": "node --no-warnings scripts/diagnose-normative-updates.mjs --db questoes-prf.sqlite --md data/diagnostico_normativo.md --json data/diagnostico_normativo.json",
     "pg:migrate-normative-teaching": "node --no-warnings scripts/migrate-normative-teaching-comments-postgres.mjs",
     "import-normative-teaching": "node --no-warnings scripts/import-normative-teaching-comments.mjs --json data/normative-comments/comentarios_normativos_atualizados_seed_v1.json",
+    "pg:migrate-normative-teaching-v3": "node --no-warnings scripts/migrate-normative-teaching-comments-v3.mjs",
+    "import-normative-teaching-v3": "node --no-warnings scripts/import-normative-teaching-comments-v3.mjs --json data/comentarios_normativos_atualizados_professor_v3_seed.json --overwrite",
     "diagnose-normative-teaching": "node --no-warnings scripts/diagnose-normative-teaching-comments.mjs",
     "generate-normative-teaching": "node --no-warnings scripts/generate-normative-teaching-comments.mjs --dry-run",
     "migrate-adaptive-study": "node --no-warnings scripts/migrate-adaptive-study-engine.mjs --db questoes-prf.sqlite",
