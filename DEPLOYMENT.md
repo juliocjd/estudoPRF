@@ -157,6 +157,49 @@ npm run study:pg
 
 O backend ganhou uma camada de compatibilidade para Postgres. Ela permite testar as rotas atuais sem reescrever toda a aplicacao de uma vez. Para producao serverless no Vercel, o ideal de longo prazo ainda e evoluir essa camada para consultas assincronas nativas.
 
+## Comentarios normativos didaticos
+
+A camada de comentario atualizado usa tabela propria e nao altera `comments`, `questions.official_answer` nem gabaritos historicos.
+
+1. Conferir diagnostico:
+
+```powershell
+$env:DATABASE_URL="postgres://USUARIO:SENHA@HOST/BANCO?sslmode=require"
+npm run diagnose-normative-teaching
+```
+
+2. Aplicar migration no Postgres:
+
+```powershell
+npm run pg:migrate-normative-teaching
+```
+
+3. Testar geracao sem gravar:
+
+```powershell
+npm run generate-normative-teaching -- --limit 20 --dry-run
+```
+
+4. Gravar usando geracao por template local:
+
+```powershell
+node --no-warnings scripts/generate-normative-teaching-comments.mjs --limit 441 --provider template
+```
+
+5. Gravar usando OpenAI, se houver credito/API configurada:
+
+```powershell
+$env:OPENAI_API_KEY="..."
+node --no-warnings scripts/generate-normative-teaching-comments.mjs --limit 441 --provider openai --model gpt-5-mini
+```
+
+Depois disso, faca novo deploy na Vercel. O frontend passa a mostrar:
+
+- comentarios Tec/professor;
+- comentarios IA locais;
+- analises normativas;
+- comentarios normativos atualizados.
+
 ## Recomendacao pratica
 
 Para publicar rapido mantendo o maximo do sistema atual:

@@ -139,7 +139,12 @@ const els = {
   normativeSecurityFilter: document.querySelector('#normativeSecurityFilter'),
   normativeChangedFilter: document.querySelector('#normativeChangedFilter'),
   normativeReviewStatusFilter: document.querySelector('#normativeReviewStatusFilter'),
-  normativeTable: document.querySelector('#normativeTable')
+  normativeTeachingStatusFilter: document.querySelector('#normativeTeachingStatusFilter'),
+  normativeTable: document.querySelector('#normativeTable'),
+  supportTabTeaching: document.querySelector('#supportTabTeaching'),
+  supportTeachingPanel: document.querySelector('#supportTeachingPanel'),
+  teachingInfo: document.querySelector('#teachingInfo'),
+  supportTeachingBody: document.querySelector('#supportTeachingBody')
 };
 
 let searchTimer = null;
@@ -402,6 +407,10 @@ function bindEvents() {
   });
 
   els.normativeAlert.addEventListener('click', (event) => {
+    if (event.target.closest('[data-action="show-teaching"]')) {
+      openSupportPanel('teaching');
+      return;
+    }
     if (event.target.closest('[data-action="show-normative"]')) {
       showNormativePanel();
     }
@@ -411,7 +420,8 @@ function bindEvents() {
     els.normativeRecommendationFilter,
     els.normativeSecurityFilter,
     els.normativeChangedFilter,
-    els.normativeReviewStatusFilter
+    els.normativeReviewStatusFilter,
+    els.normativeTeachingStatusFilter
   ].forEach((control) => {
     control.addEventListener('change', () => loadNormativeReview());
   });
@@ -667,11 +677,12 @@ async function loadStats() {
   const stats = await api('/api/stats');
   els.stats.innerHTML = [
     statMarkup(stats.questions, 'questões'),
-    statMarkup(stats.comments, 'comentários Tec'),
+    statMarkup(stats.comments, 'comentários do professor'),
     statMarkup(stats.knownAnswers, 'com gabarito'),
     statMarkup(stats.missingAnswers, 'sem gabarito'),
-    statMarkup(stats.aiComments, 'comentários IA'),
+    statMarkup(stats.aiLocalComments ?? stats.aiComments, 'comentários IA locais'),
     statMarkup(stats.normativeUpdates, 'análises normativas'),
+    statMarkup(stats.normativeTeachingComments, 'comentários atualizados'),
     statMarkup(stats.dueReviews, 'revisões')
   ].join('');
 }
@@ -806,6 +817,9 @@ function renderEmptyQuestion() {
   els.answerResult.innerHTML = '';
   els.answerHint.textContent = 'Sem questão selecionada';
   els.errorTypeWrapper.hidden = true;
+  els.teachingInfo.textContent = '';
+  els.supportTeachingBody.innerHTML = '<p class="empty">Nenhum comentário atualizado carregado.</p>';
+  if (els.supportTabTeaching) els.supportTabTeaching.disabled = true;
   els.commentInfo.textContent = '';
   els.commentBody.innerHTML = '<p class="empty">Nenhuma explicação carregada.</p>';
   els.supportTheoryBody.innerHTML = '<p class="empty">Nenhuma teoria carregada.</p>';
@@ -1026,6 +1040,8 @@ async function loadNormativeReview() {
     statMarkup(stats.manualReview, 'revisão manual'),
     statMarkup(stats.discardable, 'descartáveis'),
     statMarkup(stats.changedAnswer, 'gabarito alterado'),
+    statMarkup(stats.teachingComments, 'comentários atualizados'),
+    statMarkup(stats.teachingMissing, 'sem comentário atualizado'),
     statMarkup(stats.reviewed, 'revisadas')
   ].join('');
   els.normativeTable.innerHTML = list.rows?.length
@@ -1039,6 +1055,7 @@ function buildNormativeReviewParams() {
   if (els.normativeSecurityFilter.value) params.set('nivelSeguranca', els.normativeSecurityFilter.value);
   if (els.normativeChangedFilter.value) params.set('mudancaGabarito', els.normativeChangedFilter.value);
   if (els.normativeReviewStatusFilter.value) params.set('reviewStatus', els.normativeReviewStatusFilter.value);
+  if (els.normativeTeachingStatusFilter.value) params.set('teachingStatus', els.normativeTeachingStatusFilter.value);
   if (state.filters.materia) params.set('materia', state.filters.materia);
   if (state.filters.assunto) params.set('assunto', state.filters.assunto);
   if (state.filters.q) params.set('q', state.filters.q);
@@ -1117,6 +1134,9 @@ function renderQuestion(question, options = {}) {
     : 'PDF de teoria não encontrado para este assunto';
   els.toggleComment.disabled = !question.comment.html && !question.comment.text;
   els.toggleComment.textContent = 'Ver explicação';
+  if (els.supportTabTeaching) {
+    els.supportTabTeaching.disabled = !question.normativeTeachingComment?.exists;
+  }
   const hasSimilar = Boolean(question.adaptive?.exists && question.adaptive?.clusterId);
   els.showSimilar.disabled = !hasSimilar;
   els.similarQuestions.disabled = !hasSimilar;
@@ -1132,6 +1152,7 @@ function renderQuestion(question, options = {}) {
   els.commentInfo.textContent = info;
   els.commentBody.innerHTML = question.comment.html || `<p class="empty">${escapeHtml(question.comment.text || 'Comentário ainda não coletado.')}</p>`;
   renderNormativeAlert(question);
+  renderNormativeTeachingPanel(question);
   renderNormativePanel(question);
   renderTheoryPanel(question);
   renderHistoryPanel(question);
@@ -1167,9 +1188,80 @@ function renderNormativeAlert(question) {
       <strong>${escapeHtml(title)}</strong>
       <span>${escapeHtml(detail)}</span>
     </div>
+    ${question.normativeTeachingComment?.exists ? '<button class="button button-primary" type="button" data-action="show-teaching">Ver comentário atualizado</button>' : ''}
     ${update?.exists ? '<button class="button button-secondary" type="button" data-action="show-normative">Ver análise normativa</button>' : ''}
   `;
   els.normativeAlert.hidden = false;
+}
+
+function renderNormativeTeachingPanel(question) {
+  const teaching = question.normativeTeachingComment;
+  if (!teaching?.exists) {
+    els.teachingInfo.textContent = question.metadata?.desatualizada ? 'ainda não gerado' : 'indisponível';
+    els.supportTeachingBody.innerHTML = question.metadata?.desatualizada
+      ? '<p class="empty">Ainda não há comentário atualizado para esta questão. Use a aba de atualização normativa como referência de auditoria.</p>'
+      : '<p class="empty">Esta questão não possui comentário normativo atualizado.</p>';
+    return;
+  }
+
+  const confidence = Number(teaching.currentAnswerConfidence || 0);
+  els.teachingInfo.textContent = [
+    teaching.currentAnswer ? `gabarito atual: ${teaching.currentAnswer}` : 'sem gabarito atual seguro',
+    teaching.safetyLevel ? `segurança ${teaching.safetyLevel}` : '',
+    teaching.studyRecommendation ? teachingRecommendationLabel(teaching.studyRecommendation) : ''
+  ].filter(Boolean).join(' - ');
+
+  const currentAnswerMessage = teaching.currentAnswer
+    ? `<p class="normative-warning is-info">Pela regra atual, o gabarito provável seria: <strong>${escapeHtml(teaching.currentAnswer)}</strong>${confidence ? ` (${Math.round(confidence * 100)}% de confiança)` : ''}.</p>`
+    : '<p class="normative-warning is-warning">Não há segurança suficiente para definir gabarito atual. Revisão manual necessária.</p>';
+  const policyMessage = teaching.studyRecommendation === 'discard' || teaching.answerPolicy === 'discard'
+    ? '<p class="normative-warning is-danger">Questão não recomendada para estudo sem reformulação.</p>'
+    : teaching.answerPolicy === 'manual_review' || teaching.studyRecommendation === 'manual_review'
+      ? '<p class="normative-warning is-warning">Revisão manual necessária antes de usar como atualização definitiva.</p>'
+      : teaching.adaptationStatus && teaching.adaptationStatus !== 'no_adaptation_needed'
+        ? '<p class="normative-warning is-warning">Esta questão pode ser estudada, mas o enunciado deve ser adaptado.</p>'
+        : '';
+
+  els.supportTeachingBody.innerHTML = `
+    <div class="normative-card teaching-card">
+      ${currentAnswerMessage}
+      ${policyMessage}
+      <div class="normative-summary-grid">
+        ${normativeField('Gabarito histórico', teaching.historicalAnswer)}
+        ${normativeField('Gabarito pela regra atual', teaching.currentAnswer || 'não definido')}
+        ${normativeField('Segurança', safetyLabel(teaching.safetyLevel))}
+        ${normativeField('Recomendação', teachingRecommendationLabel(teaching.studyRecommendation))}
+        ${normativeField('Política de correção', answerPolicyLabel(teaching.answerPolicy))}
+        ${normativeField('Status de adaptação', adaptationStatusLabel(teaching.adaptationStatus))}
+      </div>
+      ${teaching.shortExplanation ? `<p class="teaching-short">${escapeHtml(teaching.shortExplanation)}</p>` : ''}
+      ${teaching.adaptedStatement ? normativeTextBlock('Enunciado adaptado sugerido', teaching.adaptedStatement) : ''}
+      <section class="teaching-comment">
+        ${teaching.teachingCommentHtml || '<p class="empty">Comentário atualizado sem corpo didático.</p>'}
+      </section>
+      ${teachingAlternativesMarkup(teaching.alternativesAnalysis)}
+      ${normativeTextBlock('Fundamento atual', teaching.legalBasis)}
+      ${normativeTextBlock('Regra atual em linguagem simples', teaching.currentRuleSummary)}
+      ${normativeTextBlock('Por que ficou desatualizada', teaching.whyOutdated)}
+      ${normativeTextBlock('Alerta sobre literalidade', teaching.literalStatementWarning)}
+      <p class="normative-note">Comentário normativo auxiliar. Não é gabarito oficial. Conferir manualmente antes de usar como atualização definitiva.</p>
+    </div>
+  `;
+}
+
+function teachingAlternativesMarkup(items) {
+  if (!Array.isArray(items) || !items.length) return '';
+  return `
+    <section class="teaching-alternatives">
+      <strong>Análise das alternativas</strong>
+      ${items.map((item) => `
+        <div class="teaching-alternative ${item.is_correct_current_rule ? 'is-current-correct' : ''}">
+          <span>${escapeHtml(item.letter || '-')}</span>
+          <p>${escapeHtml(item.analysis || '')}</p>
+        </div>
+      `).join('')}
+    </section>
+  `;
 }
 
 function renderNormativePanel(question) {
@@ -1468,6 +1560,9 @@ function renderQuestionBadges(question) {
     const cls = update.isDiscardable ? 'is-canceled' : update.isManualReview ? 'is-outdated' : 'is-normative';
     badges.push(`<span class="question-badge ${cls}">Normativa: ${escapeHtml(update.recomendacao || 'analisada')}</span>`);
   }
+  if (question?.normativeTeachingComment?.exists) {
+    badges.push('<span class="question-badge is-normative">Comentário atualizado</span>');
+  }
   if (question?.normativeUpdate?.hasChangedAnswer) {
     badges.push('<span class="question-badge is-last-wrong">Gabarito provável mudou</span>');
   }
@@ -1711,6 +1806,18 @@ function renderAnswerResultBox() {
 }
 
 function normativeAnswerWarning(result) {
+  const teaching = result.normativeTeachingComment;
+  if (teaching?.exists) {
+    const current = teaching.currentAnswer || 'não definido';
+    const policy = teaching.isSafeCurrentRule ? 'regra atual provável disponível no comentário atualizado' : answerPolicyLabel(teaching.answerPolicy);
+    return `
+      <span class="answer-result-note">
+        Gabarito histórico do banco: ${escapeHtml(result.expectedAnswer || teaching.historicalAnswer || 'não informado')}.
+        Gabarito provável pela regra atual: ${escapeHtml(current)}.
+        Correção exibida: gabarito histórico do banco; política normativa: ${escapeHtml(policy)}.
+      </span>
+    `;
+  }
   const update = result.normativeUpdate;
   if (!update?.exists || !update.hasChangedAnswer) {
     return '';
@@ -1736,7 +1843,8 @@ function expectedAlternativeLetter(expectedAnswer) {
 }
 
 function showCommentPanel() {
-  openSupportPanel('comment');
+  const preferredTab = state.currentQuestion?.normativeTeachingComment?.exists ? 'teaching' : 'comment';
+  openSupportPanel(preferredTab);
   state.sawComment = true;
   recordQuestionEvent('opened_comment');
 }
@@ -1837,11 +1945,15 @@ function closeSupportPanel() {
 }
 
 function renderSupportVisibility() {
+  if (state.supportTab === 'teaching' && !state.currentQuestion?.normativeTeachingComment?.exists) {
+    state.supportTab = 'comment';
+  }
   els.supportOverlay.hidden = !state.supportOpen;
   els.supportDrawer.hidden = !state.supportOpen;
   els.supportTabs.forEach((button) => {
     button.classList.toggle('is-active', button.dataset.supportTab === state.supportTab);
   });
+  els.supportTeachingPanel.hidden = state.supportTab !== 'teaching';
   els.commentPanel.hidden = state.supportTab !== 'comment';
   els.supportNormativePanel.hidden = state.supportTab !== 'normative';
   els.supportTheoryPanel.hidden = state.supportTab !== 'theory';
@@ -1849,7 +1961,8 @@ function renderSupportVisibility() {
   els.supportSimilarPanel.hidden = state.supportTab !== 'similar';
 
   const titles = {
-    comment: ['Explicação da questão', 'Comentário do professor e gabarito'],
+    teaching: ['Comentário atualizado', 'Regra atual provável e orientação de estudo'],
+    comment: ['Explicação histórica', 'Comentário do professor e gabarito histórico'],
     normative: ['Atualização normativa', 'Análise auxiliar da desatualização'],
     theory: ['Teoria relacionada', 'Material em PDF da matéria/assunto'],
     history: ['Histórico da questão', 'Tentativas registradas no banco local'],
@@ -1970,7 +2083,7 @@ function subjectRowMarkup(row, index) {
   const answeredPct = total ? Math.round((answered / total) * 100) : 0;
   const details = [
     `${total.toLocaleString('pt-BR')} questoes`,
-    `${Number(row.comments || 0).toLocaleString('pt-BR')} comentarios Tec`,
+    `${Number(row.comments || 0).toLocaleString('pt-BR')} comentarios historicos`,
     Number(row.ai_comments || 0) ? `${Number(row.ai_comments).toLocaleString('pt-BR')} comentarios IA` : '',
     Number(row.outdated || 0) ? `${Number(row.outdated).toLocaleString('pt-BR')} desatualizadas` : '',
     Number(row.canceled || 0) ? `${Number(row.canceled).toLocaleString('pt-BR')} anuladas` : '',
@@ -2038,7 +2151,9 @@ function normativeRowMarkup(row) {
   const details = [
     row.banca || '',
     row.ano || '',
+    row.tipo || '',
     row.mudancaGabarito ? `mudança: ${row.mudancaGabarito}` : '',
+    row.teachingExists ? `comentário: ${row.teachingReviewStatus || 'pendente'}` : 'sem comentário atualizado',
     row.reviewStatus ? `status: ${reviewStatusLabel(row.reviewStatus)}` : ''
   ].filter(Boolean).join(' - ');
 
@@ -2050,9 +2165,9 @@ function normativeRowMarkup(row) {
         <small>${escapeHtml(row.statementPreview || '')}</small>
       </span>
       <span>${escapeHtml(row.gabaritoBanco || '-')}</span>
-      <span>${escapeHtml(row.gabaritoAtualizadoProvavel || '-')}</span>
-      <span>${escapeHtml(row.recomendacao || '-')}</span>
-      <span>${escapeHtml(row.nivelSeguranca || '-')}</span>
+      <span>${escapeHtml(row.teachingCurrentAnswer || row.gabaritoAtualizadoProvavel || '-')}</span>
+      <span>${escapeHtml(row.teachingStudyRecommendation ? teachingRecommendationLabel(row.teachingStudyRecommendation) : row.recomendacao || '-')}</span>
+      <span>${escapeHtml(row.teachingSafetyLevel ? safetyLabel(row.teachingSafetyLevel) : row.nivelSeguranca || '-')}</span>
       <span>${escapeHtml(details)}</span>
       <button class="button button-secondary" type="button" data-question-id="${escapeAttr(row.questionId)}">Abrir</button>
     </div>
@@ -2060,12 +2175,12 @@ function normativeRowMarkup(row) {
 }
 
 function normativeRowTone(row) {
-  const recommendation = normalizeAnswerText(row.recomendacao);
-  const security = normalizeAnswerText(row.nivelSeguranca);
+  const recommendation = normalizeAnswerText(row.teachingStudyRecommendation || row.recomendacao);
+  const security = normalizeAnswerText(row.teachingSafetyLevel || row.nivelSeguranca);
   const changed = normalizeAnswerText(row.mudancaGabarito);
-  if (recommendation.includes('descartar')) return 'is-danger';
-  if (recommendation.includes('revisao manual') || security === 'baixo') return 'is-warning';
-  if (changed.startsWith('sim')) return 'is-changed';
+  if (recommendation.includes('discard') || recommendation.includes('descartar')) return 'is-danger';
+  if (recommendation.includes('manual') || security === 'baixo' || security === 'low') return 'is-warning';
+  if (row.teachingAnswerChanged || changed.startsWith('sim')) return 'is-changed';
   return 'is-ok';
 }
 
@@ -2079,6 +2194,47 @@ function reviewStatusLabel(value) {
     adapted: 'adaptada',
     discarded: 'descartada'
   }[value] || value || 'pendente';
+}
+
+function answerPolicyLabel(value) {
+  return {
+    current_safe: 'regra atual segura',
+    current_with_adaptation: 'regra atual com adaptação',
+    historical_only: 'somente histórico',
+    manual_review: 'revisão manual',
+    discard: 'descartar',
+    do_not_autocorrect: 'não autocorrigir'
+  }[value] || value || 'não informado';
+}
+
+function adaptationStatusLabel(value) {
+  return {
+    no_adaptation_needed: 'sem adaptação',
+    adapt_statement: 'adaptar enunciado',
+    adapt_legal_reference: 'adaptar fundamento',
+    adapt_alternatives: 'adaptar alternativas',
+    manual_review: 'revisão manual',
+    discard: 'descartar',
+    needs_review: 'revisar'
+  }[value] || value || 'não informado';
+}
+
+function teachingRecommendationLabel(value) {
+  return {
+    study_current_rule: 'estudar pela regra atual',
+    study_with_warning: 'estudar com alerta',
+    manual_review: 'revisão manual',
+    discard: 'descartar'
+  }[value] || value || 'não informado';
+}
+
+function safetyLabel(value) {
+  return {
+    high: 'alta',
+    medium: 'média',
+    low: 'baixa',
+    manual: 'manual'
+  }[value] || value || 'não informado';
 }
 
 function normalizeAnswerText(value) {

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260601-mobile1">
+    <link rel="stylesheet" href="/study.css?v=20260601-normative-teaching1">
   </head>
   <body>
     <div class="app-shell">
@@ -276,6 +276,19 @@
                 <option value="discarded">Descartada</option>
               </select>
             </label>
+            <label class="field">
+              <span>ComentÃ¡rio atualizado</span>
+              <select id="normativeTeachingStatusFilter">
+                <option value="">Todos</option>
+                <option value="missing">Sem comentÃ¡rio</option>
+                <option value="exists">Com comentÃ¡rio</option>
+                <option value="current_missing">Sem gabarito atual</option>
+                <option value="invalid">Gabarito invÃ¡lido</option>
+                <option value="manual_review">RevisÃ£o manual</option>
+                <option value="discard">Descartar</option>
+                <option value="changed">Mudou gabarito</option>
+              </select>
+            </label>
           </div>
           <div id="normativeTable" class="normative-table"></div>
         </section>
@@ -293,16 +306,25 @@
       </header>
 
       <nav class="support-tabs" aria-label="Abas de apoio">
-        <button id="supportTabComment" class="support-tab is-active" type="button" data-support-tab="comment">Explicação</button>
-        <button id="supportTabNormative" class="support-tab" type="button" data-support-tab="normative">Atualização</button>
+        <button id="supportTabTeaching" class="support-tab" type="button" data-support-tab="teaching">Comentário atualizado</button>
+        <button id="supportTabComment" class="support-tab is-active" type="button" data-support-tab="comment">Explicação histórica</button>
+        <button id="supportTabNormative" class="support-tab" type="button" data-support-tab="normative">Atualização normativa</button>
         <button id="supportTabTheory" class="support-tab" type="button" data-support-tab="theory">Teoria</button>
         <button id="supportTabHistory" class="support-tab" type="button" data-support-tab="history">Histórico</button>
         <button id="supportTabSimilar" class="support-tab" type="button" data-support-tab="similar">Semelhantes</button>
       </nav>
 
+      <article class="support-tab-panel" id="supportTeachingPanel" hidden>
+        <div class="comment-head">
+          <strong>Comentário atualizado</strong>
+          <span id="teachingInfo"></span>
+        </div>
+        <div id="supportTeachingBody" class="support-body"></div>
+      </article>
+
       <article class="support-tab-panel comment-panel" id="commentPanel">
         <div class="comment-head">
-          <strong>Explicação do professor</strong>
+          <strong>Comentário do professor</strong>
           <span id="commentInfo"></span>
         </div>
         <div id="commentBody" class="support-body"></div>
@@ -341,6 +363,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260601-answerfix1" type="module"></script>
+    <script src="/study.js?v=20260601-no-tec-labels1" type="module"></script>
   </body>
 </html>

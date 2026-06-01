@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openStudyDatabase } from './db/open-study-database.mjs';
+import { safeJsonParse } from './normative-teaching-utils.mjs';
 
 const CURRENT_FILE = fileURLToPath(import.meta.url);
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -294,6 +295,13 @@ function getStats() {
       WHERE COALESCE(html_local, html, text, '') != ''
         AND COALESCE(source_type, '') = 'ai'
     `).get().n,
+    aiLocalComments: db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM comments
+      WHERE COALESCE(html_local, html, text, '') != ''
+        AND COALESCE(source_type, '') = 'ai'
+    `).get().n,
+    questionsWithTecAiFlag: getQuestionsAiFlagCount(),
     answered: db.prepare('SELECT COUNT(DISTINCT question_id) AS n FROM study_answers').get().n,
     matters: db.prepare("SELECT COUNT(DISTINCT materia) AS n FROM questions WHERE COALESCE(materia, '') != ''").get().n,
     subjects: db.prepare("SELECT COUNT(DISTINCT assunto) AS n FROM questions WHERE COALESCE(assunto, '') != ''").get().n,
@@ -304,6 +312,7 @@ function getStats() {
       WHERE ${bestAnswerSql('q', 'c')} != ''
     `).get().n,
     normativeUpdates: getNormativeUpdateCount(),
+    normativeTeachingComments: getNormativeTeachingCount(),
     missingAnswers: db.prepare(`
       SELECT COUNT(*) AS n
       FROM questions q
@@ -313,7 +322,8 @@ function getStats() {
     dueReviews: db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_mastery
-      WHERE COALESCE(next_due_at, '') != ''
+      WHERE next_due_at IS NOT NULL
+        AND CAST(next_due_at AS TEXT) != ''
         AND next_due_at <= datetime('now')
     `).get().n,
     repairQuestions: db.prepare(`
@@ -357,11 +367,38 @@ function hasNormativeUpdateTable() {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_normative_updates'").get());
 }
 
+function hasNormativeTeachingTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_normative_teaching_comments'").get());
+}
+
+function columnExists(tableName, columnName) {
+  return db.prepare(`PRAGMA table_info(${tableName})`).all()
+    .some((column) => column.name === columnName);
+}
+
+function getQuestionsAiFlagCount() {
+  if (!columnExists('questions', 'possui_comentario_ia')) {
+    return 0;
+  }
+  return db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM questions
+    WHERE COALESCE(possui_comentario_ia, 0) = 1
+  `).get().n || 0;
+}
+
 function getNormativeUpdateCount() {
   if (!hasNormativeUpdateTable()) {
     return 0;
   }
   return db.prepare('SELECT COUNT(*) AS n FROM question_normative_updates').get().n || 0;
+}
+
+function getNormativeTeachingCount() {
+  if (!hasNormativeTeachingTable()) {
+    return 0;
+  }
+  return db.prepare('SELECT COUNT(*) AS n FROM question_normative_teaching_comments').get().n || 0;
 }
 
 function getNormativeUpdateStats() {
@@ -376,9 +413,16 @@ function getNormativeUpdateStats() {
       manualReview: 0,
       discardable: 0,
       adaptable: 0,
-      reviewed: 0
+      reviewed: 0,
+      teachingComments: 0,
+      teachingMissing: 0,
+      teachingCurrentAnswer: 0,
+      teachingManualReview: 0,
+      teachingDiscard: 0,
+      teachingChangedAnswer: 0
     };
   }
+  const hasTeaching = hasNormativeTeachingTable();
 
   return {
     exists: true,
@@ -410,7 +454,36 @@ function getNormativeUpdateStats() {
       SELECT COUNT(*) AS n
       FROM question_normative_updates
       WHERE COALESCE(review_status, 'pending') != 'pending'
-    `).get().n || 0
+    `).get().n || 0,
+    teachingComments: hasTeaching ? db.prepare('SELECT COUNT(*) AS n FROM question_normative_teaching_comments').get().n || 0 : 0,
+    teachingMissing: hasTeaching ? db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_normative_updates qnu
+      LEFT JOIN question_normative_teaching_comments qntc ON qntc.question_id = qnu.question_id
+      WHERE qntc.id IS NULL
+    `).get().n || 0 : db.prepare('SELECT COUNT(*) AS n FROM question_normative_updates').get().n || 0,
+    teachingCurrentAnswer: hasTeaching ? db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_normative_teaching_comments
+      WHERE COALESCE(current_answer, '') != ''
+    `).get().n || 0 : 0,
+    teachingManualReview: hasTeaching ? db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_normative_teaching_comments
+      WHERE answer_policy = 'manual_review'
+        OR study_recommendation = 'manual_review'
+    `).get().n || 0 : 0,
+    teachingDiscard: hasTeaching ? db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_normative_teaching_comments
+      WHERE answer_policy = 'discard'
+        OR study_recommendation = 'discard'
+    `).get().n || 0 : 0,
+    teachingChangedAnswer: hasTeaching ? db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_normative_teaching_comments
+      WHERE COALESCE(answer_changed, false) = true
+    `).get().n || 0 : 0
   };
 }
 
@@ -439,6 +512,8 @@ function getNormativeUpdates(searchParams) {
   const nivelSeguranca = String(searchParams.get('nivelSeguranca') || '').trim();
   const mudancaGabarito = String(searchParams.get('mudancaGabarito') || '').trim();
   const reviewStatus = String(searchParams.get('reviewStatus') || '').trim();
+  const teachingStatus = String(searchParams.get('teachingStatus') || '').trim();
+  const hasTeaching = hasNormativeTeachingTable();
 
   if (q) {
     where.push(`(
@@ -475,12 +550,55 @@ function getNormativeUpdates(searchParams) {
     where.push("COALESCE(qnu.review_status, 'pending') = ?");
     values.push(reviewStatus);
   }
+  if (teachingStatus) {
+    if (!hasTeaching) {
+      where.push(teachingStatus === 'missing' ? '1 = 1' : '1 = 0');
+    } else if (teachingStatus === 'missing') {
+      where.push('qntc.id IS NULL');
+    } else if (teachingStatus === 'exists') {
+      where.push('qntc.id IS NOT NULL');
+    } else if (teachingStatus === 'current_missing') {
+      where.push("qntc.id IS NOT NULL AND COALESCE(qntc.current_answer, '') = ''");
+    } else if (teachingStatus === 'invalid') {
+      where.push(`qntc.id IS NOT NULL AND (
+        (q.type_question = 'CERTO_ERRADO' AND qntc.current_answer IN ('A', 'B', 'C', 'D', 'E'))
+        OR (q.type_question != 'CERTO_ERRADO' AND qntc.current_answer IN ('CERTO', 'ERRADO'))
+      )`);
+    } else if (teachingStatus === 'manual_review') {
+      where.push("(qntc.answer_policy = 'manual_review' OR qntc.study_recommendation = 'manual_review')");
+    } else if (teachingStatus === 'discard') {
+      where.push("(qntc.answer_policy = 'discard' OR qntc.study_recommendation = 'discard')");
+    } else if (teachingStatus === 'changed') {
+      where.push('COALESCE(qntc.answer_changed, false) = true');
+    }
+  }
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const teachingJoin = hasTeaching
+    ? 'LEFT JOIN question_normative_teaching_comments qntc ON qntc.question_id = qnu.question_id'
+    : '';
+  const teachingSelect = hasTeaching
+    ? `CASE WHEN qntc.id IS NULL THEN 0 ELSE 1 END AS teaching_exists,
+      qntc.current_answer AS teaching_current_answer,
+      qntc.answer_changed AS teaching_answer_changed,
+      qntc.answer_policy AS teaching_answer_policy,
+      qntc.adaptation_status AS teaching_adaptation_status,
+      qntc.study_recommendation AS teaching_study_recommendation,
+      qntc.safety_level AS teaching_safety_level,
+      qntc.review_status AS teaching_review_status`
+    : `0 AS teaching_exists,
+      '' AS teaching_current_answer,
+      0 AS teaching_answer_changed,
+      '' AS teaching_answer_policy,
+      '' AS teaching_adaptation_status,
+      '' AS teaching_study_recommendation,
+      '' AS teaching_safety_level,
+      '' AS teaching_review_status`;
   const total = db.prepare(`
     SELECT COUNT(*) AS n
     FROM question_normative_updates qnu
     JOIN questions q ON q.id_question = qnu.question_id
+    ${teachingJoin}
     ${whereSql}
   `).get(...values).n || 0;
 
@@ -500,9 +618,12 @@ function getNormativeUpdates(searchParams) {
       qnu.por_que_desatualizada,
       qnu.fundamento_juridico_atual,
       qnu.nova_regra_estado_atual,
-      q.statement_text
+      q.statement_text,
+      q.type_question,
+      ${teachingSelect}
     FROM question_normative_updates qnu
     JOIN questions q ON q.id_question = qnu.question_id
+    ${teachingJoin}
     ${whereSql}
     ORDER BY
       CASE WHEN ${normativeManualCondition('qnu')} THEN 0 ELSE 1 END,
@@ -517,6 +638,7 @@ function getNormativeUpdates(searchParams) {
     assunto: row.assunto || '',
     banca: row.banca || '',
     ano: row.ano || '',
+    tipo: row.type_question || '',
     statementPreview: trimPreview(row.statement_text, 180),
     gabaritoBanco: row.gabarito_banco || '',
     gabaritoAtualizadoProvavel: row.gabarito_atualizado_provavel || '',
@@ -526,7 +648,15 @@ function getNormativeUpdates(searchParams) {
     reviewStatus: row.review_status || 'pending',
     porQueDesatualizada: row.por_que_desatualizada || '',
     fundamentoJuridicoAtual: row.fundamento_juridico_atual || '',
-    novaRegraEstadoAtual: row.nova_regra_estado_atual || ''
+    novaRegraEstadoAtual: row.nova_regra_estado_atual || '',
+    teachingExists: Boolean(row.teaching_exists),
+    teachingCurrentAnswer: row.teaching_current_answer || '',
+    teachingAnswerChanged: Boolean(row.teaching_answer_changed),
+    teachingAnswerPolicy: row.teaching_answer_policy || '',
+    teachingAdaptationStatus: row.teaching_adaptation_status || '',
+    teachingStudyRecommendation: row.teaching_study_recommendation || '',
+    teachingSafetyLevel: row.teaching_safety_level || '',
+    teachingReviewStatus: row.teaching_review_status || ''
   }));
 
   return { total, limit, offset, rows };
@@ -606,7 +736,7 @@ function getExamCoverageRows(profileId) {
       COUNT(DISTINCT CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN q.id_question END) AS comments,
       COUNT(sa.id) AS attempts,
       ROUND(CAST(COALESCE(AVG(qm.mastery_score), 0) AS NUMERIC), 4) AS mastery_score,
-      SUM(CASE WHEN COALESCE(qm.next_due_at, '') != '' AND qm.next_due_at <= datetime('now') THEN 1 ELSE 0 END) AS due_reviews,
+      SUM(CASE WHEN qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now') THEN 1 ELSE 0 END) AS due_reviews,
       COUNT(DISTINCT CASE WHEN COALESCE(q.anulada, 0) = 1 THEN q.id_question END) AS canceled,
       COUNT(DISTINCT CASE WHEN COALESCE(q.desatualizada, 0) = 1 THEN q.id_question END) AS outdated
     FROM exam_subject_weights w
@@ -2372,7 +2502,7 @@ function getSmartQueueRows(searchParams, options = {}) {
   const { whereSql, values } = buildQuestionWhere(searchParams);
   const dueOnly = Boolean(options.dueOnly);
   const extraWhere = dueOnly
-    ? "COALESCE(qm.next_due_at, '') != '' AND qm.next_due_at <= datetime('now')"
+    ? "qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now')"
     : '';
   const finalWhere = appendWhere(whereSql, extraWhere);
   const answerSql = bestAnswerSql('q', 'c');
@@ -2393,7 +2523,7 @@ function getSmartQueueRows(searchParams, options = {}) {
       CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN 1 ELSE 0 END AS has_comment,
       CASE WHEN ${answerSql} != '' THEN 1 ELSE 0 END AS has_answer,
       (
-        CASE WHEN COALESCE(qm.next_due_at, '') != '' AND qm.next_due_at <= datetime('now') THEN 100 ELSE 0 END
+        CASE WHEN qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now') THEN 100 ELSE 0 END
         + CASE WHEN last_answer.is_correct = 0 OR qm.last_result = 0 THEN 80 ELSE 0 END
         + CASE WHEN s.question_id IS NULL THEN 60 ELSE 0 END
         + CASE WHEN COALESCE(qm.mastery_score, 0) < 0.4 THEN 40 ELSE 0 END
@@ -2403,7 +2533,7 @@ function getSmartQueueRows(searchParams, options = {}) {
         - CASE WHEN COALESCE(q.desatualizada, 0) = 1 THEN 60 ELSE 0 END
         - CASE
             WHEN COALESCE(qm.mastery_score, 0) >= 0.85
-              AND (COALESCE(qm.next_due_at, '') = '' OR qm.next_due_at > datetime('now'))
+              AND (qm.next_due_at IS NULL OR CAST(qm.next_due_at AS TEXT) = '' OR qm.next_due_at > datetime('now'))
             THEN 50 ELSE 0
           END
       ) AS score
@@ -2589,7 +2719,7 @@ function getSubjectMasteryRanking(searchParams) {
         ELSE ROUND(100.0 * COALESCE(SUM(qm.wrong_count), 0) / SUM(qm.attempts), 2)
       END AS error_rate,
       SUM(CASE
-        WHEN COALESCE(qm.next_due_at, '') != '' AND qm.next_due_at <= datetime('now')
+        WHEN qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now')
         THEN 1 ELSE 0
       END) AS due_reviews,
       SUM(CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN 1 ELSE 0 END) AS comments,
@@ -2705,6 +2835,89 @@ function getNormativeUpdate(questionId) {
     isManualReview: normativeTextHasManual(row.recomendacao) || normativeTextHasManual(row.mudanca_gabarito) || ['baixo', 'manual'].includes(normalizePlain(row.nivel_seguranca)),
     isDiscardable: normalizePlain(row.recomendacao).includes('descartar'),
     hasChangedAnswer: normalizePlain(row.mudanca_gabarito).startsWith('sim')
+  };
+}
+
+function getNormativeTeachingComment(questionId) {
+  if (!hasNormativeTeachingTable()) {
+    return { exists: false };
+  }
+
+  const row = db.prepare(`
+    SELECT
+      id,
+      question_id,
+      normative_update_id,
+      source_type,
+      generator_model,
+      generator_version,
+      generated_at,
+      historical_answer,
+      current_answer,
+      current_answer_label,
+      current_answer_confidence,
+      answer_changed,
+      answer_policy,
+      adaptation_status,
+      study_recommendation,
+      safety_level,
+      adapted_statement,
+      short_explanation,
+      teaching_comment_md,
+      teaching_comment_html,
+      legal_basis,
+      current_rule_summary,
+      why_outdated,
+      literal_statement_warning,
+      alternatives_analysis_json,
+      review_status,
+      reviewed_by,
+      reviewed_at,
+      reviewer_notes
+    FROM question_normative_teaching_comments
+    WHERE question_id = ?
+    ORDER BY generated_at DESC, id DESC
+    LIMIT 1
+  `).get(questionId);
+
+  if (!row) {
+    return { exists: false };
+  }
+
+  return {
+    exists: true,
+    id: row.id,
+    questionId: row.question_id,
+    normativeUpdateId: row.normative_update_id,
+    sourceType: row.source_type || '',
+    generatorModel: row.generator_model || '',
+    generatorVersion: row.generator_version || '',
+    generatedAt: row.generated_at || '',
+    historicalAnswer: row.historical_answer || '',
+    currentAnswer: row.current_answer || '',
+    currentAnswerLabel: row.current_answer_label || '',
+    currentAnswerConfidence: Number(row.current_answer_confidence || 0),
+    answerChanged: Boolean(row.answer_changed),
+    answerPolicy: row.answer_policy || 'do_not_autocorrect',
+    adaptationStatus: row.adaptation_status || 'needs_review',
+    studyRecommendation: row.study_recommendation || 'manual_review',
+    safetyLevel: row.safety_level || '',
+    adaptedStatement: row.adapted_statement || '',
+    shortExplanation: row.short_explanation || '',
+    teachingCommentMd: row.teaching_comment_md || '',
+    teachingCommentHtml: sanitizeStoredHtml(row.teaching_comment_html),
+    legalBasis: row.legal_basis || '',
+    currentRuleSummary: row.current_rule_summary || '',
+    whyOutdated: row.why_outdated || '',
+    literalStatementWarning: row.literal_statement_warning || '',
+    alternativesAnalysis: safeJsonParse(row.alternatives_analysis_json, []),
+    reviewStatus: row.review_status || 'pending',
+    reviewedBy: row.reviewed_by || '',
+    reviewedAt: row.reviewed_at || '',
+    reviewerNotes: row.reviewer_notes || '',
+    isSafeCurrentRule: ['current_safe', 'current_with_adaptation'].includes(row.answer_policy || '')
+      && Boolean(row.current_answer)
+      && !['low', 'manual'].includes(row.safety_level || '')
   };
 }
 
@@ -2828,6 +3041,7 @@ async function getQuestion(questionId) {
   `).get(questionId);
   const theory = await findTheoryPdf(question.materia, question.assunto);
   const normativeUpdate = getNormativeUpdate(questionId);
+  const normativeTeachingComment = getNormativeTeachingComment(questionId);
   const adaptive = getQuestionAdaptiveSummary(questionId);
 
   return {
@@ -2846,6 +3060,7 @@ async function getQuestion(questionId) {
       desatualizada: Boolean(question.desatualizada)
     },
     normativeUpdate,
+    normativeTeachingComment,
     adaptive,
     comment: {
       html: sanitizeStoredHtml(question.comment_html),
@@ -2977,6 +3192,7 @@ function saveAnswer(questionId, body) {
     errorType: attemptMeta.errorType,
     answeredAt: new Date().toISOString(),
     normativeUpdate: getNormativeUpdate(questionId),
+    normativeTeachingComment: getNormativeTeachingComment(questionId),
     isCorrect,
     masteryScore: mastery.masteryScore,
     nextDueAt: mastery.nextDueAt,

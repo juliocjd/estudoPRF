@@ -1377,10 +1377,102 @@ button:disabled {
   color: #991b1b;
 }
 
+.normative-warning.is-info {
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  background: var(--info-soft);
+  color: #1d4ed8;
+}
+
 .normative-note {
   border: 1px solid rgba(37, 99, 235, 0.22);
   background: var(--info-soft);
   color: #1d4ed8;
+}
+
+.teaching-card {
+  gap: 12px;
+}
+
+.teaching-short {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.teaching-comment {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.teaching-comment h1,
+.teaching-comment h2,
+.teaching-comment h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.teaching-comment p,
+.teaching-comment li {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.teaching-comment ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.teaching-alternatives {
+  display: grid;
+  gap: 8px;
+}
+
+.teaching-alternatives > strong {
+  font-size: 13px;
+}
+
+.teaching-alternative {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  background: var(--surface-muted);
+}
+
+.teaching-alternative span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.teaching-alternative.is-current-correct {
+  border-color: rgba(21, 128, 61, 0.24);
+  background: var(--success-soft);
+}
+
+.teaching-alternative.is-current-correct span {
+  background: var(--success);
+  color: #fff;
+}
+
+.teaching-alternative p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .empty {
