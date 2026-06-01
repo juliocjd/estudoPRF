@@ -174,31 +174,25 @@ npm run diagnose-normative-teaching
 npm run pg:migrate-normative-teaching
 ```
 
-3. Testar geracao sem gravar:
+3. Testar a importacao do seed sem gravar:
 
 ```powershell
-npm run generate-normative-teaching -- --limit 20 --dry-run
+npm run import-normative-teaching -- --dry-run --limit 20
 ```
 
-4. Gravar usando geracao por template local:
+4. Importar os 441 comentarios atualizados:
 
 ```powershell
-node --no-warnings scripts/generate-normative-teaching-comments.mjs --limit 441 --provider template
-```
-
-5. Gravar usando OpenAI, se houver credito/API configurada:
-
-```powershell
-$env:OPENAI_API_KEY="..."
-node --no-warnings scripts/generate-normative-teaching-comments.mjs --limit 441 --provider openai --model gpt-5-mini
+npm run import-normative-teaching
 ```
 
 Depois disso, faca novo deploy na Vercel. O frontend passa a mostrar:
 
-- comentarios Tec/professor;
+- comentarios do professor;
 - comentarios IA locais;
 - analises normativas;
-- comentarios normativos atualizados.
+- comentarios atualizados prontos;
+- pendentes de revisao normativa.
 
 ## Recomendacao pratica
 

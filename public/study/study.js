@@ -683,6 +683,7 @@ async function loadStats() {
     statMarkup(stats.aiLocalComments ?? stats.aiComments, 'comentários IA locais'),
     statMarkup(stats.normativeUpdates, 'análises normativas'),
     statMarkup(stats.normativeTeachingComments, 'comentários atualizados'),
+    statMarkup(stats.normativeTeachingPending, 'pendentes de revisão normativa'),
     statMarkup(stats.dueReviews, 'revisões')
   ].join('');
 }
@@ -1132,10 +1133,19 @@ function renderQuestion(question, options = {}) {
   els.openTheory.title = question.theory?.available
     ? `Abrir teoria: ${question.theory.title}`
     : 'PDF de teoria não encontrado para este assunto';
-  els.toggleComment.disabled = !question.comment.html && !question.comment.text;
+  const hasSupportExplanation = Boolean(
+    question.comment.html
+      || question.comment.text
+      || question.normativeUpdate?.exists
+      || question.normativeTeachingComment?.exists
+      || question.metadata?.desatualizada
+  );
+  els.toggleComment.disabled = !hasSupportExplanation;
   els.toggleComment.textContent = 'Ver explicação';
   if (els.supportTabTeaching) {
-    els.supportTabTeaching.disabled = !question.normativeTeachingComment?.exists;
+    els.supportTabTeaching.disabled = !question.normativeTeachingComment?.exists
+      && !question.normativeUpdate?.exists
+      && !question.metadata?.desatualizada;
   }
   const hasSimilar = Boolean(question.adaptive?.exists && question.adaptive?.clusterId);
   els.showSimilar.disabled = !hasSimilar;
@@ -1206,6 +1216,7 @@ function renderNormativeTeachingPanel(question) {
 
   const confidence = Number(teaching.currentAnswerConfidence || 0);
   els.teachingInfo.textContent = [
+    teaching.status ? teachingStatusLabel(teaching.status) : '',
     teaching.currentAnswer ? `gabarito atual: ${teaching.currentAnswer}` : 'sem gabarito atual seguro',
     teaching.safetyLevel ? `segurança ${teaching.safetyLevel}` : '',
     teaching.studyRecommendation ? teachingRecommendationLabel(teaching.studyRecommendation) : ''
@@ -1214,10 +1225,10 @@ function renderNormativeTeachingPanel(question) {
   const currentAnswerMessage = teaching.currentAnswer
     ? `<p class="normative-warning is-info">Pela regra atual, o gabarito provável seria: <strong>${escapeHtml(teaching.currentAnswer)}</strong>${confidence ? ` (${Math.round(confidence * 100)}% de confiança)` : ''}.</p>`
     : '<p class="normative-warning is-warning">Não há segurança suficiente para definir gabarito atual. Revisão manual necessária.</p>';
-  const policyMessage = teaching.studyRecommendation === 'discard' || teaching.answerPolicy === 'discard'
+  const policyMessage = teaching.status === 'discard' || teaching.studyRecommendation === 'discard' || teaching.answerPolicy === 'discard_original'
     ? '<p class="normative-warning is-danger">Questão não recomendada para estudo sem reformulação.</p>'
-    : teaching.answerPolicy === 'manual_review' || teaching.studyRecommendation === 'manual_review'
-      ? '<p class="normative-warning is-warning">Revisão manual necessária antes de usar como atualização definitiva.</p>'
+    : teaching.status === 'needs_manual_review' || teaching.answerPolicy === 'not_assertive_manual_review' || teaching.studyRecommendation === 'manual_review'
+      ? '<p class="normative-warning is-warning">Comentário atualizado ainda pendente de revisão manual.</p>'
       : teaching.adaptationStatus && teaching.adaptationStatus !== 'no_adaptation_needed'
         ? '<p class="normative-warning is-warning">Esta questão pode ser estudada, mas o enunciado deve ser adaptado.</p>'
         : '';
@@ -1229,6 +1240,7 @@ function renderNormativeTeachingPanel(question) {
       <div class="normative-summary-grid">
         ${normativeField('Gabarito histórico', teaching.historicalAnswer)}
         ${normativeField('Gabarito pela regra atual', teaching.currentAnswer || 'não definido')}
+        ${normativeField('Status', teachingStatusLabel(teaching.status))}
         ${normativeField('Segurança', safetyLabel(teaching.safetyLevel))}
         ${normativeField('Recomendação', teachingRecommendationLabel(teaching.studyRecommendation))}
         ${normativeField('Política de correção', answerPolicyLabel(teaching.answerPolicy))}
@@ -1250,6 +1262,20 @@ function renderNormativeTeachingPanel(question) {
 }
 
 function teachingAlternativesMarkup(items) {
+  if (!items) return '';
+  if (!Array.isArray(items) && typeof items === 'object') {
+    const correct = items.correct_alternative || '';
+    const note = items.note || '';
+    const text = items.correct_alternative_text || '';
+    if (!correct && !note && !text) return '';
+    return `
+      <section class="teaching-alternatives">
+        <strong>Análise das alternativas</strong>
+        ${correct ? `<div class="teaching-alternative is-current-correct"><span>${escapeHtml(correct)}</span><p>${escapeHtml(text || 'Alternativa provável pela regra atual.')}</p></div>` : ''}
+        ${note ? `<p class="normative-note">${escapeHtml(note)}</p>` : ''}
+      </section>
+    `;
+  }
   if (!Array.isArray(items) || !items.length) return '';
   return `
     <section class="teaching-alternatives">
@@ -1843,7 +1869,11 @@ function expectedAlternativeLetter(expectedAnswer) {
 }
 
 function showCommentPanel() {
-  const preferredTab = state.currentQuestion?.normativeTeachingComment?.exists ? 'teaching' : 'comment';
+  const preferredTab = state.currentQuestion?.normativeTeachingComment?.exists
+    ? 'teaching'
+    : state.currentQuestion?.normativeUpdate?.exists
+      ? 'normative'
+      : 'comment';
   openSupportPanel(preferredTab);
   state.sawComment = true;
   recordQuestionEvent('opened_comment');
@@ -1945,7 +1975,10 @@ function closeSupportPanel() {
 }
 
 function renderSupportVisibility() {
-  if (state.supportTab === 'teaching' && !state.currentQuestion?.normativeTeachingComment?.exists) {
+  if (state.supportTab === 'teaching'
+    && !state.currentQuestion?.normativeTeachingComment?.exists
+    && !state.currentQuestion?.normativeUpdate?.exists
+    && !state.currentQuestion?.metadata?.desatualizada) {
     state.supportTab = 'comment';
   }
   els.supportOverlay.hidden = !state.supportOpen;
@@ -2175,11 +2208,12 @@ function normativeRowMarkup(row) {
 }
 
 function normativeRowTone(row) {
+  const status = normalizeAnswerText(row.teachingStatus);
   const recommendation = normalizeAnswerText(row.teachingStudyRecommendation || row.recomendacao);
   const security = normalizeAnswerText(row.teachingSafetyLevel || row.nivelSeguranca);
   const changed = normalizeAnswerText(row.mudancaGabarito);
-  if (recommendation.includes('discard') || recommendation.includes('descartar')) return 'is-danger';
-  if (recommendation.includes('manual') || security === 'baixo' || security === 'low') return 'is-warning';
+  if (status === 'discard' || recommendation.includes('discard') || recommendation.includes('descartar')) return 'is-danger';
+  if (status === 'needs_manual_review' || recommendation.includes('manual') || security === 'baixo' || security === 'low') return 'is-warning';
   if (row.teachingAnswerChanged || changed.startsWith('sim')) return 'is-changed';
   return 'is-ok';
 }
@@ -2198,6 +2232,9 @@ function reviewStatusLabel(value) {
 
 function answerPolicyLabel(value) {
   return {
+    current_law_probable: 'regra atual provável',
+    not_assertive_manual_review: 'revisão manual',
+    discard_original: 'descartar',
     current_safe: 'regra atual segura',
     current_with_adaptation: 'regra atual com adaptação',
     historical_only: 'somente histórico',
@@ -2209,6 +2246,9 @@ function answerPolicyLabel(value) {
 
 function adaptationStatusLabel(value) {
   return {
+    manual_review_required: 'revisão manual',
+    adapted_statement_needed: 'adaptar enunciado',
+    outdated_but_materially_same: 'materialmente semelhante',
     no_adaptation_needed: 'sem adaptação',
     adapt_statement: 'adaptar enunciado',
     adapt_legal_reference: 'adaptar fundamento',
@@ -2220,10 +2260,19 @@ function adaptationStatusLabel(value) {
 }
 
 function teachingRecommendationLabel(value) {
+  if (value && value.length > 40) return value;
   return {
     study_current_rule: 'estudar pela regra atual',
     study_with_warning: 'estudar com alerta',
     manual_review: 'revisão manual',
+    discard: 'descartar'
+  }[value] || value || 'não informado';
+}
+
+function teachingStatusLabel(value) {
+  return {
+    ready: 'pronto',
+    needs_manual_review: 'revisão manual',
     discard: 'descartar'
   }[value] || value || 'não informado';
 }

@@ -14,7 +14,7 @@ const GENERATOR_VERSION = 'normative-teaching-v1';
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
-  const databaseUrl = args.db || args['database-url'] || process.env.DATABASE_URL;
+  const databaseUrl = normalizeDatabaseUrl(args.db || args['database-url'] || process.env.DATABASE_URL);
   const limit = Math.max(1, Number(args.limit || 20));
   const dryRun = Boolean(args['dry-run']);
   const force = Boolean(args.force);
@@ -51,6 +51,7 @@ export async function generateNormativeTeachingComments({
   provider = 'template',
   model = ''
 }) {
+  databaseUrl = normalizeDatabaseUrl(databaseUrl);
   const sql = postgres(databaseUrl, {
     max: 1,
     idle_timeout: 20,
@@ -139,6 +140,16 @@ export async function generateNormativeTeachingComments({
   } finally {
     await sql.end({ timeout: 5 });
   }
+}
+
+function normalizeDatabaseUrl(value) {
+  let url = String(value || '').trim();
+  url = url.replace(/^\$env:DATABASE_URL\s*=\s*/i, '');
+  url = url.replace(/^DATABASE_URL\s*=\s*/i, '');
+  if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
+    url = url.slice(1, -1);
+  }
+  return url.trim();
 }
 
 async function assertTables(sql) {

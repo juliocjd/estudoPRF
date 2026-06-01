@@ -4,25 +4,22 @@ import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const MIGRATION_PATH = path.join(ROOT_DIR, 'migrations', '20260601_question_normative_teaching_comments.postgres.sql');
+const MIGRATION_PATH = path.join(ROOT_DIR, 'migrations', '20260601_question_normative_teaching_comments_seed_v1.postgres.sql');
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
-  const databaseUrl = normalizeDatabaseUrl(args.db || args['database-url'] || process.env.DATABASE_URL);
+  const databaseUrl = normalizeDatabaseUrl(args['database-url'] || args.db || process.env.DATABASE_URL);
   const dryRun = Boolean(args['dry-run']);
-
   if (!databaseUrl && !dryRun) {
-    console.error('Defina DATABASE_URL ou passe --db para aplicar a migration no Postgres.');
+    console.error('Defina DATABASE_URL ou passe --database-url para aplicar a migration no Postgres.');
     process.exit(1);
   }
-
-  await migrateNormativeTeachingComments({ databaseUrl, dryRun });
+  await migrateNormativeTeachingCommentsPostgres({ databaseUrl, dryRun });
 }
 
-export async function migrateNormativeTeachingComments({ databaseUrl, dryRun = false }) {
+export async function migrateNormativeTeachingCommentsPostgres({ databaseUrl, dryRun = false }) {
   databaseUrl = normalizeDatabaseUrl(databaseUrl);
   const sqlText = await fsp.readFile(MIGRATION_PATH, 'utf8');
-
   if (dryRun) {
     console.log(sqlText);
     console.log('Dry-run: migration nao aplicada.');
@@ -39,13 +36,13 @@ export async function migrateNormativeTeachingComments({ databaseUrl, dryRun = f
     for (const statement of splitSqlStatements(sqlText)) {
       if (statement.trim()) await sql.unsafe(statement);
     }
-    const count = await sql`
+    const rows = await sql`
       SELECT COUNT(*)::int AS n
       FROM information_schema.tables
       WHERE table_schema = 'public'
         AND table_name = 'question_normative_teaching_comments'
     `;
-    console.log(count[0]?.n ? 'Migration aplicada: question_normative_teaching_comments existe.' : 'Migration executada, mas a tabela nao foi encontrada.');
+    console.log(rows[0]?.n ? 'Migration aplicada: question_normative_teaching_comments pronta.' : 'Migration executada, mas a tabela nao foi encontrada.');
   } finally {
     await sql.end({ timeout: 5 });
   }
@@ -66,16 +63,18 @@ function splitSqlStatements(sqlText) {
   let current = '';
   let quote = '';
   let dollarTag = '';
+
   for (let index = 0; index < sqlText.length; index += 1) {
     const char = sqlText[index];
     const rest = sqlText.slice(index);
 
     if (dollarTag) {
-      current += char;
       if (rest.startsWith(dollarTag)) {
-        current += dollarTag.slice(1);
+        current += dollarTag;
         index += dollarTag.length - 1;
         dollarTag = '';
+      } else {
+        current += char;
       }
       continue;
     }

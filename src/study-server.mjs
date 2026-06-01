@@ -86,6 +86,16 @@ async function routeRequest(request, response) {
     return;
   }
 
+  if (url.pathname === '/api/normative-teaching-comments/stats' && request.method === 'GET') {
+    sendJson(response, 200, getNormativeTeachingStats());
+    return;
+  }
+
+  if (url.pathname === '/api/normative-teaching-comments' && request.method === 'GET') {
+    sendJson(response, 200, getNormativeTeachingComments(url.searchParams));
+    return;
+  }
+
   if (url.pathname === '/api/filters' && request.method === 'GET') {
     sendJson(response, 200, getFilters());
     return;
@@ -215,6 +225,13 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const normativeTeachingReviewMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/normative-teaching-review$/);
+  if (normativeTeachingReviewMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, saveNormativeTeachingReview(Number(normativeTeachingReviewMatch[1]), body));
+    return;
+  }
+
   if (url.pathname === '/api/exam-simulations/start' && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, startExamSimulation(body));
@@ -313,6 +330,7 @@ function getStats() {
     `).get().n,
     normativeUpdates: getNormativeUpdateCount(),
     normativeTeachingComments: getNormativeTeachingCount(),
+    normativeTeachingPending: getNormativeTeachingPendingCount(),
     missingAnswers: db.prepare(`
       SELECT COUNT(*) AS n
       FROM questions q
@@ -401,6 +419,24 @@ function getNormativeTeachingCount() {
   return db.prepare('SELECT COUNT(*) AS n FROM question_normative_teaching_comments').get().n || 0;
 }
 
+function getNormativeTeachingPendingCount() {
+  if (!hasNormativeUpdateTable()) {
+    return hasNormativeTeachingTable()
+      ? db.prepare("SELECT COUNT(*) AS n FROM question_normative_teaching_comments WHERE COALESCE(status, '') != 'ready'").get().n || 0
+      : 0;
+  }
+  if (!hasNormativeTeachingTable()) {
+    return getNormativeUpdateCount();
+  }
+  return db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM question_normative_updates qnu
+    LEFT JOIN question_normative_teaching_comments qntc ON qntc.question_id = qnu.question_id
+    WHERE qntc.question_id IS NULL
+      OR COALESCE(qntc.status, '') != 'ready'
+  `).get().n || 0;
+}
+
 function getNormativeUpdateStats() {
   if (!hasNormativeUpdateTable()) {
     return {
@@ -419,7 +455,9 @@ function getNormativeUpdateStats() {
       teachingCurrentAnswer: 0,
       teachingManualReview: 0,
       teachingDiscard: 0,
-      teachingChangedAnswer: 0
+      teachingChangedAnswer: 0,
+      teachingReady: 0,
+      teachingPendingReview: 0
     };
   }
   const hasTeaching = hasNormativeTeachingTable();
@@ -460,31 +498,163 @@ function getNormativeUpdateStats() {
       SELECT COUNT(*) AS n
       FROM question_normative_updates qnu
       LEFT JOIN question_normative_teaching_comments qntc ON qntc.question_id = qnu.question_id
-      WHERE qntc.id IS NULL
+      WHERE qntc.question_id IS NULL
     `).get().n || 0 : db.prepare('SELECT COUNT(*) AS n FROM question_normative_updates').get().n || 0,
     teachingCurrentAnswer: hasTeaching ? db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_teaching_comments
       WHERE COALESCE(current_answer, '') != ''
     `).get().n || 0 : 0,
+    teachingReady: hasTeaching ? db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_normative_teaching_comments
+      WHERE status = 'ready'
+    `).get().n || 0 : 0,
+    teachingPendingReview: getNormativeTeachingPendingCount(),
     teachingManualReview: hasTeaching ? db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_teaching_comments
-      WHERE answer_policy = 'manual_review'
-        OR study_recommendation = 'manual_review'
+      WHERE status = 'needs_manual_review'
+        OR review_status = 'needs_manual_review'
+        OR answer_policy = 'not_assertive_manual_review'
     `).get().n || 0 : 0,
     teachingDiscard: hasTeaching ? db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_teaching_comments
-      WHERE answer_policy = 'discard'
-        OR study_recommendation = 'discard'
+      WHERE status = 'discard'
+        OR answer_policy = 'discard_original'
     `).get().n || 0 : 0,
     teachingChangedAnswer: hasTeaching ? db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_teaching_comments
-      WHERE COALESCE(answer_changed, false) = true
+      WHERE (current_answer IS NOT NULL AND historical_answer IS NOT NULL AND current_answer != historical_answer)
+        OR LOWER(COALESCE(changed_answer, '')) LIKE 'sim%'
     `).get().n || 0 : 0
   };
+}
+
+function getNormativeTeachingStats() {
+  if (!hasNormativeTeachingTable()) {
+    return {
+      exists: false,
+      total: 0,
+      ready: 0,
+      needsManualReview: 0,
+      discard: 0,
+      pending: getNormativeUpdateCount(),
+      withCurrentAnswer: 0,
+      withoutSafeAnswer: 0
+    };
+  }
+
+  const row = db.prepare(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN status = 'ready' THEN 1 ELSE 0 END) AS ready,
+      SUM(CASE WHEN status = 'needs_manual_review' THEN 1 ELSE 0 END) AS needs_manual_review,
+      SUM(CASE WHEN status = 'discard' THEN 1 ELSE 0 END) AS discard,
+      SUM(CASE WHEN COALESCE(current_answer, '') != '' THEN 1 ELSE 0 END) AS with_current_answer,
+      SUM(CASE WHEN COALESCE(current_answer, '') = '' OR status != 'ready' THEN 1 ELSE 0 END) AS without_safe_answer
+    FROM question_normative_teaching_comments
+  `).get();
+
+  return {
+    exists: true,
+    total: row.total || 0,
+    ready: row.ready || 0,
+    needsManualReview: row.needs_manual_review || 0,
+    discard: row.discard || 0,
+    pending: getNormativeTeachingPendingCount(),
+    withCurrentAnswer: row.with_current_answer || 0,
+    withoutSafeAnswer: row.without_safe_answer || 0
+  };
+}
+
+function getNormativeTeachingComments(searchParams) {
+  if (!hasNormativeTeachingTable()) {
+    return { total: 0, limit: 50, offset: 0, rows: [] };
+  }
+
+  const limit = Math.min(500, Math.max(1, Number(searchParams.get('limit') || 80)));
+  const offset = Math.max(0, Number(searchParams.get('offset') || 0));
+  const where = [];
+  const values = [];
+  const status = String(searchParams.get('status') || '').trim();
+  const answerPolicy = String(searchParams.get('answerPolicy') || '').trim();
+  const q = String(searchParams.get('q') || '').trim();
+
+  if (status) {
+    where.push('qntc.status = ?');
+    values.push(status);
+  }
+  if (answerPolicy) {
+    where.push('qntc.answer_policy = ?');
+    values.push(answerPolicy);
+  }
+  if (q) {
+    where.push(`(
+      CAST(qntc.question_id AS TEXT) LIKE ?
+      OR q.materia LIKE ?
+      OR q.assunto LIKE ?
+      OR qntc.title LIKE ?
+      OR qntc.teaching_comment_md LIKE ?
+    )`);
+    values.push(...Array(5).fill(`%${q}%`));
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const total = db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM question_normative_teaching_comments qntc
+    LEFT JOIN questions q ON q.id_question = qntc.question_id
+    ${whereSql}
+  `).get(...values).n || 0;
+
+  const rows = db.prepare(`
+    SELECT
+      qntc.question_id,
+      qntc.status,
+      qntc.answer_policy,
+      qntc.current_answer,
+      qntc.current_answer_confidence,
+      qntc.historical_answer,
+      qntc.safety_level,
+      qntc.recommendation,
+      qntc.review_status,
+      qntc.title,
+      q.materia,
+      q.assunto,
+      q.type_question
+    FROM question_normative_teaching_comments qntc
+    LEFT JOIN questions q ON q.id_question = qntc.question_id
+    ${whereSql}
+    ORDER BY
+      CASE qntc.status
+        WHEN 'needs_manual_review' THEN 0
+        WHEN 'discard' THEN 1
+        ELSE 2
+      END,
+      q.materia,
+      q.assunto,
+      qntc.question_id
+    LIMIT ? OFFSET ?
+  `).all(...values, limit, offset).map((row) => ({
+    questionId: row.question_id,
+    status: row.status || '',
+    answerPolicy: row.answer_policy || '',
+    currentAnswer: row.current_answer || '',
+    currentAnswerConfidence: Number(row.current_answer_confidence || 0),
+    historicalAnswer: row.historical_answer || '',
+    safetyLevel: row.safety_level || '',
+    recommendation: row.recommendation || '',
+    reviewStatus: row.review_status || '',
+    title: row.title || '',
+    materia: row.materia || '',
+    assunto: row.assunto || '',
+    tipo: row.type_question || ''
+  }));
+
+  return { total, limit, offset, rows };
 }
 
 function normativeGroupedCounts(column) {
@@ -554,22 +724,22 @@ function getNormativeUpdates(searchParams) {
     if (!hasTeaching) {
       where.push(teachingStatus === 'missing' ? '1 = 1' : '1 = 0');
     } else if (teachingStatus === 'missing') {
-      where.push('qntc.id IS NULL');
+      where.push('qntc.question_id IS NULL');
     } else if (teachingStatus === 'exists') {
-      where.push('qntc.id IS NOT NULL');
+      where.push('qntc.question_id IS NOT NULL');
     } else if (teachingStatus === 'current_missing') {
-      where.push("qntc.id IS NOT NULL AND COALESCE(qntc.current_answer, '') = ''");
+      where.push("qntc.question_id IS NOT NULL AND COALESCE(qntc.current_answer, '') = ''");
     } else if (teachingStatus === 'invalid') {
-      where.push(`qntc.id IS NOT NULL AND (
+      where.push(`qntc.question_id IS NOT NULL AND (
         (q.type_question = 'CERTO_ERRADO' AND qntc.current_answer IN ('A', 'B', 'C', 'D', 'E'))
         OR (q.type_question != 'CERTO_ERRADO' AND qntc.current_answer IN ('CERTO', 'ERRADO'))
       )`);
     } else if (teachingStatus === 'manual_review') {
-      where.push("(qntc.answer_policy = 'manual_review' OR qntc.study_recommendation = 'manual_review')");
+      where.push("(qntc.status = 'needs_manual_review' OR qntc.review_status = 'needs_manual_review' OR qntc.answer_policy = 'not_assertive_manual_review')");
     } else if (teachingStatus === 'discard') {
-      where.push("(qntc.answer_policy = 'discard' OR qntc.study_recommendation = 'discard')");
+      where.push("(qntc.status = 'discard' OR qntc.answer_policy = 'discard_original')");
     } else if (teachingStatus === 'changed') {
-      where.push('COALESCE(qntc.answer_changed, false) = true');
+      where.push("((qntc.current_answer IS NOT NULL AND qntc.historical_answer IS NOT NULL AND qntc.current_answer != qntc.historical_answer) OR LOWER(COALESCE(qntc.changed_answer, '')) LIKE 'sim%')");
     }
   }
 
@@ -578,9 +748,14 @@ function getNormativeUpdates(searchParams) {
     ? 'LEFT JOIN question_normative_teaching_comments qntc ON qntc.question_id = qnu.question_id'
     : '';
   const teachingSelect = hasTeaching
-    ? `CASE WHEN qntc.id IS NULL THEN 0 ELSE 1 END AS teaching_exists,
+    ? `CASE WHEN qntc.question_id IS NULL THEN 0 ELSE 1 END AS teaching_exists,
       qntc.current_answer AS teaching_current_answer,
-      qntc.answer_changed AS teaching_answer_changed,
+      CASE
+        WHEN qntc.current_answer IS NOT NULL AND qntc.historical_answer IS NOT NULL AND qntc.current_answer != qntc.historical_answer THEN 1
+        WHEN LOWER(COALESCE(qntc.changed_answer, '')) LIKE 'sim%' THEN 1
+        ELSE 0
+      END AS teaching_answer_changed,
+      qntc.status AS teaching_status,
       qntc.answer_policy AS teaching_answer_policy,
       qntc.adaptation_status AS teaching_adaptation_status,
       qntc.study_recommendation AS teaching_study_recommendation,
@@ -650,6 +825,7 @@ function getNormativeUpdates(searchParams) {
     fundamentoJuridicoAtual: row.fundamento_juridico_atual || '',
     novaRegraEstadoAtual: row.nova_regra_estado_atual || '',
     teachingExists: Boolean(row.teaching_exists),
+    teachingStatus: row.teaching_status || '',
     teachingCurrentAnswer: row.teaching_current_answer || '',
     teachingAnswerChanged: Boolean(row.teaching_answer_changed),
     teachingAnswerPolicy: row.teaching_answer_policy || '',
@@ -2845,38 +3021,38 @@ function getNormativeTeachingComment(questionId) {
 
   const row = db.prepare(`
     SELECT
-      id,
       question_id,
-      normative_update_id,
-      source_type,
-      generator_model,
-      generator_version,
+      source_version,
       generated_at,
+      generated_by,
+      generation_method,
+      status,
       historical_answer,
+      historical_answer_raw,
       current_answer,
-      current_answer_label,
+      current_answer_raw,
       current_answer_confidence,
-      answer_changed,
+      changed_answer,
       answer_policy,
       adaptation_status,
       study_recommendation,
       safety_level,
-      adapted_statement,
-      short_explanation,
+      recommendation,
+      title,
       teaching_comment_md,
       teaching_comment_html,
       legal_basis,
       current_rule_summary,
       why_outdated,
-      literal_statement_warning,
-      alternatives_analysis_json,
+      literal_statement_note,
+      source_base,
+      alternatives_analysis,
       review_status,
       reviewed_by,
       reviewed_at,
       reviewer_notes
     FROM question_normative_teaching_comments
     WHERE question_id = ?
-    ORDER BY generated_at DESC, id DESC
     LIMIT 1
   `).get(questionId);
 
@@ -2886,38 +3062,48 @@ function getNormativeTeachingComment(questionId) {
 
   return {
     exists: true,
-    id: row.id,
     questionId: row.question_id,
-    normativeUpdateId: row.normative_update_id,
-    sourceType: row.source_type || '',
-    generatorModel: row.generator_model || '',
-    generatorVersion: row.generator_version || '',
+    sourceVersion: row.source_version || '',
     generatedAt: row.generated_at || '',
+    generatedBy: row.generated_by || '',
+    generationMethod: row.generation_method || '',
+    status: row.status || 'needs_manual_review',
     historicalAnswer: row.historical_answer || '',
+    historicalAnswerRaw: row.historical_answer_raw || '',
     currentAnswer: row.current_answer || '',
-    currentAnswerLabel: row.current_answer_label || '',
+    currentAnswerRaw: row.current_answer_raw || '',
     currentAnswerConfidence: Number(row.current_answer_confidence || 0),
-    answerChanged: Boolean(row.answer_changed),
-    answerPolicy: row.answer_policy || 'do_not_autocorrect',
-    adaptationStatus: row.adaptation_status || 'needs_review',
-    studyRecommendation: row.study_recommendation || 'manual_review',
+    changedAnswer: row.changed_answer || '',
+    answerChanged: Boolean(
+      row.current_answer
+        && row.historical_answer
+        && String(row.current_answer) !== String(row.historical_answer)
+    ) || normalizePlain(row.changed_answer).startsWith('sim'),
+    answerPolicy: row.answer_policy || 'not_assertive_manual_review',
+    adaptationStatus: row.adaptation_status || '',
+    studyRecommendation: row.study_recommendation || '',
     safetyLevel: row.safety_level || '',
-    adaptedStatement: row.adapted_statement || '',
-    shortExplanation: row.short_explanation || '',
+    recommendation: row.recommendation || '',
+    title: row.title || '',
+    adaptedStatement: '',
+    shortExplanation: row.title || '',
     teachingCommentMd: row.teaching_comment_md || '',
     teachingCommentHtml: sanitizeStoredHtml(row.teaching_comment_html),
     legalBasis: row.legal_basis || '',
     currentRuleSummary: row.current_rule_summary || '',
     whyOutdated: row.why_outdated || '',
-    literalStatementWarning: row.literal_statement_warning || '',
-    alternativesAnalysis: safeJsonParse(row.alternatives_analysis_json, []),
+    literalStatementWarning: row.literal_statement_note || '',
+    literalStatementNote: row.literal_statement_note || '',
+    sourceBase: row.source_base || '',
+    alternativesAnalysis: safeJsonParse(row.alternatives_analysis, []),
     reviewStatus: row.review_status || 'pending',
     reviewedBy: row.reviewed_by || '',
     reviewedAt: row.reviewed_at || '',
     reviewerNotes: row.reviewer_notes || '',
-    isSafeCurrentRule: ['current_safe', 'current_with_adaptation'].includes(row.answer_policy || '')
+    isSafeCurrentRule: row.status === 'ready'
+      && row.answer_policy === 'current_law_probable'
       && Boolean(row.current_answer)
-      && !['low', 'manual'].includes(row.safety_level || '')
+      && !['baixo', 'low', 'manual'].includes(normalizePlain(row.safety_level))
   };
 }
 
@@ -2957,6 +3143,44 @@ function saveNormativeReview(questionId, body) {
   );
 
   return { ok: true, normativeUpdate: getNormativeUpdate(questionId) };
+}
+
+function saveNormativeTeachingReview(questionId, body) {
+  if (!hasNormativeTeachingTable()) {
+    return { error: 'Tabela de comentarios atualizados ainda nao existe' };
+  }
+  if (!db.prepare('SELECT 1 FROM question_normative_teaching_comments WHERE question_id = ?').get(questionId)) {
+    return { error: 'Comentario atualizado nao encontrado para esta questao' };
+  }
+
+  const reviewStatus = validChoice(body?.reviewStatus, [
+    'pending',
+    'needs_manual_review',
+    'auto_ready_pending_human_review',
+    'approved',
+    'rejected',
+    'discarded_by_policy'
+  ], '');
+  if (!reviewStatus) {
+    return { error: 'Status de revisao invalido' };
+  }
+
+  db.prepare(`
+    UPDATE question_normative_teaching_comments
+    SET review_status = ?,
+        reviewed_at = CURRENT_TIMESTAMP,
+        reviewed_by = ?,
+        reviewer_notes = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE question_id = ?
+  `).run(
+    reviewStatus,
+    String(body?.reviewedBy || 'local-user').slice(0, 120),
+    String(body?.reviewerNotes || '').slice(0, 4000),
+    questionId
+  );
+
+  return { ok: true, normativeTeachingComment: getNormativeTeachingComment(questionId) };
 }
 
 function normativeTextHasManual(value) {

@@ -9,7 +9,7 @@ const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = parseArgs(process.argv.slice(2));
-  const databaseUrl = args.db || args['database-url'] || process.env.DATABASE_URL;
+  const databaseUrl = normalizeDatabaseUrl(args.db || args['database-url'] || process.env.DATABASE_URL);
   const sqlitePath = args.sqlite ? path.resolve(ROOT_DIR, args.sqlite) : '';
   const outMd = args.md ? path.resolve(ROOT_DIR, args.md) : '';
   const outJson = args.json ? path.resolve(ROOT_DIR, args.json) : '';
@@ -25,6 +25,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
 }
 
 export async function diagnosePostgres(databaseUrl) {
+  databaseUrl = normalizeDatabaseUrl(databaseUrl);
   const sql = postgres(databaseUrl, {
     max: 1,
     idle_timeout: 20,
@@ -42,6 +43,7 @@ export async function diagnosePostgres(databaseUrl) {
     const commentsQuestionIdPrimaryKey = tables.comments
       ? await isPrimaryKey(sql, 'comments', 'question_id')
       : false;
+    const hasTecAiFlag = tables.questions ? await columnExists(sql, 'questions', 'possui_comentario_ia') : false;
 
     const counts = {
       questions: tables.questions ? await scalar(sql, 'SELECT COUNT(*)::int AS n FROM questions') : 0,
@@ -57,24 +59,36 @@ export async function diagnosePostgres(databaseUrl) {
         WHERE COALESCE(html_local, html, text, '') != ''
           AND COALESCE(source_type, '') = 'ai'
       `) : 0,
+      questionsWithAiFlag: hasTecAiFlag ? await scalar(sql, `
+        SELECT COUNT(*)::int AS n
+        FROM questions
+        WHERE COALESCE(possui_comentario_ia, 0) = 1
+      `) : 0,
       normativeUpdates: tables.normativeUpdates ? await scalar(sql, 'SELECT COUNT(*)::int AS n FROM question_normative_updates') : 0,
       teachingComments: tables.teachingComments ? await scalar(sql, 'SELECT COUNT(*)::int AS n FROM question_normative_teaching_comments') : 0,
+      teachingReady: tables.teachingComments ? await scalar(sql, `
+        SELECT COUNT(*)::int AS n
+        FROM question_normative_teaching_comments
+        WHERE status = 'ready'
+      `) : 0,
       teachingManualReview: tables.teachingComments ? await scalar(sql, `
         SELECT COUNT(*)::int AS n
         FROM question_normative_teaching_comments
-        WHERE answer_policy = 'manual_review'
-          OR study_recommendation = 'manual_review'
+        WHERE status = 'needs_manual_review'
+          OR review_status = 'needs_manual_review'
+          OR answer_policy = 'not_assertive_manual_review'
       `) : 0,
       teachingDiscard: tables.teachingComments ? await scalar(sql, `
         SELECT COUNT(*)::int AS n
         FROM question_normative_teaching_comments
-        WHERE answer_policy = 'discard'
-          OR study_recommendation = 'discard'
+        WHERE status = 'discard'
+          OR answer_policy = 'discard_original'
       `) : 0,
       teachingChangedAnswer: tables.teachingComments ? await scalar(sql, `
         SELECT COUNT(*)::int AS n
         FROM question_normative_teaching_comments
-        WHERE answer_changed = true
+        WHERE (current_answer IS NOT NULL AND historical_answer IS NOT NULL AND current_answer != historical_answer)
+          OR LOWER(COALESCE(changed_answer, '')) LIKE 'sim%'
       `) : 0
     };
     counts.normativeWithoutTeaching = tables.normativeUpdates && tables.teachingComments
@@ -103,6 +117,16 @@ export async function diagnosePostgres(databaseUrl) {
   }
 }
 
+function normalizeDatabaseUrl(value) {
+  let url = String(value || '').trim();
+  url = url.replace(/^\$env:DATABASE_URL\s*=\s*/i, '');
+  url = url.replace(/^DATABASE_URL\s*=\s*/i, '');
+  if ((url.startsWith('"') && url.endsWith('"')) || (url.startsWith("'") && url.endsWith("'"))) {
+    url = url.slice(1, -1);
+  }
+  return url.trim();
+}
+
 export async function diagnoseSqlite(sqlitePath) {
   const db = new DatabaseSync(sqlitePath, { readOnly: true });
   try {
@@ -126,6 +150,11 @@ export async function diagnoseSqlite(sqlitePath) {
         FROM comments
         WHERE COALESCE(html_local, html, text, '') != ''
           AND COALESCE(source_type, '') = 'ai'
+      `).get().n : 0,
+      questionsWithAiFlag: tables.questions && sqliteColumnExists(db, 'questions', 'possui_comentario_ia') ? db.prepare(`
+        SELECT COUNT(*) AS n
+        FROM questions
+        WHERE COALESCE(possui_comentario_ia, 0) = 1
       `).get().n : 0,
       normativeUpdates: tables.normativeUpdates ? db.prepare('SELECT COUNT(*) AS n FROM question_normative_updates').get().n : 0,
       teachingComments: tables.teachingComments ? db.prepare('SELECT COUNT(*) AS n FROM question_normative_teaching_comments').get().n : 0
@@ -216,6 +245,18 @@ async function isPrimaryKey(sql, tableName, columnName) {
   return Boolean(rows[0]);
 }
 
+async function columnExists(sql, tableName, columnName) {
+  const rows = await sql`
+    SELECT 1 AS exists
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = ${tableName}
+      AND column_name = ${columnName}
+    LIMIT 1
+  `;
+  return Boolean(rows[0]);
+}
+
 async function scalar(sql, sqlText) {
   const rows = await sql.unsafe(sqlText);
   return Number(rows[0]?.n || 0);
@@ -230,6 +271,11 @@ function sqliteColumnPrimaryKey(db, tableName, columnName) {
     .find((column) => column.name === columnName && Number(column.pk) > 0));
 }
 
+function sqliteColumnExists(db, tableName, columnName) {
+  return Boolean(db.prepare(`PRAGMA table_info(${quoteSqliteIdentifier(tableName)})`).all()
+    .find((column) => column.name === columnName));
+}
+
 function renderMarkdown(report) {
   const rows = [
     ['Banco', report.database],
@@ -239,11 +285,13 @@ function renderMarkdown(report) {
     ['question_normative_updates', report.tables.normativeUpdates ? 'sim' : 'nao'],
     ['question_normative_teaching_comments', report.tables.teachingComments ? 'sim' : 'nao'],
     ['Questoes', report.counts.questions],
-    ['Comentarios Tec/professor', report.counts.commentsTec],
+    ['Comentarios do professor', report.counts.commentsTec],
     ['Comentarios IA locais', report.counts.commentsAiLocal],
+    ['Questoes com IA indicada na origem', report.counts.questionsWithAiFlag || 0],
     ['Analises normativas', report.counts.normativeUpdates],
     ['Comentarios normativos atualizados', report.counts.teachingComments],
     ['Normativas sem comentario atualizado', report.counts.normativeWithoutTeaching],
+    ['Comentarios atualizados prontos', report.counts.teachingReady || 0],
     ['Resposta atual valida', report.counts.teachingValidCurrentAnswer],
     ['Resposta atual invalida', report.counts.teachingInvalidCurrentAnswer],
     ['Revisao manual', report.counts.teachingManualReview || 0],
