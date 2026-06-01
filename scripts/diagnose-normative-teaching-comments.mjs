@@ -97,7 +97,7 @@ export async function diagnosePostgres(databaseUrl) {
         FROM question_normative_updates qnu
         LEFT JOIN question_normative_teaching_comments qntc
           ON qntc.question_id = qnu.question_id
-        WHERE qntc.id IS NULL
+        WHERE qntc.question_id IS NULL
       `)
       : counts.normativeUpdates;
 

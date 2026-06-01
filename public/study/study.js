@@ -31,6 +31,7 @@ const state = {
     unanswered: false,
     lastWrong: false,
     hideOutdated: false,
+    hideStudyExcluded: true,
     hideDuplicates: false,
     representative: false,
     normative: ''
@@ -55,6 +56,7 @@ const els = {
   unansweredOnly: document.querySelector('#unansweredOnly'),
   wrongOnly: document.querySelector('#wrongOnly'),
   hideOutdated: document.querySelector('#hideOutdated'),
+  hideStudyExcluded: document.querySelector('#hideStudyExcluded'),
   hideDuplicates: document.querySelector('#hideDuplicates'),
   representativeOnly: document.querySelector('#representativeOnly'),
   normativeFilter: document.querySelector('#normativeFilter'),
@@ -144,7 +146,13 @@ const els = {
   supportTabTeaching: document.querySelector('#supportTabTeaching'),
   supportTeachingPanel: document.querySelector('#supportTeachingPanel'),
   teachingInfo: document.querySelector('#teachingInfo'),
-  supportTeachingBody: document.querySelector('#supportTeachingBody')
+  supportTeachingBody: document.querySelector('#supportTeachingBody'),
+  studyStatusControl: document.querySelector('#studyStatusControl'),
+  studyStatusText: document.querySelector('#studyStatusText'),
+  studyStatusReason: document.querySelector('#studyStatusReason'),
+  excludeFromStudy: document.querySelector('#excludeFromStudy'),
+  reviewLater: document.querySelector('#reviewLater'),
+  restoreToStudy: document.querySelector('#restoreToStudy')
 };
 
 let searchTimer = null;
@@ -259,6 +267,13 @@ function bindEvents() {
     }
   });
 
+  els.hideStudyExcluded.addEventListener('change', () => {
+    state.filters.hideStudyExcluded = els.hideStudyExcluded.checked;
+    state.page = 1;
+    updateAdvancedFiltersSummary();
+    loadQuestions();
+  });
+
   els.hideDuplicates.addEventListener('change', () => {
     state.filters.hideDuplicates = els.hideDuplicates.checked;
     state.page = 1;
@@ -295,9 +310,11 @@ function bindEvents() {
     setStudyMode('all');
     state.filters.hideDuplicates = false;
     state.filters.representative = false;
+    state.filters.hideStudyExcluded = false;
     state.page = 1;
     els.hideDuplicates.checked = false;
     els.representativeOnly.checked = false;
+    els.hideStudyExcluded.checked = false;
     updateAdvancedFiltersSummary();
     loadQuestions();
   });
@@ -433,7 +450,7 @@ function bindEvents() {
     if (!questionId) return;
     state.normativeVisible = false;
     renderNormativeVisibility();
-    await selectQuestion(questionId);
+    await openQuestionDirect(questionId);
     openSupportPanel('normative');
   });
 
@@ -442,8 +459,7 @@ function bindEvents() {
     if (!button) return;
     const questionId = Number(button.dataset.questionId || 0);
     if (!questionId) return;
-    closeSupportPanel();
-    await selectQuestion(questionId);
+    await openQuestionDirect(questionId);
   });
 
   els.closeSupport.addEventListener('click', () => closeSupportPanel());
@@ -474,6 +490,10 @@ function bindEvents() {
   });
 
   els.similarQuestions.addEventListener('click', () => showSimilarPanel());
+
+  els.excludeFromStudy.addEventListener('click', () => updateQuestionStudyStatus('excluded'));
+  els.reviewLater.addEventListener('click', () => updateQuestionStudyStatus('review_later'));
+  els.restoreToStudy.addEventListener('click', () => updateQuestionStudyStatus('active'));
 
   els.answerForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -570,6 +590,7 @@ function clearFilters() {
     unanswered: false,
     lastWrong: false,
     hideOutdated: false,
+    hideStudyExcluded: state.studyMode !== 'all',
     hideDuplicates: false,
     representative: false,
     normative: ''
@@ -583,6 +604,7 @@ function clearFilters() {
   els.unansweredOnly.checked = false;
   els.wrongOnly.checked = false;
   els.hideOutdated.checked = false;
+  els.hideStudyExcluded.checked = state.filters.hideStudyExcluded;
   els.hideDuplicates.checked = false;
   els.representativeOnly.checked = false;
   els.normativeFilter.value = '';
@@ -598,6 +620,7 @@ function updateAdvancedFiltersSummary() {
     state.filters.unanswered,
     state.filters.lastWrong,
     state.filters.hideOutdated,
+    state.filters.hideStudyExcluded,
     state.filters.hideDuplicates,
     state.filters.representative,
     state.filters.normative
@@ -608,6 +631,10 @@ function updateAdvancedFiltersSummary() {
 
 function setStudyMode(mode) {
   state.studyMode = mode;
+  state.filters.hideStudyExcluded = mode !== 'all';
+  if (els.hideStudyExcluded) {
+    els.hideStudyExcluded.checked = state.filters.hideStudyExcluded;
+  }
   const labels = {
     study: 'Modo: Estudo livre',
     smart: 'Modo: Estudar agora',
@@ -619,6 +646,7 @@ function setStudyMode(mode) {
     subject: 'Modo: Trocar assunto'
   };
   els.modeMenuButton.textContent = labels[mode] || labels.study;
+  updateAdvancedFiltersSummary();
 }
 
 async function runAnswerAction(action) {
@@ -684,6 +712,7 @@ async function loadStats() {
     statMarkup(stats.normativeUpdates, 'análises normativas'),
     statMarkup(stats.normativeTeachingComments, 'comentários atualizados'),
     statMarkup(stats.normativeTeachingPending, 'pendentes de revisão normativa'),
+    statMarkup(stats.outOfStudyQuestions, 'fora do estudo'),
     statMarkup(stats.dueReviews, 'revisões')
   ].join('');
 }
@@ -780,6 +809,7 @@ function buildQuestionParams() {
   if (state.filters.unanswered) params.set('unanswered', '1');
   if (state.filters.lastWrong) params.set('lastWrong', '1');
   if (state.filters.hideOutdated) params.set('hideOutdated', '1');
+  if (state.filters.hideStudyExcluded) params.set('hideStudyExcluded', '1');
   if (state.filters.hideDuplicates) params.set('hideDuplicates', '1');
   if (state.filters.representative) params.set('representative', '1');
   if (state.filters.normative) params.set('normative', state.filters.normative);
@@ -827,6 +857,7 @@ function renderEmptyQuestion() {
   els.supportHistoryBody.innerHTML = '<p class="empty">Nenhum histórico carregado.</p>';
   els.similarInfo.textContent = '';
   els.supportSimilarBody.innerHTML = '<p class="empty">Nenhuma família carregada.</p>';
+  renderStudyStatusControl(null);
   els.submitAnswer.disabled = true;
   els.submitAnswer.textContent = 'Responder';
   els.submitAnswer.dataset.action = 'respond';
@@ -981,6 +1012,7 @@ async function loadSubjectsRanking() {
   if (state.filters.q) params.set('q', state.filters.q);
   if (state.filters.materia) params.set('materia', state.filters.materia);
   if (state.filters.hideOutdated) params.set('hideOutdated', '1');
+  if (state.filters.hideStudyExcluded) params.set('hideStudyExcluded', '1');
 
   const [data, coverage] = await Promise.all([
     api(`/api/subjects-ranking?${params}`),
@@ -1102,6 +1134,22 @@ async function selectQuestion(questionId, options = {}) {
   recordQuestionEvent('started_question');
 }
 
+async function openQuestionDirect(questionId) {
+  closeSupportPanel();
+  await selectQuestion(questionId);
+  const rowIndex = state.rows.findIndex((row) => Number(row.id) === Number(questionId));
+  if (rowIndex >= 0) {
+    state.rowIndex = rowIndex;
+  } else {
+    state.rows = [{ id: questionId }];
+    state.rowIndex = 0;
+    state.page = 1;
+    state.total = 1;
+    state.totalPages = 1;
+  }
+  renderPager();
+}
+
 function renderQuestion(question, options = {}) {
   state.currentQuestion = question;
   const adaptiveReason = options.adaptiveTarget?.reasonText || question.adaptive?.reasonText || '';
@@ -1167,6 +1215,7 @@ function renderQuestion(question, options = {}) {
   renderTheoryPanel(question);
   renderHistoryPanel(question);
   renderSimilarPanelIntro(question);
+  renderStudyStatusControl(question);
 
   renderAnswerResultBox();
   renderSelectedAlternative();
@@ -1578,6 +1627,11 @@ function answerHistoryMarkup(question) {
 function renderQuestionBadges(question) {
   const badges = [];
   const meta = question?.metadata;
+  const studyStatus = question?.studyStatus;
+  if (studyStatus?.isOutOfStudy) {
+    const label = studyStatus.status === 'review_later' ? 'Revisar depois' : 'Fora do estudo';
+    badges.push(`<span class="question-badge is-study-excluded">${escapeHtml(label)}</span>`);
+  }
   if (meta?.desatualizada) {
     badges.push('<span class="question-badge is-outdated">Desatualizada</span>');
   }
@@ -1610,6 +1664,77 @@ function renderQuestionBadges(question) {
 
   els.questionBadges.innerHTML = badges.join('');
   els.questionBadges.hidden = badges.length === 0;
+}
+
+function renderStudyStatusControl(question) {
+  if (!els.studyStatusControl) {
+    return;
+  }
+
+  const status = question?.studyStatus || { status: 'active', reason: '', isOutOfStudy: false };
+  const active = Boolean(question);
+  const outOfStudy = Boolean(status.isOutOfStudy);
+  const reason = status.reason || (question?.metadata?.desatualizada ? 'outdated_no_value' : 'other');
+
+  els.studyStatusControl.classList.toggle('is-out-of-study', outOfStudy);
+  els.studyStatusText.textContent = !active
+    ? 'Sem questao selecionada'
+    : outOfStudy
+      ? `${studyStatusLabel(status.status)} - ${studyStatusReasonLabel(reason)}`
+      : 'Ativa na fila adaptativa';
+  els.studyStatusReason.value = [...els.studyStatusReason.options].some((option) => option.value === reason)
+    ? reason
+    : 'other';
+
+  els.studyStatusReason.disabled = !active || outOfStudy;
+  els.excludeFromStudy.disabled = !active || outOfStudy;
+  els.reviewLater.disabled = !active || outOfStudy;
+  els.restoreToStudy.hidden = !active || !outOfStudy;
+}
+
+async function updateQuestionStudyStatus(status) {
+  if (!state.selectedId) {
+    return;
+  }
+
+  const reason = status === 'active' ? '' : els.studyStatusReason.value || 'other';
+  const response = await api(`/api/questions/${state.selectedId}/study-status`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, reason })
+  });
+  if (response.error) {
+    els.studyStatusText.textContent = response.error;
+    return;
+  }
+
+  state.currentQuestion.studyStatus = response.studyStatus;
+  renderStudyStatusControl(state.currentQuestion);
+  renderQuestionBadges(state.currentQuestion);
+  loadStats().catch(() => {});
+
+  if (status !== 'active' && state.studyMode !== 'all') {
+    await goNext();
+  }
+}
+
+function studyStatusLabel(status) {
+  return {
+    excluded: 'Fora do estudo',
+    review_later: 'Revisar depois',
+    active: 'Ativa'
+  }[status] || 'Ativa';
+}
+
+function studyStatusReasonLabel(reason) {
+  return {
+    outdated_no_value: 'desatualizada sem aproveitamento',
+    obsolete_norm: 'norma antiga',
+    bad_statement: 'enunciado ruim',
+    duplicate: 'duplicada',
+    manual_review: 'revisar depois',
+    other: 'outro'
+  }[reason] || 'outro';
 }
 
 function formatStatementHtml(question) {
@@ -1930,9 +2055,9 @@ async function loadSimilarQuestions() {
   const members = data.members || [];
   els.supportSimilarBody.innerHTML = `
     <p>${escapeHtml(data.cluster.type === 'same_skill' ? 'Família de treino do mesmo assunto.' : 'Questões muito próximas identificadas pelo motor adaptativo.')}</p>
-    <div class="similar-list">
-      ${members.map((member) => similarMemberMarkup(member)).join('')}
-    </div>
+    ${members.length
+      ? `<div class="similar-list">${members.map((member) => similarMemberMarkup(member)).join('')}</div>`
+      : '<p class="empty">Nenhuma outra questao semelhante cadastrada nesta familia.</p>'}
   `;
 }
 

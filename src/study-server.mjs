@@ -42,6 +42,7 @@ const { db, client: activeDbClient } = openStudyDatabase({ dbPath, databaseUrl, 
 if (activeDbClient === 'sqlite') {
   initStudySchema(db);
 }
+initQuestionStudyStatusSchema(db);
 
 export async function handleStudyRequest(request, response) {
   try {
@@ -218,6 +219,13 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const studyStatusMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/study-status$/);
+  if (studyStatusMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, saveQuestionStudyStatus(Number(studyStatusMatch[1]), body));
+    return;
+  }
+
   const normativeReviewMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/normative-review$/);
   if (normativeReviewMatch && request.method === 'POST') {
     const body = await readJsonBody(request);
@@ -331,6 +339,8 @@ function getStats() {
     normativeUpdates: getNormativeUpdateCount(),
     normativeTeachingComments: getNormativeTeachingCount(),
     normativeTeachingPending: getNormativeTeachingPendingCount(),
+    outOfStudyQuestions: getQuestionStudyStatusCount('excluded'),
+    reviewLaterQuestions: getQuestionStudyStatusCount('review_later'),
     missingAnswers: db.prepare(`
       SELECT COUNT(*) AS n
       FROM questions q
@@ -389,6 +399,10 @@ function hasNormativeTeachingTable() {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_normative_teaching_comments'").get());
 }
 
+function hasQuestionStudyStatusTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_study_status'").get());
+}
+
 function columnExists(tableName, columnName) {
   return db.prepare(`PRAGMA table_info(${tableName})`).all()
     .some((column) => column.name === columnName);
@@ -435,6 +449,17 @@ function getNormativeTeachingPendingCount() {
     WHERE qntc.question_id IS NULL
       OR COALESCE(qntc.status, '') != 'ready'
   `).get().n || 0;
+}
+
+function getQuestionStudyStatusCount(status) {
+  if (!hasQuestionStudyStatusTable()) {
+    return 0;
+  }
+  return db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM question_study_status
+    WHERE status = ?
+  `).get(status).n || 0;
 }
 
 function getNormativeUpdateStats() {
@@ -1073,6 +1098,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
   const hideDiscarded = searchParams.get('hideDiscarded') === '1' || extra.hideDiscarded;
   const hideManualReview = searchParams.get('hideManualReview') === '1' || extra.hideManualReview;
   const onlyChangedAnswer = searchParams.get('onlyChangedAnswer') === '1' || extra.onlyChangedAnswer;
+  const hideStudyExcluded = searchParams.get('hideStudyExcluded') === '1' || extra.hideStudyExcluded;
 
   if (q) {
     where.push('(q.statement_text LIKE ? OR q.materia LIKE ? OR q.assunto LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
@@ -1136,12 +1162,27 @@ function buildQuestionWhere(searchParams, extra = {}) {
       WHERE ranked.row_number <= 25
     )`);
   }
+  if (hideStudyExcluded) {
+    applyQuestionStudyStatusFilter(where);
+  }
   applyNormativeQuestionFilters(where, normative, { hideDiscarded, hideManualReview, onlyChangedAnswer });
 
   return {
     whereSql: where.length ? `WHERE ${where.join(' AND ')}` : '',
     values
   };
+}
+
+function applyQuestionStudyStatusFilter(where) {
+  if (!hasQuestionStudyStatusTable()) {
+    return;
+  }
+  where.push(`NOT EXISTS (
+    SELECT 1
+    FROM question_study_status qss
+    WHERE qss.question_id = q.id_question
+      AND qss.status IN ('excluded', 'review_later')
+  )`);
 }
 
 function applyNormativeQuestionFilters(where, normative, options = {}) {
@@ -1330,7 +1371,9 @@ function getSmartQueueV2(searchParams) {
 }
 
 function getSmartQueueV2Rows(searchParams, { profileId, limit = 50, mode = 'study' } = {}) {
-  const { whereSql, values } = buildQuestionWhere(searchParams);
+  const { whereSql, values } = buildQuestionWhere(searchParams, {
+    hideStudyExcluded: !['all', 'ver_todas'].includes(String(mode || '').trim())
+  });
   const finalWhere = appendWhere(whereSql, 'qes.profile_id = ?');
   const coverage = new Map(getExamCoverageRows(profileId).map((row) => [row.subject_key, row]));
   const answerSql = bestAnswerSql('q', 'c');
@@ -1649,7 +1692,7 @@ function getStudyResumeTarget(searchParams) {
     };
   }
 
-  const fallback = getFallbackQuestionId(searchParams);
+  const fallback = getFallbackQuestionId(searchParams, { hideStudyExcluded: true });
   if (fallback) {
     return {
       id: fallback,
@@ -1676,7 +1719,9 @@ function getStudyResumeTarget(searchParams) {
 function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, excludeQuestionId = null } = {}) {
   const resolvedPlan = resolveStudyPlan(plan);
   const resolvedProfile = resolveProfileId(profileId || searchParams.get('profile'));
-  const { whereSql, values } = buildQuestionWhere(searchParams);
+  const { whereSql, values } = buildQuestionWhere(searchParams, {
+    hideStudyExcluded: resolvedPlan !== 'ver_todas'
+  });
   const answerSql = bestAnswerSql('q', 'c');
   const hasNormative = hasNormativeUpdateTable();
   const normativeSelect = hasNormative
@@ -2141,11 +2186,14 @@ function getQuestionSimilar(questionId, searchParams) {
     questionId,
     clusters: clusters.map(serializeCluster),
     cluster: serializeCluster(cluster),
-    members: getClusterMembers(cluster.id, limit)
+    members: getClusterMembers(cluster.id, limit, { excludeQuestionId: questionId })
   };
 }
 
-function getClusterMembers(clusterId, limit = 100) {
+function getClusterMembers(clusterId, limit = 100, options = {}) {
+  const excludeQuestionId = Number(options.excludeQuestionId || 0);
+  const excludeSql = excludeQuestionId ? 'AND qcm.question_id != ?' : '';
+  const params = excludeQuestionId ? [clusterId, excludeQuestionId, limit] : [clusterId, limit];
   return db.prepare(`
     SELECT
       q.id_question AS questionId,
@@ -2173,9 +2221,10 @@ function getClusterMembers(clusterId, limit = 100) {
     ) sa ON sa.question_id = q.id_question
     LEFT JOIN study_answers last_answer ON last_answer.id = sa.last_id
     WHERE qcm.cluster_id = ?
+      ${excludeSql}
     ORDER BY CASE qcm.role WHEN 'representative' THEN 0 ELSE 1 END, qcm.similarity DESC, q.id_question
     LIMIT ?
-  `).all(clusterId, limit);
+  `).all(...params);
 }
 
 function serializeCluster(cluster) {
@@ -2675,7 +2724,9 @@ function normalizeSimulationAnswer(questionId, rawAnswer, expected) {
 }
 
 function getSmartQueueRows(searchParams, options = {}) {
-  const { whereSql, values } = buildQuestionWhere(searchParams);
+  const { whereSql, values } = buildQuestionWhere(searchParams, {
+    hideStudyExcluded: options.hideStudyExcluded !== false
+  });
   const dueOnly = Boolean(options.dueOnly);
   const extraWhere = dueOnly
     ? "qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now')"
@@ -2747,6 +2798,7 @@ function getSubjectsRanking(searchParams) {
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
   const hideOutdated = searchParams.get('hideOutdated') === '1';
+  const hideStudyExcluded = searchParams.get('hideStudyExcluded') === '1';
   const where = ["COALESCE(q.assunto, '') != ''"];
   const values = [];
 
@@ -2760,6 +2812,9 @@ function getSubjectsRanking(searchParams) {
   }
   if (hideOutdated) {
     where.push('COALESCE(q.desatualizada, 0) = 0');
+  }
+  if (hideStudyExcluded) {
+    applyQuestionStudyStatusFilter(where);
   }
 
   const rows = db.prepare(`
@@ -2797,7 +2852,7 @@ function getSubjectsRanking(searchParams) {
 async function getRepairQueue(searchParams) {
   const limit = Math.min(200, Math.max(1, Number(searchParams.get('limit') || 50)));
   const includeOutdated = searchParams.get('includeOutdated') === '1';
-  const { whereSql, values } = buildQuestionWhere(searchParams);
+  const { whereSql, values } = buildQuestionWhere(searchParams, { hideStudyExcluded: true });
   const finalWhere = appendWhere(whereSql, `
     (
       last_answer.is_correct = 0
@@ -3183,6 +3238,87 @@ function saveNormativeTeachingReview(questionId, body) {
   return { ok: true, normativeTeachingComment: getNormativeTeachingComment(questionId) };
 }
 
+function getQuestionStudyStatus(questionId) {
+  if (!hasQuestionStudyStatusTable()) {
+    return activeQuestionStudyStatus(questionId);
+  }
+
+  const row = db.prepare(`
+    SELECT question_id, status, reason, notes, hidden_at, updated_at
+    FROM question_study_status
+    WHERE question_id = ?
+    LIMIT 1
+  `).get(questionId);
+
+  if (!row || !['excluded', 'review_later'].includes(row.status)) {
+    return activeQuestionStudyStatus(questionId);
+  }
+
+  return {
+    questionId: row.question_id,
+    status: row.status,
+    reason: row.reason || '',
+    notes: row.notes || '',
+    hiddenAt: row.hidden_at || '',
+    updatedAt: row.updated_at || '',
+    isOutOfStudy: true
+  };
+}
+
+function activeQuestionStudyStatus(questionId) {
+  return {
+    questionId,
+    status: 'active',
+    reason: '',
+    notes: '',
+    hiddenAt: '',
+    updatedAt: '',
+    isOutOfStudy: false
+  };
+}
+
+function saveQuestionStudyStatus(questionId, body) {
+  if (!db.prepare('SELECT 1 FROM questions WHERE id_question = ?').get(questionId)) {
+    return { error: 'Questao nao encontrada' };
+  }
+
+  const status = validChoice(body?.status, ['active', 'excluded', 'review_later'], 'active');
+  if (status === 'active') {
+    db.prepare('DELETE FROM question_study_status WHERE question_id = ?').run(questionId);
+    return { ok: true, studyStatus: getQuestionStudyStatus(questionId) };
+  }
+
+  const reason = validChoice(body?.reason, [
+    'outdated_no_value',
+    'obsolete_norm',
+    'bad_statement',
+    'duplicate',
+    'manual_review',
+    'other'
+  ], 'other');
+  const notes = String(body?.notes || '').slice(0, 1000);
+
+  db.prepare(`
+    INSERT INTO question_study_status (
+      question_id, status, reason, notes, hidden_at, updated_at
+    )
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(question_id) DO UPDATE SET
+      status = excluded.status,
+      reason = excluded.reason,
+      notes = excluded.notes,
+      hidden_at = CASE
+        WHEN question_study_status.status = excluded.status
+          AND question_study_status.hidden_at IS NOT NULL
+        THEN question_study_status.hidden_at
+        ELSE excluded.hidden_at
+      END,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(questionId, status, reason, notes);
+
+  return { ok: true, studyStatus: getQuestionStudyStatus(questionId) };
+}
+
 function normativeTextHasManual(value) {
   const normalized = normalizePlain(value);
   return normalized.includes('revisao manual') || normalized.includes('revisão manual');
@@ -3267,6 +3403,7 @@ async function getQuestion(questionId) {
   const normativeUpdate = getNormativeUpdate(questionId);
   const normativeTeachingComment = getNormativeTeachingComment(questionId);
   const adaptive = getQuestionAdaptiveSummary(questionId);
+  const studyStatus = getQuestionStudyStatus(questionId);
 
   return {
     id: question.id_question,
@@ -3285,6 +3422,7 @@ async function getQuestion(questionId) {
     },
     normativeUpdate,
     normativeTeachingComment,
+    studyStatus,
     adaptive,
     comment: {
       html: sanitizeStoredHtml(question.comment_html),
@@ -3652,6 +3790,24 @@ function getBestAnswerSource(question) {
     return 'comment_inferred';
   }
   return '';
+}
+
+function initQuestionStudyStatusSchema(database) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS question_study_status (
+      question_id BIGINT PRIMARY KEY,
+      status TEXT NOT NULL DEFAULT 'active',
+      reason TEXT,
+      notes TEXT,
+      hidden_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_question_study_status_status
+      ON question_study_status(status);
+    CREATE INDEX IF NOT EXISTS idx_question_study_status_reason
+      ON question_study_status(reason);
+  `);
 }
 
 function initStudySchema(database) {
@@ -4136,8 +4292,8 @@ function recordServedQuestion(questionId, { mode = '', profileId = '', source = 
   );
 }
 
-function getFallbackQuestionId(searchParams) {
-  const ids = getQuestionIds(searchParams);
+function getFallbackQuestionId(searchParams, extra = {}) {
+  const ids = getQuestionIds(searchParams, extra);
   return ids[0] || null;
 }
 

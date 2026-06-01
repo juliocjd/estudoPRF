@@ -190,7 +190,7 @@ button:disabled {
 
 .advanced-filters {
   display: grid;
-  grid-template-columns: repeat(7, minmax(128px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
   gap: 10px;
   padding: 10px 24px;
   border-bottom: 1px solid var(--border);
@@ -347,6 +347,12 @@ button:disabled {
   border-color: rgba(37, 99, 235, 0.26);
   background: var(--info-soft);
   color: #1d4ed8;
+}
+
+.question-badge.is-study-excluded {
+  border-color: rgba(71, 85, 105, 0.28);
+  background: #eef2f7;
+  color: #334155;
 }
 
 .study-actions {
@@ -956,6 +962,49 @@ button:disabled {
 
 .answer-actions .button-primary {
   min-height: 44px;
+}
+
+.study-status-control {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: var(--surface-muted);
+}
+
+.study-status-control.is-out-of-study {
+  border-color: rgba(71, 85, 105, 0.3);
+  background: #f8fafc;
+}
+
+.study-status-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.study-status-copy strong {
+  font-size: 13px;
+}
+
+.study-status-copy span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.study-status-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.study-status-buttons .button {
+  min-height: 38px;
+}
+
+#restoreToStudy {
+  grid-column: 1 / -1;
 }
 
 .subjects-panel,

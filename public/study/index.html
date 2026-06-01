@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260601-normative-teaching1">
+    <link rel="stylesheet" href="/study.css?v=20260601-study-status1">
   </head>
   <body>
     <div class="app-shell">
@@ -63,6 +63,10 @@
         <label class="checkline">
           <input id="hideOutdated" type="checkbox">
           <span>Ocultar desatualizadas</span>
+        </label>
+        <label class="checkline">
+          <input id="hideStudyExcluded" type="checkbox" checked>
+          <span>Ocultar fora do estudo</span>
         </label>
         <label class="checkline">
           <input id="hideDuplicates" type="checkbox">
@@ -218,6 +222,29 @@
               <button id="secondaryExplain" class="button button-secondary" type="button" disabled>Ver explicação</button>
               <button id="similarQuestions" class="button button-secondary" type="button" disabled>Ver semelhantes</button>
             </div>
+
+            <div class="study-status-control" id="studyStatusControl">
+              <div class="study-status-copy">
+                <strong>Fila de estudo</strong>
+                <span id="studyStatusText">Ativa</span>
+              </div>
+              <label class="field compact-field">
+                <span>Motivo</span>
+                <select id="studyStatusReason" disabled>
+                  <option value="outdated_no_value">Desatualizada sem aproveitamento</option>
+                  <option value="obsolete_norm">Norma antiga</option>
+                  <option value="bad_statement">Enunciado ruim</option>
+                  <option value="duplicate">Duplicada</option>
+                  <option value="manual_review">Revisar depois</option>
+                  <option value="other">Outro</option>
+                </select>
+              </label>
+              <div class="study-status-buttons">
+                <button id="excludeFromStudy" class="button button-danger" type="button" disabled>Nao estudar</button>
+                <button id="reviewLater" class="button button-secondary" type="button" disabled>Revisar depois</button>
+                <button id="restoreToStudy" class="button button-secondary" type="button" hidden>Voltar ao estudo</button>
+              </div>
+            </div>
           </form>
         </section>
 
@@ -363,6 +390,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260601-seed-comments1" type="module"></script>
+    <script src="/study.js?v=20260601-study-status1" type="module"></script>
   </body>
 </html>
