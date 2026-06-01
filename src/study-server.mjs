@@ -2,7 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DatabaseSync } from 'node:sqlite';
+import { openStudyDatabase } from './db/open-study-database.mjs';
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public', 'study');
@@ -33,9 +33,13 @@ const dbPath = path.resolve(ROOT_DIR, args.db || config.prf?.questionsDb || 'que
 const assetsDir = path.resolve(ROOT_DIR, args.assets || config.prf?.assetsDir || 'assets');
 const pdfsDir = path.resolve(ROOT_DIR, args.pdfs || config.outputDir || 'pdfs');
 const port = Number(args.port || 4173);
+const databaseUrl = args['database-url'] || process.env.DATABASE_URL || '';
+const dbClient = args['db-client'] || process.env.DB_CLIENT || '';
 
-const db = new DatabaseSync(dbPath);
-initStudySchema(db);
+const { db, client: activeDbClient } = openStudyDatabase({ dbPath, databaseUrl, client: dbClient });
+if (activeDbClient === 'sqlite') {
+  initStudySchema(db);
+}
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -48,7 +52,7 @@ const server = http.createServer(async (request, response) => {
 
 server.listen(port, '127.0.0.1', () => {
   console.log(`Site de estudo: http://127.0.0.1:${port}`);
-  console.log(`Banco: ${dbPath}`);
+  console.log(activeDbClient === 'postgres' ? 'Banco: Postgres (DATABASE_URL)' : `Banco: ${dbPath}`);
 });
 
 process.on('SIGINT', () => {
@@ -261,7 +265,7 @@ function getStats() {
     ORDER BY total DESC
   `).all();
   const masteryByMatter = db.prepare(`
-    SELECT q.materia, ROUND(AVG(qm.mastery_score), 4) AS mastery_score
+    SELECT q.materia, ROUND(CAST(AVG(qm.mastery_score) AS NUMERIC), 4) AS mastery_score
     FROM question_mastery qm
     JOIN questions q ON q.id_question = qm.question_id
     WHERE COALESCE(q.materia, '') != ''
@@ -311,7 +315,7 @@ function getStats() {
       WHERE COALESCE(wrong_streak, 0) > 0
         OR COALESCE(mastery_score, 0) < 0.35
     `).get().n,
-    averageMastery: db.prepare('SELECT ROUND(COALESCE(AVG(mastery_score), 0), 4) AS n FROM question_mastery').get().n,
+    averageMastery: db.prepare('SELECT ROUND(CAST(COALESCE(AVG(mastery_score), 0) AS NUMERIC), 4) AS n FROM question_mastery').get().n,
     attempts: attempts.total || 0,
     correctAttempts: attempts.correct || 0,
     wrongAttempts: attempts.wrong || 0,
@@ -594,7 +598,7 @@ function getExamCoverageRows(profileId) {
       ) AS valid_with_answer,
       COUNT(DISTINCT CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN q.id_question END) AS comments,
       COUNT(sa.id) AS attempts,
-      ROUND(COALESCE(AVG(qm.mastery_score), 0), 4) AS mastery_score,
+      ROUND(CAST(COALESCE(AVG(qm.mastery_score), 0) AS NUMERIC), 4) AS mastery_score,
       SUM(CASE WHEN COALESCE(qm.next_due_at, '') != '' AND qm.next_due_at <= datetime('now') THEN 1 ELSE 0 END) AS due_reviews,
       COUNT(DISTINCT CASE WHEN COALESCE(q.anulada, 0) = 1 THEN q.id_question END) AS canceled,
       COUNT(DISTINCT CASE WHEN COALESCE(q.desatualizada, 0) = 1 THEN q.id_question END) AS outdated
@@ -607,7 +611,13 @@ function getExamCoverageRows(profileId) {
     LEFT JOIN study_answers sa ON sa.question_id = q.id_question
     LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
     WHERE w.profile_id = ?
-    GROUP BY w.subject_key
+    GROUP BY
+      w.subject_key,
+      w.subject_label,
+      w.block_key,
+      w.block_label,
+      w.expected_items,
+      w.expected_pct
     ORDER BY w.expected_pct DESC, w.subject_label
   `).all(profileId).map((row) => enrichExamCoverageRow(row, totalValidMapped));
 }
@@ -1250,7 +1260,10 @@ function getAdaptiveStudyStats() {
   const mastery = db.prepare(`
     SELECT
       COUNT(*) AS tracked_clusters,
-      COALESCE(SUM(CASE WHEN mastery_score >= 0.85 AND (next_due_at IS NULL OR next_due_at = '' OR next_due_at > CURRENT_TIMESTAMP) THEN 1 ELSE 0 END), 0) AS dominated_clusters,
+      COALESCE(SUM(CASE
+        WHEN mastery_score >= 0.85
+          AND (NULLIF(CAST(next_due_at AS TEXT), '') IS NULL OR next_due_at > CURRENT_TIMESTAMP)
+        THEN 1 ELSE 0 END), 0) AS dominated_clusters,
       COALESCE(SUM(CASE WHEN mastery_score < 0.35 OR last_result = 0 THEN 1 ELSE 0 END), 0) AS fragile_clusters
     FROM cluster_mastery
   `).get();
@@ -2561,7 +2574,7 @@ function getSubjectMasteryRanking(searchParams) {
       q.assunto,
       COUNT(*) AS total_questions,
       COUNT(qm.question_id) AS answered_questions,
-      ROUND(COALESCE(AVG(qm.mastery_score), 0), 4) AS mastery_score,
+      ROUND(CAST(COALESCE(AVG(qm.mastery_score), 0) AS NUMERIC), 4) AS mastery_score,
       COALESCE(SUM(qm.wrong_count), 0) AS wrong_count,
       COALESCE(SUM(qm.correct_count), 0) AS correct_count,
       CASE
@@ -2745,7 +2758,7 @@ async function getQuestion(questionId) {
       COALESCE(c.date_text, '') AS comment_date,
       COALESCE(c.source_type, '') AS comment_source_type,
       COALESCE(c.ai_model, '') AS comment_ai_model,
-      COALESCE(c.ai_generated_at, '') AS comment_ai_generated_at,
+      COALESCE(CAST(c.ai_generated_at AS TEXT), '') AS comment_ai_generated_at,
       COALESCE(qm.mastery_score, 0) AS mastery_score,
       COALESCE(qm.difficulty, 0.5) AS difficulty,
       COALESCE(qm.stability, 0) AS stability,

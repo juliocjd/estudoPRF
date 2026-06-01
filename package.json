@@ -28,15 +28,19 @@
     "build-question-clusters": "node --no-warnings scripts/build-question-clusters.mjs --db questoes-prf.sqlite --profile prf_2021_qconcursos_disciplina",
     "diagnose-study-efficiency": "node --no-warnings scripts/diagnose-study-efficiency.mjs --db questoes-prf.sqlite --profile prf_2021_qconcursos_disciplina --md data/diagnostico_eficiencia_estudo.md --json data/diagnostico_eficiencia_estudo.json",
     "diagnose-study-flow": "node --no-warnings scripts/diagnose-study-flow.mjs --db questoes-prf.sqlite",
+    "pg:export": "node --no-warnings scripts/export-sqlite-postgres.mjs --db questoes-prf.sqlite --out postgres-export",
+    "pg:import": "node --no-warnings scripts/import-postgres-export.mjs --dir postgres-export --reset",
     "ai-comments-prf": "node --no-warnings src/tec-to-pdf.mjs ai-comments-prf",
     "ai-comments-missing-prf": "node --no-warnings src/tec-to-pdf.mjs ai-comments-prf --config config.local.json --limit 1000 --delay 1500 --model gpt-5-mini",
     "assets-prf": "node --no-warnings src/tec-to-pdf.mjs assets-prf",
     "study": "node --no-warnings src/study-server.mjs",
+    "study:pg": "node --no-warnings src/study-server.mjs --db-client postgres",
     "dev": "node --no-warnings src/study-server.mjs",
     "collect": "node src/tec-to-pdf.mjs collect",
     "collect-prf": "node src/tec-to-pdf.mjs collect-prf"
   },
   "dependencies": {
-    "playwright": "^1.52.0"
+    "playwright": "^1.52.0",
+    "postgres": "^3.4.9"
   }
 }

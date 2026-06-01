@@ -1,4 +1,6 @@
 node_modules/
+.env
+.env.*
 pdfs/
 pdfs-prf-sample/
 *.sqlite
@@ -11,6 +13,7 @@ pdfs-prf-sample/
 study-*.png
 data/
 exports/
+postgres-export/
 tmp-*.sqlite
 assets/
 .browser-profile/

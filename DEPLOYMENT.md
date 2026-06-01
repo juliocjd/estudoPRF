@@ -113,6 +113,35 @@ npm install postgres
 
 Essa opcao e robusta, mas a migracao e maior porque varias queries usam detalhes de SQLite.
 
+Scripts adicionados para a migracao de dados:
+
+```powershell
+npm run pg:export
+
+$env:DATABASE_URL="postgres://USUARIO:SENHA@HOST:PORTA/BANCO?sslmode=require"
+npm run pg:import
+```
+
+Para a importacao inicial, prefira a URL sem pooler do Neon (`DATABASE_URL_UNPOOLED`), porque ela usa uma conexao direta durante a carga grande de dados. Para o app no Vercel, use a `DATABASE_URL` normal/pooler.
+
+O comando `pg:export` abre `questoes-prf.sqlite` em modo somente leitura e gera:
+
+- `postgres-export/schema.sql`
+- `postgres-export/indexes.sql`
+- `postgres-export/manifest.json`
+- `postgres-export/tables/*.jsonl`
+
+O comando `pg:import` escreve somente no Postgres indicado por `DATABASE_URL`. Ele usa `--reset`, ou seja, apaga e recria no banco remoto as tabelas listadas no manifesto. Nao rode esse comando apontando para um banco Postgres que tenha dados importantes sem backup.
+
+Depois da importacao, o servidor local pode ser testado contra Postgres assim:
+
+```powershell
+$env:DATABASE_URL="postgres://USUARIO:SENHA@HOST:PORTA/BANCO?sslmode=require"
+npm run study:pg
+```
+
+O backend ganhou uma camada de compatibilidade para Postgres. Ela permite testar as rotas atuais sem reescrever toda a aplicacao de uma vez. Para producao serverless no Vercel, o ideal de longo prazo ainda e evoluir essa camada para consultas assincronas nativas.
+
 ## Recomendacao pratica
 
 Para publicar rapido mantendo o maximo do sistema atual:
