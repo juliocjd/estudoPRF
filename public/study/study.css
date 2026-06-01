@@ -412,7 +412,8 @@ button:disabled {
   z-index: 30;
   display: grid;
   min-width: 220px;
-  overflow: hidden;
+  max-height: min(420px, 70vh);
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
@@ -1256,7 +1257,7 @@ button:disabled {
   z-index: 1000;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  width: min(640px, 94vw);
+  width: min(760px, 96vw);
   height: 100vh;
   border-left: 1px solid var(--border);
   background: var(--surface);
@@ -1277,20 +1278,22 @@ button:disabled {
 
 .support-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
 }
 
 .support-tab {
-  min-height: 42px;
+  min-height: 44px;
   border: 0;
   border-right: 1px solid var(--border);
   border-radius: 0;
+  padding: 0 8px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
+  line-height: 1.15;
 }
 
 .support-tab:last-child {

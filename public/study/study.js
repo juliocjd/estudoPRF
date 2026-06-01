@@ -83,6 +83,7 @@ const els = {
   questionBadges: document.querySelector('#questionBadges'),
   questionTitle: document.querySelector('#questionTitle'),
   normativeAlert: document.querySelector('#normativeAlert'),
+  openTeaching: document.querySelector('#openTeaching'),
   openTheory: document.querySelector('#openTheory'),
   openHistory: document.querySelector('#openHistory'),
   toggleNormativeSupport: document.querySelector('#toggleNormativeSupport'),
@@ -401,12 +402,17 @@ function bindEvents() {
 
   els.toggleComment.addEventListener('click', () => {
     closeAllDropdowns();
-    showCommentPanel();
+    openSupportPanel('comment');
   });
 
   els.showSimilar.addEventListener('click', () => {
     closeAllDropdowns();
     showSimilarPanel();
+  });
+
+  els.openTeaching.addEventListener('click', () => {
+    closeAllDropdowns();
+    showTeachingPanel();
   });
 
   els.openTheory.addEventListener('click', () => {
@@ -446,6 +452,8 @@ function bindEvents() {
   els.normativeTable.addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-question-id]');
     if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
     const questionId = Number(button.dataset.questionId || 0);
     if (!questionId) return;
     state.normativeVisible = false;
@@ -457,6 +465,8 @@ function bindEvents() {
   els.supportSimilarBody.addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-question-id]');
     if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
     const questionId = Number(button.dataset.questionId || 0);
     if (!questionId) return;
     await openQuestionDirect(questionId);
@@ -864,8 +874,10 @@ function renderEmptyQuestion() {
   els.secondaryExplain.disabled = true;
   els.similarQuestions.disabled = true;
   els.showSimilar.disabled = true;
+  els.openTeaching.disabled = true;
   els.openTheory.disabled = true;
   els.toggleComment.disabled = true;
+  els.toggleNormativeSupport.disabled = true;
   renderSupportVisibility();
   renderPager();
 }
@@ -1136,6 +1148,7 @@ async function selectQuestion(questionId, options = {}) {
 
 async function openQuestionDirect(questionId) {
   closeSupportPanel();
+  closeAllDropdowns();
   await selectQuestion(questionId);
   const rowIndex = state.rows.findIndex((row) => Number(row.id) === Number(questionId));
   if (rowIndex >= 0) {
@@ -1188,18 +1201,24 @@ function renderQuestion(question, options = {}) {
       || question.normativeTeachingComment?.exists
       || question.metadata?.desatualizada
   );
+  const hasTeachingSupport = Boolean(
+    question.normativeTeachingComment?.exists
+      || question.normativeUpdate?.exists
+      || question.metadata?.desatualizada
+  );
+  els.openTeaching.disabled = !hasTeachingSupport;
+  els.openTeaching.textContent = 'Comentário atualizado';
   els.toggleComment.disabled = !hasSupportExplanation;
-  els.toggleComment.textContent = 'Ver explicação';
+  els.toggleComment.textContent = 'Explicação histórica';
   if (els.supportTabTeaching) {
-    els.supportTabTeaching.disabled = !question.normativeTeachingComment?.exists
-      && !question.normativeUpdate?.exists
-      && !question.metadata?.desatualizada;
+    els.supportTabTeaching.disabled = !hasTeachingSupport;
   }
   const hasSimilar = Boolean(question.adaptive?.exists && question.adaptive?.clusterId);
   els.showSimilar.disabled = !hasSimilar;
+  els.showSimilar.textContent = 'Semelhantes';
   els.similarQuestions.disabled = !hasSimilar;
   els.toggleNormativeSupport.disabled = !question.normativeUpdate?.exists;
-  els.toggleNormativeSupport.textContent = 'Ver análise normativa';
+  els.toggleNormativeSupport.textContent = 'Atualização normativa';
 
   const info = [
     question.comment.sourceType === 'ai' ? 'gerado por IA' : '',
@@ -2023,6 +2042,12 @@ function showCommentPanel() {
   openSupportPanel(preferredTab);
   state.sawComment = true;
   recordQuestionEvent('opened_comment');
+}
+
+function showTeachingPanel() {
+  openSupportPanel('teaching');
+  state.sawComment = true;
+  recordQuestionEvent('opened_comment', 'teaching');
 }
 
 function showTheoryPanel() {
