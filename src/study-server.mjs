@@ -28,6 +28,19 @@ const PRF_BLOCK_TARGETS = new Map([
 ]);
 const ADAPTIVE_ANSWER_COOLDOWN_MINUTES = 30;
 const ADAPTIVE_SERVED_COOLDOWN_MINUTES = 10;
+const THEORY_PAGE_MIN_SCORE = 0.12;
+const THEORY_SEARCH_STOPWORDS = new Set([
+  'acerca', 'acima', 'agora', 'ainda', 'alem', 'algo', 'algum', 'alguma', 'algumas', 'alguns',
+  'ante', 'apos', 'aquele', 'aquela', 'aquelas', 'aqueles', 'assim', 'cada', 'caso', 'com',
+  'como', 'contra', 'cujo', 'cujos', 'dado', 'dada', 'das', 'de', 'dele', 'dela', 'desde',
+  'desse', 'dessa', 'deste', 'desta', 'disso', 'disto', 'dos', 'durante', 'ela', 'elas',
+  'ele', 'eles', 'entre', 'essa', 'esse', 'esta', 'estao', 'este', 'estes', 'foi', 'foram',
+  'item', 'itens', 'julgue', 'mais', 'mas', 'mesmo', 'mesma', 'nas', 'nesse', 'nessa',
+  'neste', 'nesta', 'nos', 'para', 'pela', 'pelas', 'pelo', 'pelos', 'pois', 'por',
+  'porque', 'qual', 'quando', 'quanto', 'que', 'quem', 'sao', 'seja', 'ser', 'sobre',
+  'sua', 'suas', 'tais', 'tambem', 'tem', 'tendo', 'todo', 'toda', 'todos', 'todas',
+  'uma', 'umas', 'uns', 'verifique', 'voce'
+]);
 
 const args = parseArgs(process.argv.slice(2));
 const config = await loadConfig(args.config);
@@ -43,6 +56,7 @@ if (activeDbClient === 'sqlite') {
   initStudySchema(db);
 }
 initQuestionStudyStatusSchema(db);
+initTheoryPagesSchema(db);
 
 export async function handleStudyRequest(request, response) {
   try {
@@ -99,6 +113,11 @@ async function routeRequest(request, response) {
 
   if (url.pathname === '/api/filters' && request.method === 'GET') {
     sendJson(response, 200, getFilters());
+    return;
+  }
+
+  if (url.pathname === '/api/theory/page' && request.method === 'GET') {
+    sendJson(response, 200, getTheoryPage(url.searchParams));
     return;
   }
 
@@ -391,6 +410,39 @@ function getFilters() {
   return { matters, subjects };
 }
 
+function getTheoryPage(searchParams) {
+  if (!hasTheoryPagesTable()) {
+    return { available: false, reason: 'Indice de teoria nao criado.' };
+  }
+
+  const pdfPath = normalizePath(searchParams.get('pdfPath') || '');
+  const pageNumber = Number(searchParams.get('page') || 0);
+  if (!pdfPath || !pageNumber) {
+    return { available: false, reason: 'Informe pdfPath e page.' };
+  }
+
+  const row = db.prepare(`
+    SELECT pdf_path, page_number, page_count, materia, assunto, title, text
+    FROM theory_pages
+    WHERE pdf_path = ? AND page_number = ?
+  `).get(pdfPath, pageNumber);
+
+  if (!row) {
+    return { available: false, reason: 'Pagina nao indexada.' };
+  }
+
+  return {
+    available: true,
+    pdfPath: row.pdf_path || '',
+    pageNumber: row.page_number || pageNumber,
+    pageCount: row.page_count || null,
+    materia: row.materia || '',
+    assunto: row.assunto || '',
+    title: row.title || '',
+    text: row.text || ''
+  };
+}
+
 function hasNormativeUpdateTable() {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_normative_updates'").get());
 }
@@ -401,6 +453,10 @@ function hasNormativeTeachingTable() {
 
 function hasQuestionStudyStatusTable() {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_study_status'").get());
+}
+
+function hasTheoryPagesTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'theory_pages'").get());
 }
 
 function columnExists(tableName, columnName) {
@@ -3399,7 +3455,10 @@ async function getQuestion(questionId) {
     FROM study_answers
     WHERE question_id = ?
   `).get(questionId);
-  const theory = await findTheoryPdf(question.materia, question.assunto);
+  const theory = await findTheoryPdf(question.materia, question.assunto, {
+    questionId,
+    statementText: question.statement_text || ''
+  });
   const normativeUpdate = getNormativeUpdate(questionId);
   const normativeTeachingComment = getNormativeTeachingComment(questionId);
   const adaptive = getQuestionAdaptiveSummary(questionId);
@@ -3807,6 +3866,29 @@ function initQuestionStudyStatusSchema(database) {
       ON question_study_status(status);
     CREATE INDEX IF NOT EXISTS idx_question_study_status_reason
       ON question_study_status(reason);
+  `);
+}
+
+function initTheoryPagesSchema(database) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS theory_pages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pdf_path TEXT NOT NULL,
+      page_number INTEGER NOT NULL,
+      page_count INTEGER,
+      materia TEXT,
+      assunto TEXT,
+      title TEXT,
+      text TEXT,
+      normalized_text TEXT,
+      indexed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(pdf_path, page_number)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_theory_pages_pdf
+      ON theory_pages(pdf_path, page_number);
+    CREATE INDEX IF NOT EXISTS idx_theory_pages_subject
+      ON theory_pages(materia, assunto);
   `);
 }
 
@@ -4398,7 +4480,7 @@ function trimPreview(value, maxLength) {
   return `${text.slice(0, maxLength - 1).trim()}...`;
 }
 
-async function findTheoryPdf(materia, assunto) {
+async function findTheoryPdf(materia, assunto, context = {}) {
   if (!materia || !assunto) {
     return { available: false };
   }
@@ -4430,12 +4512,164 @@ async function findTheoryPdf(materia, assunto) {
     return { available: false };
   }
 
+  const relativePath = normalizePath(path.relative(pdfsDir, best.path));
+  const baseUrl = `/pdfs/${encodePath(relativePath)}`;
+  const pageMatch = findBestTheoryPage(relativePath, {
+    materia,
+    assunto,
+    statementText: context.statementText || ''
+  });
+  const pageNumber = pageMatch?.pageNumber || null;
+
   return {
     available: true,
     title: stripPdfExtension(best.name).replace(/^\d+\s*-\s*/, ''),
-    url: `/pdfs/${encodePath(path.relative(pdfsDir, best.path))}`,
-    score: best.score
+    url: pageNumber ? `${baseUrl}#page=${pageNumber}` : baseUrl,
+    baseUrl,
+    pdfPath: relativePath,
+    score: best.score,
+    indexed: Boolean(pageMatch?.indexed),
+    pageStart: pageNumber,
+    pageEnd: pageNumber,
+    pageCount: pageMatch?.pageCount || null,
+    pageScore: pageMatch?.score || 0,
+    excerpt: pageMatch?.excerpt || ''
   };
+}
+
+function findBestTheoryPage(pdfPath, context = {}) {
+  if (!hasTheoryPagesTable()) {
+    return { indexed: false };
+  }
+
+  const pages = db.prepare(`
+    SELECT page_number, page_count, text, normalized_text
+    FROM theory_pages
+    WHERE pdf_path = ?
+    ORDER BY page_number
+  `).all(pdfPath);
+
+  if (!pages.length) {
+    return { indexed: false };
+  }
+
+  const tokens = buildTheorySearchTokens(context);
+  if (!tokens.length) {
+    const first = pages[0];
+    return {
+      indexed: true,
+      pageNumber: first.page_number || 1,
+      pageCount: first.page_count || pages.length,
+      score: 0,
+      excerpt: trimPreview(first.text || '', 420)
+    };
+  }
+
+  let best = null;
+  for (const page of pages) {
+    const score = scoreTheoryPage(page, tokens, context.assunto);
+    if (!best || score > best.score) {
+      best = { page, score };
+    }
+  }
+
+  if (!best || best.score < THEORY_PAGE_MIN_SCORE) {
+    return { indexed: true };
+  }
+
+  return {
+    indexed: true,
+    pageNumber: best.page.page_number || 1,
+    pageCount: best.page.page_count || pages.length,
+    score: round(best.score, 4),
+    excerpt: buildTheoryExcerpt(best.page.text || '', tokens)
+  };
+}
+
+function buildTheorySearchTokens({ assunto = '', statementText = '' } = {}) {
+  const tokenWeights = new Map();
+  addTheoryTokens(tokenWeights, assunto, 3.5, 24);
+  addTheoryTokens(tokenWeights, statementText, 1, 36);
+  return Array.from(tokenWeights, ([token, weight]) => ({ token, weight }))
+    .sort((a, b) => b.weight - a.weight || b.token.length - a.token.length)
+    .slice(0, 48);
+}
+
+function addTheoryTokens(tokenWeights, value, weight, maxTokens) {
+  const tokens = normalizeTheoryTitle(value)
+    .split(' ')
+    .filter((token) => isUsefulTheoryToken(token));
+
+  let added = 0;
+  for (const token of tokens) {
+    tokenWeights.set(token, Math.max(tokenWeights.get(token) || 0, weight));
+    added += 1;
+    if (added >= maxTokens) break;
+  }
+}
+
+function isUsefulTheoryToken(token) {
+  if (!token) return false;
+  if (THEORY_SEARCH_STOPWORDS.has(token)) return false;
+  if (/^\d+$/.test(token)) return token.length >= 2;
+  return token.length >= 3;
+}
+
+function scoreTheoryPage(page, tokens, assunto) {
+  const text = ` ${page.normalized_text || normalizeTheoryTitle(page.text)} `;
+  const maxScore = tokens.reduce((total, item) => total + item.weight, 0);
+  let score = 0;
+  for (const item of tokens) {
+    if (text.includes(` ${item.token} `)) {
+      score += item.weight;
+    }
+  }
+
+  const subjectPhrase = normalizeTheoryTitle(assunto);
+  if (subjectPhrase && subjectPhrase.length >= 10 && text.includes(subjectPhrase)) {
+    score += maxScore * 0.35;
+  }
+
+  return maxScore ? score / maxScore : 0;
+}
+
+function buildTheoryExcerpt(text, tokens) {
+  const chunks = splitTextForExcerpt(text);
+  let best = chunks[0] || String(text || '');
+  let bestScore = -1;
+  for (const chunk of chunks) {
+    const normalized = ` ${normalizeTheoryTitle(chunk)} `;
+    let score = 0;
+    for (const item of tokens) {
+      if (normalized.includes(` ${item.token} `)) {
+        score += item.weight;
+      }
+    }
+    if (score > bestScore) {
+      best = chunk;
+      bestScore = score;
+    }
+  }
+  return trimPreview(best, 520);
+}
+
+function splitTextForExcerpt(text) {
+  const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return [];
+  const chunks = normalized
+    .split(/\.\s+|;\s+|\?\s+|!\s+|\n+/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+
+  if (chunks.some((chunk) => chunk.length >= 80)) {
+    return chunks;
+  }
+
+  const fallback = [];
+  for (let index = 0; index < normalized.length; index += 360) {
+    fallback.push(normalized.slice(index, index + 420).trim());
+  }
+  return fallback.filter(Boolean);
 }
 
 async function findBestDirectory(baseDir, expectedName) {

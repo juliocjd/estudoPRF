@@ -1334,6 +1334,49 @@ button:disabled {
   background: var(--surface-muted);
 }
 
+.theory-meta,
+.theory-page,
+.theory-index-note {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.theory-page {
+  justify-self: start;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: var(--surface);
+  color: var(--primary);
+}
+
+.theory-excerpt {
+  display: grid;
+  gap: 5px;
+  border-left: 3px solid var(--info);
+  padding: 8px 10px;
+  background: var(--surface);
+}
+
+.theory-excerpt small {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.theory-excerpt p,
+.support-body .theory-index-note {
+  margin: 0;
+}
+
+.theory-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .similar-list {
   display: grid;
   gap: 8px;

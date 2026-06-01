@@ -1404,12 +1404,33 @@ function normativeTextBlock(title, text) {
 
 function renderTheoryPanel(question) {
   if (question.theory?.available) {
-    els.theoryInfo.textContent = question.theory.title || 'PDF disponível';
+    const pageLabel = question.theory.pageStart
+      ? `página ${question.theory.pageStart}${question.theory.pageCount ? ` de ${question.theory.pageCount}` : ''}`
+      : (question.theory.indexed ? 'sem página segura' : 'índice pendente');
+    const openLabel = question.theory.pageStart ? 'Abrir PDF na página' : 'Abrir PDF da teoria';
+    const baseUrl = question.theory.baseUrl || question.theory.url;
+    els.theoryInfo.textContent = question.theory.pageStart
+      ? pageLabel
+      : (question.theory.title || 'PDF disponível');
     els.supportTheoryBody.innerHTML = `
       <div class="theory-card">
         <strong>${escapeHtml(question.theory.title || 'Teoria relacionada')}</strong>
-        <span>${escapeHtml(question.metadata?.materia || '')}${question.metadata?.assunto ? ` • ${escapeHtml(question.metadata.assunto)}` : ''}</span>
-        <a class="button button-primary" href="${escapeAttr(question.theory.url)}" target="_blank" rel="noopener">Abrir PDF da teoria</a>
+        <span class="theory-meta">${escapeHtml(question.metadata?.materia || '')}${question.metadata?.assunto ? ` • ${escapeHtml(question.metadata.assunto)}` : ''}</span>
+        <span class="theory-page">${escapeHtml(pageLabel)}</span>
+        ${question.theory.excerpt ? `
+          <div class="theory-excerpt">
+            <small>Trecho mais provável</small>
+            <p>${escapeHtml(question.theory.excerpt)}</p>
+          </div>
+        ` : `
+          <p class="theory-index-note">${question.theory.indexed
+            ? 'PDF indexado, mas sem trecho suficientemente seguro para esta questão.'
+            : 'Índice de páginas ainda não gerado para este PDF.'}</p>
+        `}
+        <div class="theory-card-actions">
+          <a class="button button-primary" href="${escapeAttr(question.theory.url)}" target="_blank" rel="noopener">${escapeHtml(openLabel)}</a>
+          ${question.theory.pageStart ? `<a class="button button-secondary" href="${escapeAttr(baseUrl)}" target="_blank" rel="noopener">Abrir do início</a>` : ''}
+        </div>
       </div>
     `;
     return;
