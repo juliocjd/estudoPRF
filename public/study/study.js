@@ -479,23 +479,26 @@ function bindEvents() {
     }
 
     els.submitAnswer.disabled = true;
-    const result = await api(`/api/questions/${state.selectedId}/answer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        answer: selected,
-        confidence: els.confidenceSelect.value,
-        errorType: els.errorTypeSelect.value,
-        elapsedMs: Date.now() - state.questionStartedAt,
-        studyMode: state.studyMode,
-        sessionId: state.sessionId,
-        sawComment: state.sawComment,
-        openedTheory: state.openedTheory
-      })
-    });
-    recordQuestionEvent('finished_question', selected);
-    await renderAnswerResult(result);
-    await loadStats();
+    try {
+      const result = await api(`/api/questions/${state.selectedId}/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          answer: selected,
+          confidence: els.confidenceSelect.value,
+          errorType: els.errorTypeSelect.value,
+          elapsedMs: Date.now() - state.questionStartedAt,
+          studyMode: state.studyMode,
+          sessionId: state.sessionId,
+          sawComment: state.sawComment,
+          openedTheory: state.openedTheory
+        })
+      });
+      renderAnswerResult(result);
+      loadStats().catch(() => {});
+    } catch (error) {
+      showAnswerSubmitError(error);
+    }
   });
 
   els.alternatives.addEventListener('click', (event) => {
@@ -1346,7 +1349,7 @@ function updateAnswerActions() {
   els.secondaryExplain.disabled = !hasExplanation;
 }
 
-async function renderAnswerResult(result) {
+function renderAnswerResult(result) {
   if (result.error) {
     els.answerStatus.textContent = result.error;
     els.answerStatus.disabled = true;
@@ -1363,10 +1366,59 @@ async function renderAnswerResult(result) {
     els.nextDue.textContent = formatDate(result.nextDueAt);
   }
 
-  await selectQuestion(state.selectedId, {
-    answerResult: result,
-    selectedAnswer: result.answer
-  });
+  applyAnswerResultToCurrentQuestion(result);
+  state.answerResult = result;
+
+  const selectedInput = els.alternatives.querySelector(`input[name="answer"][value="${cssEscape(result.answer)}"]`);
+  if (selectedInput) {
+    selectedInput.checked = true;
+  }
+
+  renderAnswerStatus(state.currentQuestion);
+  renderAnswerResultBox();
+  renderSelectedAlternative();
+  updateAnswerActions();
+}
+
+function applyAnswerResultToCurrentQuestion(result) {
+  if (!state.currentQuestion) {
+    return;
+  }
+
+  const stats = state.currentQuestion.answerStats || { total: 0, correct: 0, wrong: 0, unknown: 0 };
+  stats.total = Number(stats.total || 0) + 1;
+  if (result.isCorrect === 1) {
+    stats.correct = Number(stats.correct || 0) + 1;
+  } else if (result.isCorrect === 0) {
+    stats.wrong = Number(stats.wrong || 0) + 1;
+  } else {
+    stats.unknown = Number(stats.unknown || 0) + 1;
+  }
+
+  state.currentQuestion.answerStats = stats;
+  state.currentQuestion.lastAnswer = {
+    answer_letter: result.answer || '',
+    answer_text: result.answerText || '',
+    expected_answer: result.expectedAnswer || '',
+    is_correct: result.isCorrect,
+    answered_at: result.answeredAt || new Date().toISOString(),
+    confidence: result.confidence || els.confidenceSelect.value || '',
+    error_type: result.errorType || ''
+  };
+}
+
+function showAnswerSubmitError(error) {
+  console.error(error);
+  els.answerResult.className = 'answer-result is-wrong';
+  els.answerResult.innerHTML = `
+    <span class="answer-result-icon" aria-hidden="true">!</span>
+    <span><strong>Nao foi possivel registrar a resposta.</strong> Tente novamente. Se continuar, confira os logs da Vercel.</span>
+  `;
+  els.answerResult.hidden = false;
+  els.answerHint.textContent = 'Falha ao registrar';
+  els.submitAnswer.textContent = 'Responder';
+  els.submitAnswer.dataset.action = 'respond';
+  els.submitAnswer.disabled = false;
 }
 
 function renderAnswerStatus(question) {
@@ -2040,7 +2092,14 @@ function normalizeAnswerText(value) {
 async function api(url, options) {
   const response = await fetch(url, options);
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    let detail = '';
+    try {
+      const text = await response.text();
+      detail = text ? `: ${text.slice(0, 300)}` : '';
+    } catch {
+      detail = '';
+    }
+    throw new Error(`HTTP ${response.status}${detail}`);
   }
   return response.json();
 }

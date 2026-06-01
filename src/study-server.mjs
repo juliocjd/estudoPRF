@@ -2973,6 +2973,9 @@ function saveAnswer(questionId, body) {
     answerText: alternative.text || '',
     expectedAnswer: expected,
     answerSource: getBestAnswerSource(question),
+    confidence: attemptMeta.confidence,
+    errorType: attemptMeta.errorType,
+    answeredAt: new Date().toISOString(),
     normativeUpdate: getNormativeUpdate(questionId),
     isCorrect,
     masteryScore: mastery.masteryScore,
@@ -3137,8 +3140,8 @@ function updateSubjectMastery(database, question) {
       COALESCE(SUM(qm.correct_count), 0) AS correct_count,
       COALESCE(SUM(qm.wrong_count), 0) AS wrong_count,
       COALESCE(AVG(qm.mastery_score), 0) AS mastery_score,
-      MIN(NULLIF(qm.next_due_at, '')) AS next_due_at,
-      MAX(NULLIF(qm.last_seen_at, '')) AS last_seen_at
+      MIN(qm.next_due_at) AS next_due_at,
+      MAX(qm.last_seen_at) AS last_seen_at
     FROM questions q
     JOIN question_mastery qm ON qm.question_id = q.id_question
     WHERE q.materia = ? AND q.assunto = ?
