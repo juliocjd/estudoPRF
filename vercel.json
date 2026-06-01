@@ -1,0 +1,25 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index.mjs"
+    },
+    {
+      "source": "/",
+      "destination": "/study/index.html"
+    },
+    {
+      "source": "/study.css",
+      "destination": "/study/study.css"
+    },
+    {
+      "source": "/study.js",
+      "destination": "/study/study.js"
+    }
+  ],
+  "functions": {
+    "api/index.mjs": {
+      "maxDuration": 60
+    }
+  }
+}

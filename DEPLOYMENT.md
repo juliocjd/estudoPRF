@@ -58,10 +58,25 @@ git push -u origin main
 1. Entre em https://vercel.com.
 2. Clique em `New Project`.
 3. Importe o repositorio do GitHub.
-4. Configure as variaveis de ambiente do banco remoto.
+4. Configure as variaveis de ambiente do banco remoto:
+
+```text
+DATABASE_URL=postgres://USUARIO:SENHA@HOST/BANCO?sslmode=require
+DB_CLIENT=postgres
+```
+
+Use a URL pooler/normal do Neon no Vercel. A URL sem pooler deve ficar reservada para importacoes grandes feitas localmente.
+
 5. Faca o deploy.
 
-Observacao importante: antes do deploy funcionar completo, o backend precisa ser adaptado para Vercel Functions ou para um framework suportado, como Next.js. O servidor atual e um servidor HTTP persistente, bom para `npm run dev`, mas nao e o formato ideal de API serverless do Vercel.
+O deploy usa:
+
+- `vercel.json` para abrir a interface em `/`;
+- `public/study/index.html` como pagina principal;
+- `api/index.mjs` como funcao serverless para as rotas `/api/*`;
+- `DATABASE_URL` para conectar no Postgres/Neon.
+
+Se aparecer `404: NOT_FOUND`, confira se `vercel.json` foi enviado para o GitHub e se o deploy mais recente da Vercel rodou depois desse envio.
 
 ## Banco remoto
 
@@ -147,9 +162,12 @@ O backend ganhou uma camada de compatibilidade para Postgres. Ela permite testar
 Para publicar rapido mantendo o maximo do sistema atual:
 
 1. Subir codigo no GitHub sem o banco.
-2. Migrar banco para Turso/libSQL.
-3. Adaptar o backend para usar um adaptador de banco.
-4. Transformar as rotas atuais em API compativel com Vercel.
-5. So depois conectar o projeto no Vercel.
+2. Migrar o banco local para Neon/Postgres.
+3. Configurar `DATABASE_URL` e `DB_CLIENT=postgres` no Vercel.
+4. Fazer novo deploy.
 
-Se a prioridade for colocar online com o minimo de alteracao, uma hospedagem com servidor Node persistente e volume, como Railway, Render ou Fly.io, seria mais simples que Vercel. Mas se a meta for Vercel, a migracao de banco e API e o caminho correto.
+Depois de publicar, rode um teste simples:
+
+- abrir a URL principal do Vercel;
+- abrir `/api/stats` na mesma URL;
+- confirmar se os numeros de questoes e comentarios aparecem.

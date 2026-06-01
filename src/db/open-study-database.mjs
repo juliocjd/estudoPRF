@@ -1,5 +1,7 @@
-import { DatabaseSync } from 'node:sqlite';
+import { createRequire } from 'node:module';
 import { PostgresSyncDatabase } from './postgres-sync-db.mjs';
+
+const require = createRequire(import.meta.url);
 
 export function openStudyDatabase({ dbPath, databaseUrl, client = '' }) {
   const resolvedClient = String(client || process.env.DB_CLIENT || '').trim().toLowerCase()
@@ -12,6 +14,7 @@ export function openStudyDatabase({ dbPath, databaseUrl, client = '' }) {
     };
   }
 
+  const { DatabaseSync } = require('node:sqlite');
   return {
     client: 'sqlite',
     db: new DatabaseSync(dbPath)

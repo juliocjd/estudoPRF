@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openStudyDatabase } from './db/open-study-database.mjs';
 
+const CURRENT_FILE = fileURLToPath(import.meta.url);
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public', 'study');
 const MIME_TYPES = new Map([
@@ -41,24 +42,30 @@ if (activeDbClient === 'sqlite') {
   initStudySchema(db);
 }
 
-const server = http.createServer(async (request, response) => {
+export async function handleStudyRequest(request, response) {
   try {
     await routeRequest(request, response);
   } catch (error) {
     console.error(error);
     sendJson(response, 500, { error: error.message || 'Erro interno' });
   }
-});
+}
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`Site de estudo: http://127.0.0.1:${port}`);
-  console.log(activeDbClient === 'postgres' ? 'Banco: Postgres (DATABASE_URL)' : `Banco: ${dbPath}`);
-});
+const isCliRun = process.argv[1] && path.resolve(process.argv[1]) === CURRENT_FILE;
 
-process.on('SIGINT', () => {
-  db.close();
-  server.close(() => process.exit(0));
-});
+if (isCliRun) {
+  const server = http.createServer(handleStudyRequest);
+
+  server.listen(port, '127.0.0.1', () => {
+    console.log(`Site de estudo: http://127.0.0.1:${port}`);
+    console.log(activeDbClient === 'postgres' ? 'Banco: Postgres (DATABASE_URL)' : `Banco: ${dbPath}`);
+  });
+
+  process.on('SIGINT', () => {
+    db.close();
+    server.close(() => process.exit(0));
+  });
+}
 
 async function routeRequest(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || '127.0.0.1'}`);
