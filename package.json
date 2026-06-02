@@ -37,6 +37,7 @@
     "diagnose-study-efficiency": "node --no-warnings scripts/diagnose-study-efficiency.mjs --db questoes-prf.sqlite --profile prf_2021_qconcursos_disciplina --md data/diagnostico_eficiencia_estudo.md --json data/diagnostico_eficiencia_estudo.json",
     "diagnose-study-flow": "node --no-warnings scripts/diagnose-study-flow.mjs --db questoes-prf.sqlite",
     "index-theory-pages": "node --no-warnings scripts/index-theory-pages.mjs --db questoes-prf.sqlite --pdfs pdfs",
+    "index-theory-pages-progress": "node --no-warnings scripts/index-theory-pages-progress.mjs --db questoes-prf.sqlite --pdfs pdfs",
     "pg:export": "node --no-warnings scripts/export-sqlite-postgres.mjs --db questoes-prf.sqlite --out postgres-export",
     "pg:import": "node --no-warnings scripts/import-postgres-export.mjs --dir postgres-export --reset",
     "ai-comments-prf": "node --no-warnings src/tec-to-pdf.mjs ai-comments-prf",

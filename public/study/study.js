@@ -1309,15 +1309,18 @@ function renderQuestion(question, options = {}) {
     question.comment.html
       || question.comment.text
       || question.normativeUpdate?.exists
-      || question.currentLawAnswer?.exists
-      || question.normativeTeachingComment?.exists
-      || question.metadata?.desatualizada
+      || (canRevealCurrentLawAnswer(question) && (
+        question.currentLawAnswer?.exists
+        || question.normativeTeachingComment?.exists
+        || question.metadata?.desatualizada
+      ))
   );
   const hasTeachingSupport = Boolean(
-    question.currentLawAnswer?.exists
+    canRevealCurrentLawAnswer(question) && (
+      question.currentLawAnswer?.exists
       || question.normativeTeachingComment?.exists
-      || question.normativeUpdate?.exists
       || question.metadata?.desatualizada
+    )
   );
   els.openTeaching.disabled = !hasTeachingSupport;
   els.toggleComment.disabled = !hasSupportExplanation;
@@ -1364,6 +1367,18 @@ function renderNormativeAlert(question) {
   const update = question.normativeUpdate;
   const currentLaw = question.currentLawAnswer;
   if (question.metadata?.desatualizada) {
+    if (!canRevealCurrentLawAnswer(question)) {
+      els.normativeAlert.className = 'normative-alert is-info';
+      els.normativeAlert.innerHTML = `
+        <div>
+          <strong>Resposta pela legislacao atual</strong>
+          <span>Disponivel apos registrar sua resposta.</span>
+        </div>
+      `;
+      els.normativeAlert.hidden = false;
+      return;
+    }
+
     const status = currentLaw?.status || currentLaw?.currentLawStatus || 'needs_audit';
     const canAutoScore = currentLaw?.canAutoScore ?? currentLaw?.canAutoScoreCurrentLaw;
     const tone = status === 'discard'
@@ -1419,6 +1434,11 @@ function renderNormativeAlert(question) {
 
 function renderNormativeTeachingPanel(question) {
   if (question.currentLawAnswer?.exists || question.metadata?.desatualizada) {
+    if (!canRevealCurrentLawAnswer(question)) {
+      els.teachingInfo.textContent = 'bloqueado ate a tentativa';
+      els.supportTeachingBody.innerHTML = '<p class="empty">A resposta pela legislacao atual fica disponivel depois que voce registrar uma alternativa.</p>';
+      return;
+    }
     renderCurrentLawAnswerPanel(question);
     return;
   }
@@ -1847,6 +1867,16 @@ function questionQuickStatus(question) {
   return pieces.join(' • ');
 }
 
+function canRevealCurrentLawAnswer(question = state.currentQuestion) {
+  if (!question) return false;
+  const totalAttempts = Number(question.answerStats?.total || 0);
+  return Boolean(
+    totalAttempts > 0
+    || question.lastAnswer?.answered_at
+    || question.lastAnswer?.answer_letter
+  );
+}
+
 function updateAnswerActions() {
   const selected = new FormData(els.answerForm).get('answer');
   const question = state.currentQuestion;
@@ -1951,9 +1981,23 @@ function renderAnswerResult(result) {
   }
 
   renderAnswerStatus(state.currentQuestion);
+  renderNormativeAlert(state.currentQuestion);
+  renderNormativeTeachingPanel(state.currentQuestion);
+  const hasTeachingSupportAfterAnswer = Boolean(
+    canRevealCurrentLawAnswer(state.currentQuestion) && (
+      state.currentQuestion?.currentLawAnswer?.exists
+      || state.currentQuestion?.normativeTeachingComment?.exists
+      || state.currentQuestion?.metadata?.desatualizada
+    )
+  );
+  els.openTeaching.disabled = !hasTeachingSupportAfterAnswer;
+  if (els.supportTabTeaching) {
+    els.supportTabTeaching.disabled = !hasTeachingSupportAfterAnswer;
+  }
   renderAnswerResultBox();
   renderSelectedAlternative();
   updateAnswerActions();
+  renderSupportVisibility();
 }
 
 function applyAnswerResultToCurrentQuestion(result) {
@@ -2426,9 +2470,10 @@ function expectedAlternativeLetter(expectedAnswer) {
 }
 
 function showCommentPanel() {
-  const preferredTab = state.currentQuestion?.currentLawAnswer?.exists || state.currentQuestion?.metadata?.desatualizada
+  const canRevealCurrentLaw = canRevealCurrentLawAnswer(state.currentQuestion);
+  const preferredTab = canRevealCurrentLaw && (state.currentQuestion?.currentLawAnswer?.exists || state.currentQuestion?.metadata?.desatualizada)
     ? 'teaching'
-    : state.currentQuestion?.normativeTeachingComment?.exists
+    : canRevealCurrentLaw && state.currentQuestion?.normativeTeachingComment?.exists
       ? 'teaching'
       : state.currentQuestion?.normativeUpdate?.exists
         ? 'normative'

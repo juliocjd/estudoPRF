@@ -16,13 +16,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     limit: args.limit ? Math.max(1, Number(args.limit)) : 0,
     force: Boolean(args.force),
     dryRun: Boolean(args['dry-run']),
-    includeInternal: Boolean(args['include-internal'])
+    includeInternal: Boolean(args['include-internal']),
+    match: args.match || ''
   });
 
   console.log(renderReport(report));
 }
 
-export async function indexTheoryPages({ dbPath, databaseUrl = '', dbClient = '', pdfsDir, limit = 0, force = false, dryRun = false, includeInternal = false }) {
+export async function indexTheoryPages({ dbPath, databaseUrl = '', dbClient = '', pdfsDir, limit = 0, force = false, dryRun = false, includeInternal = false, match = '', onProgress = null }) {
   const { db, client } = openStudyDatabase({ dbPath, databaseUrl: normalizeDatabaseUrl(databaseUrl), client: dbClient });
   const report = {
     dbClient: client,
@@ -40,14 +41,35 @@ export async function indexTheoryPages({ dbPath, databaseUrl = '', dbClient = ''
     initTheoryPagesSchema(db);
     const pdfs = await listPdfFiles(pdfsDir, { includeInternal });
     report.foundPdfs = pdfs.length;
-    const selectedPdfs = limit ? pdfs.slice(0, limit) : pdfs;
+    const matchedPdfs = filterPdfFiles(pdfs, pdfsDir, match);
+    const selectedPdfs = limit ? matchedPdfs.slice(0, limit) : matchedPdfs;
+    emitProgress(onProgress, {
+      type: 'start',
+      total: selectedPdfs.length,
+      foundPdfs: pdfs.length,
+      pdfsDir,
+      dbClient: client
+    });
 
-    for (const pdfPath of selectedPdfs) {
+    for (const [index, pdfPath] of selectedPdfs.entries()) {
+      const relativePath = toPosixPath(path.relative(pdfsDir, pdfPath));
+      emitProgress(onProgress, {
+        type: 'pdf:start',
+        index: index + 1,
+        total: selectedPdfs.length,
+        pdf: relativePath
+      });
       try {
-        const relativePath = toPosixPath(path.relative(pdfsDir, pdfPath));
         const existing = db.prepare('SELECT COUNT(*) AS n FROM theory_pages WHERE pdf_path = ?').get(relativePath)?.n || 0;
         if (existing && !force) {
           report.skippedPdfs += 1;
+          emitProgress(onProgress, {
+            type: 'pdf:skip',
+            index: index + 1,
+            total: selectedPdfs.length,
+            pdf: relativePath,
+            existingPages: existing
+          });
           continue;
         }
 
@@ -57,6 +79,13 @@ export async function indexTheoryPages({ dbPath, databaseUrl = '', dbClient = ''
 
         if (dryRun) {
           report.indexedPages += pages.length;
+          emitProgress(onProgress, {
+            type: 'pdf:dry-run',
+            index: index + 1,
+            total: selectedPdfs.length,
+            pdf: relativePath,
+            pages: pages.length
+          });
           continue;
         }
 
@@ -95,21 +124,55 @@ export async function indexTheoryPages({ dbPath, databaseUrl = '', dbClient = ''
           }
           db.exec('COMMIT');
           report.indexedPages += pages.length;
+          emitProgress(onProgress, {
+            type: 'pdf:done',
+            index: index + 1,
+            total: selectedPdfs.length,
+            pdf: relativePath,
+            pages: pages.length,
+            indexedPages: report.indexedPages
+          });
         } catch (error) {
           db.exec('ROLLBACK');
           throw error;
         }
       } catch (error) {
         report.errors.push({
-          pdf: toPosixPath(path.relative(pdfsDir, pdfPath)),
-          error: error.message || String(error)
+          pdf: relativePath,
+          error: formatErrorMessage(error)
+        });
+        emitProgress(onProgress, {
+          type: 'pdf:error',
+          index: index + 1,
+          total: selectedPdfs.length,
+          pdf: relativePath,
+          error: formatErrorMessage(error)
         });
       }
     }
 
+    emitProgress(onProgress, { type: 'finish', report });
     return report;
   } finally {
     db.close();
+  }
+}
+
+function filterPdfFiles(pdfs, pdfsDir, match) {
+  const needle = normalizeSearchText(match);
+  if (!needle) return pdfs;
+  return pdfs.filter((pdfPath) => normalizeSearchText(toPosixPath(path.relative(pdfsDir, pdfPath))).includes(needle));
+}
+
+function formatErrorMessage(error) {
+  return String(error?.message || error || '')
+    .replace(/\nSQL:[\s\S]*$/i, '')
+    .trim();
+}
+
+function emitProgress(onProgress, event) {
+  if (typeof onProgress === 'function') {
+    onProgress(event);
   }
 }
 
@@ -257,7 +320,7 @@ function normalizeSearchText(value) {
 }
 
 function normalizeWhitespace(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim();
+  return String(value || '').replace(/\u0000/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function stripPdfExtension(filename) {
