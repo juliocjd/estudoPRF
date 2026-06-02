@@ -1493,6 +1493,79 @@ button:disabled {
   gap: 12px;
 }
 
+.teaching-edit-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: var(--surface-muted);
+}
+
+.teaching-edit-toolbar > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.teaching-edit-toolbar strong {
+  color: var(--primary);
+  font-size: 13px;
+}
+
+.teaching-edit-toolbar span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.teaching-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.teaching-edit-form {
+  display: grid;
+  gap: 12px;
+}
+
+.teaching-edit-field {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: var(--surface);
+}
+
+.teaching-edit-field span {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.teaching-edit-field textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.teaching-edit-field textarea:focus {
+  outline: 2px solid rgba(37, 99, 235, 0.2);
+  border-color: var(--primary);
+}
+
 .teaching-v3-section {
   display: grid;
   gap: 7px;
@@ -1867,6 +1940,19 @@ button:disabled {
   .question-card-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .teaching-edit-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .teaching-edit-actions {
+    justify-content: stretch;
+  }
+
+  .teaching-edit-actions .button {
+    flex: 1;
   }
 }
 

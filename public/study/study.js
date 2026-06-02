@@ -39,7 +39,8 @@ const state = {
   subjects: [],
   subjectsVisible: false,
   coverageVisible: false,
-  normativeVisible: false
+  normativeVisible: false,
+  teachingEditMode: false
 };
 
 const els = {
@@ -480,6 +481,32 @@ function bindEvents() {
     await openQuestionDirect(questionId, { fallbackHref: trigger.href });
   });
 
+  els.supportTeachingBody.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+    const action = button.dataset.action || '';
+    if (!action.startsWith('teaching-')) return;
+    event.preventDefault();
+
+    if (action === 'teaching-edit') {
+      state.teachingEditMode = true;
+      renderNormativeTeachingPanel(state.currentQuestion);
+      return;
+    }
+    if (action === 'teaching-cancel-edit') {
+      state.teachingEditMode = false;
+      renderNormativeTeachingPanel(state.currentQuestion);
+      return;
+    }
+    if (action === 'teaching-save-edit') {
+      await saveNormativeTeachingEdit();
+      return;
+    }
+    if (action === 'teaching-reset-edit') {
+      await resetNormativeTeachingEdit();
+    }
+  });
+
   els.closeSupport.addEventListener('click', () => closeSupportPanel());
   els.supportOverlay.addEventListener('click', () => closeSupportPanel());
   els.supportTabs.forEach((button) => {
@@ -717,9 +744,21 @@ function getInitialTargetId() {
 }
 
 function questionLink(questionId) {
+  const resolvedId = resolveQuestionId(questionId);
   const url = new URL(window.location.href);
-  url.searchParams.set('targetId', String(questionId));
+  if (resolvedId) {
+    url.searchParams.set('targetId', String(resolvedId));
+  } else {
+    url.searchParams.delete('targetId');
+  }
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function resolveQuestionId(value) {
+  if (value && typeof value === 'object') {
+    return Number(value.questionId || value.question_id || value.questionid || value.id || value.idQuestion || value.id_question || 0) || 0;
+  }
+  return Number(value || 0) || 0;
 }
 
 function updateQuestionUrl(questionId, options = {}) {
@@ -1205,6 +1244,11 @@ async function openQuestionDirect(questionId, options = {}) {
 }
 
 function renderQuestion(question, options = {}) {
+  const previousQuestionId = state.currentQuestion?.id || state.currentQuestion?.questionId || null;
+  const nextQuestionId = question.id || question.questionId || null;
+  if (previousQuestionId !== nextQuestionId) {
+    state.teachingEditMode = false;
+  }
   state.currentQuestion = question;
   const adaptiveReason = options.adaptiveTarget?.reasonText || question.adaptive?.reasonText || '';
   const meta = question.metadata;
@@ -1331,6 +1375,7 @@ function renderNormativeTeachingPanel(question) {
   els.teachingInfo.textContent = [
     teaching.status ? teachingStatusLabel(teaching.status) : '',
     teaching.currentAnswer ? `gabarito atual: ${teaching.currentAnswer}` : 'sem gabarito atual seguro',
+    teaching.studentEdit?.exists ? 'editado pelo aluno' : '',
     teaching.displayVersion || teaching.sourceVersion || ''
   ].filter(Boolean).join(' - ');
 
@@ -1343,8 +1388,23 @@ function renderNormativeTeachingPanel(question) {
     ? `${currentAnswerLabel(teaching.currentAnswer)}${confidence ? ` (${Math.round(confidence * 100)}% de confiança)` : ''}`
     : 'não definido com segurança';
 
+  if (state.teachingEditMode) {
+    els.supportTeachingBody.innerHTML = teachingEditFormMarkup(teaching, answer, policyMessage);
+    return;
+  }
+
   els.supportTeachingBody.innerHTML = `
     <div class="teaching-v3-card">
+      <div class="teaching-edit-toolbar">
+        <div>
+          <strong>Texto do aluno</strong>
+          <span>${teaching.studentEdit?.exists ? `editado em ${escapeHtml(formatFullDate(teaching.studentEdit.updatedAt))}` : 'sem edicao manual'}</span>
+        </div>
+        <div class="teaching-edit-actions">
+          <button class="button button-secondary" type="button" data-action="teaching-edit">Editar texto</button>
+          ${teaching.studentEdit?.exists ? '<button class="button button-ghost" type="button" data-action="teaching-reset-edit">Restaurar original</button>' : ''}
+        </div>
+      </div>
       ${policyMessage}
       ${teachingV3Section('Gabarito pela regra atual', answer, { highlight: true })}
       ${teachingLegalBasisMarkup(teaching)}
@@ -1355,6 +1415,112 @@ function renderNormativeTeachingPanel(question) {
       ${teachingTechnicalDetailsMarkup(teaching)}
     </div>
   `;
+}
+
+function teachingEditFormMarkup(teaching, answer, policyMessage) {
+  return `
+    <form class="teaching-edit-form" data-teaching-edit-form>
+      <div class="teaching-edit-toolbar">
+        <div>
+          <strong>Editar comentario atualizado</strong>
+          <span>Essas alteracoes ficam em camada propria do aluno.</span>
+        </div>
+        <div class="teaching-edit-actions">
+          <button class="button button-primary" type="button" data-action="teaching-save-edit">Salvar</button>
+          <button class="button button-secondary" type="button" data-action="teaching-cancel-edit">Cancelar</button>
+        </div>
+      </div>
+      ${policyMessage}
+      <section class="teaching-v3-section is-highlight">
+        <strong>Gabarito pela regra atual</strong>
+        <p>${escapeHtml(answer)}</p>
+      </section>
+      ${teachingEditTextarea('Fundamento aplicavel', 'legalBasisMd', teachingEditValue(teaching, 'legalBasisMd', teachingDisplayedLegalBasis(teaching)))}
+      ${teachingEditTextarea('Explicacao', 'shortExplanationMd', teachingEditValue(teaching, 'shortExplanationMd', teaching.shortExplanationMd || teaching.shortExplanation))}
+      ${teachingEditTextarea('Regra atual em resumo', 'currentRuleSummaryMd', teachingEditValue(teaching, 'currentRuleSummaryMd', teaching.currentRuleSummaryMd || teaching.currentRuleSummary))}
+      ${teachingEditTextarea('Complementacao de professor', 'professorComplementMd', teachingEditValue(teaching, 'professorComplementMd', teaching.professorComplementMd))}
+      ${teachingEditTextarea('Conclusao para estudo', 'studyConclusionMd', teachingEditValue(teaching, 'studyConclusionMd', teaching.studyConclusionMd))}
+    </form>
+  `;
+}
+
+function teachingEditTextarea(label, name, value) {
+  return `
+    <label class="teaching-edit-field">
+      <span>${escapeHtml(label)}</span>
+      <textarea name="${escapeAttr(name)}" rows="7">${escapeHtml(value)}</textarea>
+    </label>
+  `;
+}
+
+function teachingEditValue(teaching, key, fallback) {
+  const edit = teaching.studentEdit || {};
+  if (edit.exists && Object.prototype.hasOwnProperty.call(edit, key)) {
+    return edit[key] ?? '';
+  }
+  return fallback || '';
+}
+
+function teachingDisplayedLegalBasis(teaching) {
+  return teaching.legalBasis || teaching.legalArticleReference || teaching.mainLegalBasis || '';
+}
+
+async function saveNormativeTeachingEdit() {
+  if (!state.selectedId) return;
+  const form = els.supportTeachingBody.querySelector('[data-teaching-edit-form]');
+  if (!form) return;
+
+  const data = new FormData(form);
+  setTeachingEditButtonsDisabled(true);
+  try {
+    const result = await api(`/api/questions/${state.selectedId}/normative-teaching-edit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        legalBasisMd: data.get('legalBasisMd') || '',
+        shortExplanationMd: data.get('shortExplanationMd') || '',
+        currentRuleSummaryMd: data.get('currentRuleSummaryMd') || '',
+        professorComplementMd: data.get('professorComplementMd') || '',
+        studyConclusionMd: data.get('studyConclusionMd') || ''
+      })
+    });
+    if (result.error) throw new Error(result.error);
+    state.currentQuestion.normativeTeachingComment = result.normativeTeachingComment;
+    state.teachingEditMode = false;
+    renderNormativeTeachingPanel(state.currentQuestion);
+  } catch (error) {
+    els.teachingInfo.textContent = `erro ao salvar: ${error.message}`;
+    setTeachingEditButtonsDisabled(false);
+  }
+}
+
+async function resetNormativeTeachingEdit() {
+  if (!state.selectedId) return;
+  if (!window.confirm('Restaurar o comentario atualizado original desta questao?')) return;
+
+  setTeachingEditButtonsDisabled(true);
+  try {
+    const result = await api(`/api/questions/${state.selectedId}/normative-teaching-edit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reset: true })
+    });
+    if (result.error) throw new Error(result.error);
+    state.currentQuestion.normativeTeachingComment = result.normativeTeachingComment;
+    state.teachingEditMode = false;
+    renderNormativeTeachingPanel(state.currentQuestion);
+  } catch (error) {
+    els.teachingInfo.textContent = `erro ao restaurar: ${error.message}`;
+    setTeachingEditButtonsDisabled(false);
+  }
+}
+
+function setTeachingEditButtonsDisabled(disabled) {
+  els.supportTeachingBody
+    .querySelectorAll('[data-action="teaching-save-edit"], [data-action="teaching-reset-edit"]')
+    .forEach((button) => {
+      button.disabled = disabled;
+    });
 }
 
 function teachingV3Section(title, markdown, options = {}) {
@@ -2200,13 +2366,16 @@ function similarMemberMarkup(member) {
   const role = member.role === 'representative' ? 'representante' : 'variação';
   const mastery = Math.round(Number(member.mastery_score || 0) * 100);
   const last = member.last_result === 1 ? 'última correta' : member.last_result === 0 ? 'última errada' : 'não resolvida';
-  const href = questionLink(member.questionId);
+  const questionId = resolveQuestionId(member);
+  const href = questionId ? questionLink(questionId) : '#';
   return `
     <div class="similar-item">
       <strong>${escapeHtml(role)} • ${escapeHtml(member.materia || '')}</strong>
       <span>${escapeHtml(member.assunto || '')}</span>
       <span>Domínio ${mastery}% • ${escapeHtml(last)}${member.similarity ? ` • similaridade ${Math.round(Number(member.similarity || 0) * 100)}%` : ''}</span>
-      <a class="button button-secondary" href="${escapeAttr(href)}" data-question-id="${escapeAttr(member.questionId)}">Abrir</a>
+      ${questionId
+        ? `<a class="button button-secondary" href="${escapeAttr(href)}" data-question-id="${escapeAttr(questionId)}">Abrir</a>`
+        : '<span class="empty">ID indisponivel</span>'}
     </div>
   `;
 }
@@ -2365,6 +2534,19 @@ function formatDate(value) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
+function formatFullDate(value) {
+  const date = new Date(String(value || '').replace(' ', 'T'));
+  if (Number.isNaN(date.getTime())) {
+    return 'sem data';
+  }
+  return date.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 function buildSessionId() {
   const now = new Date();
   const stamp = now.toISOString().slice(0, 19).replace(/[-:T]/g, '');
@@ -2442,7 +2624,8 @@ function coverageRowMarkup(row) {
 
 function normativeRowMarkup(row) {
   const tone = normativeRowTone(row);
-  const href = questionLink(row.questionId);
+  const questionId = resolveQuestionId(row);
+  const href = questionId ? questionLink(questionId) : '#';
   const details = [
     row.banca || '',
     row.ano || '',
@@ -2464,7 +2647,9 @@ function normativeRowMarkup(row) {
       <span>${escapeHtml(row.teachingStudyRecommendation ? teachingRecommendationLabel(row.teachingStudyRecommendation) : row.recomendacao || '-')}</span>
       <span>${escapeHtml(row.teachingSafetyLevel ? safetyLabel(row.teachingSafetyLevel) : row.nivelSeguranca || '-')}</span>
       <span>${escapeHtml(details)}</span>
-      <a class="button button-secondary" href="${escapeAttr(href)}" data-question-id="${escapeAttr(row.questionId)}">Abrir</a>
+      ${questionId
+        ? `<a class="button button-secondary" href="${escapeAttr(href)}" data-question-id="${escapeAttr(questionId)}">Abrir</a>`
+        : '<span class="empty">ID indisponivel</span>'}
     </div>
   `;
 }

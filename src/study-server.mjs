@@ -57,6 +57,7 @@ if (activeDbClient === 'sqlite') {
 }
 initQuestionStudyStatusSchema(db);
 initTheoryPagesSchema(db);
+initNormativeTeachingStudentEditsSchema(db);
 
 export async function handleStudyRequest(request, response) {
   try {
@@ -259,6 +260,13 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const normativeTeachingEditMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/normative-teaching-edit$/);
+  if (normativeTeachingEditMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, saveNormativeTeachingStudentEdit(Number(normativeTeachingEditMatch[1]), body));
+    return;
+  }
+
   if (url.pathname === '/api/exam-simulations/start' && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, startExamSimulation(body));
@@ -455,6 +463,10 @@ function hasNormativeTeachingTable() {
 
 function hasQuestionStudyStatusTable() {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_study_status'").get());
+}
+
+function hasNormativeTeachingStudentEditsTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_normative_teaching_student_edits'").get());
 }
 
 function hasTheoryPagesTable() {
@@ -2359,7 +2371,27 @@ function getClusterMembers(clusterId, limit = 100, options = {}) {
       ${excludeSql}
     ORDER BY CASE qcm.role WHEN 'representative' THEN 0 ELSE 1 END, qcm.similarity DESC, q.id_question
     LIMIT ?
-  `).all(...params);
+  `).all(...params).map(serializeClusterMember);
+}
+
+function serializeClusterMember(row) {
+  return {
+    questionId: Number(row.questionId || row.questionid || row.question_id || row.id || 0) || 0,
+    materia: row.materia || '',
+    assunto: row.assunto || '',
+    banca: row.banca || '',
+    ano: row.ano || '',
+    anulada: row.anulada || 0,
+    desatualizada: row.desatualizada || 0,
+    role: row.role || '',
+    similarity: Number(row.similarity || 0),
+    representative_score: Number(row.representative_score || 0),
+    reason: row.reason || '',
+    mastery_score: Number(row.mastery_score || 0),
+    next_due_at: row.next_due_at || '',
+    answered: row.answered || 0,
+    last_result: row.last_result
+  };
 }
 
 function serializeCluster(cluster) {
@@ -3261,6 +3293,14 @@ function getNormativeTeachingComment(questionId) {
     return { exists: false };
   }
 
+  const studentEdit = getNormativeTeachingStudentEdit(questionId);
+  const hasStudentEdit = Boolean(studentEdit.exists);
+  const legalBasis = pickStudentEditValue(studentEdit, 'legalBasisMd', row.legal_article_reference || row.main_legal_basis || row.legal_basis || '');
+  const shortExplanationMd = pickStudentEditValue(studentEdit, 'shortExplanationMd', row.short_explanation_md || '');
+  const currentRuleSummaryMd = pickStudentEditValue(studentEdit, 'currentRuleSummaryMd', row.current_rule_summary_md || '');
+  const professorComplementMd = pickStudentEditValue(studentEdit, 'professorComplementMd', row.professor_complement_md || '');
+  const studyConclusionMd = pickStudentEditValue(studentEdit, 'studyConclusionMd', row.study_conclusion_md || '');
+
   return {
     exists: true,
     questionId: row.question_id,
@@ -3289,20 +3329,20 @@ function getNormativeTeachingComment(questionId) {
     recommendation: row.recommendation || '',
     title: row.title || '',
     adaptedStatement: '',
-    shortExplanation: row.short_explanation_md || row.title || '',
-    shortExplanationMd: row.short_explanation_md || '',
+    shortExplanation: hasStudentEdit ? shortExplanationMd : (shortExplanationMd || row.title || ''),
+    shortExplanationMd,
     teachingCommentMd: row.teaching_comment_md || '',
     teachingCommentHtml: sanitizeStoredHtml(row.teaching_comment_html),
-    legalBasis: row.legal_article_reference || row.main_legal_basis || row.legal_basis || '',
-    mainLegalBasis: row.main_legal_basis || '',
-    legalArticleReference: row.legal_article_reference || '',
-    legalArticleExcerpt: row.legal_article_excerpt || '',
+    legalBasis,
+    mainLegalBasis: hasStudentEdit ? '' : (row.main_legal_basis || ''),
+    legalArticleReference: hasStudentEdit ? '' : (row.legal_article_reference || ''),
+    legalArticleExcerpt: hasStudentEdit ? '' : (row.legal_article_excerpt || ''),
     articleExactness: row.article_exactness || '',
-    articleExcerptCanQuote: Boolean(row.legal_article_excerpt && ['exact', 'topic_safe'].includes(row.article_exactness)),
-    currentRuleSummary: row.current_rule_summary_md || row.current_rule_summary || '',
-    currentRuleSummaryMd: row.current_rule_summary_md || '',
-    professorComplementMd: row.professor_complement_md || '',
-    studyConclusionMd: row.study_conclusion_md || '',
+    articleExcerptCanQuote: !hasStudentEdit && Boolean(row.legal_article_excerpt && ['exact', 'topic_safe'].includes(row.article_exactness)),
+    currentRuleSummary: hasStudentEdit ? currentRuleSummaryMd : (currentRuleSummaryMd || row.current_rule_summary || ''),
+    currentRuleSummaryMd,
+    professorComplementMd,
+    studyConclusionMd,
     whyOutdated: row.why_outdated || '',
     literalStatementWarning: row.literal_statement_note || '',
     literalStatementNote: row.literal_statement_note || '',
@@ -3313,11 +3353,65 @@ function getNormativeTeachingComment(questionId) {
     reviewedBy: row.reviewed_by || '',
     reviewedAt: row.reviewed_at || '',
     reviewerNotes: row.reviewer_notes || '',
+    studentEdit: {
+      exists: hasStudentEdit,
+      legalBasisMd: studentEdit.legalBasisMd || '',
+      shortExplanationMd: studentEdit.shortExplanationMd || '',
+      currentRuleSummaryMd: studentEdit.currentRuleSummaryMd || '',
+      professorComplementMd: studentEdit.professorComplementMd || '',
+      studyConclusionMd: studentEdit.studyConclusionMd || '',
+      editedBy: studentEdit.editedBy || '',
+      updatedAt: studentEdit.updatedAt || ''
+    },
     isSafeCurrentRule: row.status === 'ready'
       && row.answer_policy === 'current_law_probable'
       && Boolean(row.current_answer)
       && !['baixo', 'low', 'manual'].includes(normalizePlain(row.safety_level))
   };
+}
+
+function getNormativeTeachingStudentEdit(questionId) {
+  if (!hasNormativeTeachingStudentEditsTable()) {
+    return { exists: false };
+  }
+
+  const row = db.prepare(`
+    SELECT
+      question_id,
+      legal_basis_md,
+      short_explanation_md,
+      current_rule_summary_md,
+      professor_complement_md,
+      study_conclusion_md,
+      edited_by,
+      updated_at
+    FROM question_normative_teaching_student_edits
+    WHERE question_id = ?
+    LIMIT 1
+  `).get(questionId);
+
+  if (!row) {
+    return { exists: false };
+  }
+
+  return {
+    exists: true,
+    questionId: row.question_id,
+    legalBasisMd: row.legal_basis_md ?? '',
+    shortExplanationMd: row.short_explanation_md ?? '',
+    currentRuleSummaryMd: row.current_rule_summary_md ?? '',
+    professorComplementMd: row.professor_complement_md ?? '',
+    studyConclusionMd: row.study_conclusion_md ?? '',
+    editedBy: row.edited_by || '',
+    updatedAt: row.updated_at || ''
+  };
+}
+
+function pickStudentEditValue(studentEdit, fieldName, fallback) {
+  if (studentEdit?.exists && Object.prototype.hasOwnProperty.call(studentEdit, fieldName)) {
+    return studentEdit[fieldName] ?? '';
+  }
+  return fallback || '';
 }
 
 function saveNormativeReview(questionId, body) {
@@ -3391,6 +3485,53 @@ function saveNormativeTeachingReview(questionId, body) {
     String(body?.reviewedBy || 'local-user').slice(0, 120),
     String(body?.reviewerNotes || '').slice(0, 4000),
     questionId
+  );
+
+  return { ok: true, normativeTeachingComment: getNormativeTeachingComment(questionId) };
+}
+
+function saveNormativeTeachingStudentEdit(questionId, body) {
+  if (!hasNormativeTeachingTable()) {
+    return { error: 'Tabela de comentarios atualizados ainda nao existe' };
+  }
+  if (!db.prepare('SELECT 1 FROM question_normative_teaching_comments WHERE question_id = ?').get(questionId)) {
+    return { error: 'Comentario atualizado nao encontrado para esta questao' };
+  }
+
+  if (body?.reset) {
+    db.prepare('DELETE FROM question_normative_teaching_student_edits WHERE question_id = ?').run(questionId);
+    return { ok: true, normativeTeachingComment: getNormativeTeachingComment(questionId) };
+  }
+
+  db.prepare(`
+    INSERT INTO question_normative_teaching_student_edits (
+      question_id,
+      legal_basis_md,
+      short_explanation_md,
+      current_rule_summary_md,
+      professor_complement_md,
+      study_conclusion_md,
+      edited_by,
+      updated_at,
+      created_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(question_id) DO UPDATE SET
+      legal_basis_md = excluded.legal_basis_md,
+      short_explanation_md = excluded.short_explanation_md,
+      current_rule_summary_md = excluded.current_rule_summary_md,
+      professor_complement_md = excluded.professor_complement_md,
+      study_conclusion_md = excluded.study_conclusion_md,
+      edited_by = excluded.edited_by,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(
+    questionId,
+    limitText(body?.legalBasisMd, 12000),
+    limitText(body?.shortExplanationMd, 24000),
+    limitText(body?.currentRuleSummaryMd, 24000),
+    limitText(body?.professorComplementMd, 24000),
+    limitText(body?.studyConclusionMd, 24000),
+    String(body?.editedBy || 'student').slice(0, 120)
   );
 
   return { ok: true, normativeTeachingComment: getNormativeTeachingComment(questionId) };
@@ -3994,6 +4135,25 @@ function initTheoryPagesSchema(database) {
   `);
 }
 
+function initNormativeTeachingStudentEditsSchema(database) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS question_normative_teaching_student_edits (
+      question_id BIGINT PRIMARY KEY,
+      legal_basis_md TEXT,
+      short_explanation_md TEXT,
+      current_rule_summary_md TEXT,
+      professor_complement_md TEXT,
+      study_conclusion_md TEXT,
+      edited_by TEXT DEFAULT 'student',
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_qntc_student_edits_updated
+      ON question_normative_teaching_student_edits(updated_at);
+  `);
+}
+
 function initStudySchema(database) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS study_answers (
@@ -4519,6 +4679,10 @@ function normalizeAnswer(value) {
 function validChoice(value, allowed, fallback) {
   const text = String(value || '').trim();
   return allowed.includes(text) ? text : fallback;
+}
+
+function limitText(value, maxLength) {
+  return String(value ?? '').slice(0, maxLength);
 }
 
 function resolveProfileId(requested) {
