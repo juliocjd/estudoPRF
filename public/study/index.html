@@ -16,7 +16,11 @@
         <section class="stats" id="stats" aria-label="Resumo do banco"></section>
       </header>
 
-      <section class="filter-bar" aria-label="Filtros">
+      <button id="mobileFilterToggle" class="button button-secondary mobile-filter-toggle" type="button" aria-expanded="false" aria-controls="filterBar">
+        Busca e filtros
+      </button>
+
+      <section class="filter-bar" id="filterBar" aria-label="Filtros">
         <label class="field field-search">
           <span>Busca</span>
           <input id="searchInput" type="search" placeholder="Texto, assunto ou ID">
@@ -113,7 +117,7 @@
               <button id="nextPage" class="button button-secondary icon-button" type="button" aria-label="Próxima questão">&gt;</button>
             </div>
 
-            <div class="dropdown" data-dropdown>
+            <div class="dropdown mode-dropdown" data-dropdown>
               <button id="modeMenuButton" class="button button-secondary" type="button" aria-expanded="false" title="Escolher outro modo de estudo">
                 Mais modos
               </button>
@@ -126,7 +130,7 @@
               </div>
             </div>
 
-            <div class="dropdown" data-dropdown>
+            <div class="dropdown reports-dropdown" data-dropdown>
               <button id="reportsMenuButton" class="button button-ghost" type="button" aria-expanded="false">
                 Relatórios
               </button>
@@ -137,12 +141,12 @@
               </div>
             </div>
 
-            <div class="dropdown" data-dropdown>
+            <div class="dropdown support-dropdown" data-dropdown>
               <button id="supportMenuButton" class="button button-ghost" type="button" aria-expanded="false">
                 Apoio
               </button>
               <div class="dropdown-menu" role="menu" hidden>
-                <button id="openTeaching" class="menu-item" type="button" disabled>Comentário atualizado</button>
+                <button id="openTeaching" class="menu-item" type="button" disabled>Resposta pela legislação atual</button>
                 <button id="toggleNormativeSupport" class="menu-item" type="button" disabled>Atualização normativa</button>
                 <button id="toggleComment" class="menu-item" type="button" disabled>Explicação histórica</button>
                 <button id="openTheory" class="menu-item" type="button" disabled>Teoria</button>
@@ -224,28 +228,30 @@
               <button id="similarQuestions" class="button button-secondary" type="button" disabled>Ver semelhantes</button>
             </div>
 
-            <div class="study-status-control" id="studyStatusControl">
-              <div class="study-status-copy">
+            <details class="study-status-control" id="studyStatusControl" open>
+              <summary class="study-status-summary">
                 <strong>Fila de estudo</strong>
                 <span id="studyStatusText">Ativa</span>
+              </summary>
+              <div class="study-status-menu">
+                <label class="field compact-field">
+                  <span>Motivo</span>
+                  <select id="studyStatusReason" disabled>
+                    <option value="outdated_no_value">Desatualizada sem aproveitamento</option>
+                    <option value="obsolete_norm">Norma antiga</option>
+                    <option value="bad_statement">Enunciado ruim</option>
+                    <option value="duplicate">Duplicada</option>
+                    <option value="manual_review">Revisar depois</option>
+                    <option value="other">Outro</option>
+                  </select>
+                </label>
+                <div class="study-status-buttons">
+                  <button id="excludeFromStudy" class="button button-danger" type="button" disabled>Nao estudar</button>
+                  <button id="reviewLater" class="button button-secondary" type="button" disabled>Revisar depois</button>
+                  <button id="restoreToStudy" class="button button-secondary" type="button" hidden>Voltar ao estudo</button>
+                </div>
               </div>
-              <label class="field compact-field">
-                <span>Motivo</span>
-                <select id="studyStatusReason" disabled>
-                  <option value="outdated_no_value">Desatualizada sem aproveitamento</option>
-                  <option value="obsolete_norm">Norma antiga</option>
-                  <option value="bad_statement">Enunciado ruim</option>
-                  <option value="duplicate">Duplicada</option>
-                  <option value="manual_review">Revisar depois</option>
-                  <option value="other">Outro</option>
-                </select>
-              </label>
-              <div class="study-status-buttons">
-                <button id="excludeFromStudy" class="button button-danger" type="button" disabled>Nao estudar</button>
-                <button id="reviewLater" class="button button-secondary" type="button" disabled>Revisar depois</button>
-                <button id="restoreToStudy" class="button button-secondary" type="button" hidden>Voltar ao estudo</button>
-              </div>
-            </div>
+            </details>
           </form>
         </section>
 
@@ -334,7 +340,7 @@
       </header>
 
       <nav class="support-tabs" aria-label="Abas de apoio">
-        <button id="supportTabTeaching" class="support-tab" type="button" data-support-tab="teaching">Comentário atualizado</button>
+        <button id="supportTabTeaching" class="support-tab" type="button" data-support-tab="teaching">Resposta atual</button>
         <button id="supportTabNormative" class="support-tab" type="button" data-support-tab="normative">Atualização normativa</button>
         <button id="supportTabComment" class="support-tab is-active" type="button" data-support-tab="comment">Explicação histórica</button>
         <button id="supportTabTheory" class="support-tab" type="button" data-support-tab="theory">Teoria</button>
@@ -344,7 +350,7 @@
 
       <article class="support-tab-panel" id="supportTeachingPanel" hidden>
         <div class="comment-head">
-          <strong>Comentário atualizado</strong>
+          <strong>Resposta pela legislação atual</strong>
           <span id="teachingInfo"></span>
         </div>
         <div id="supportTeachingBody" class="support-body"></div>

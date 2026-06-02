@@ -45,6 +45,8 @@ const state = {
 
 const els = {
   stats: document.querySelector('#stats'),
+  mobileFilterToggle: document.querySelector('#mobileFilterToggle'),
+  filterBar: document.querySelector('#filterBar'),
   advancedFilterToggle: document.querySelector('#advancedFilterToggle'),
   advancedFilters: document.querySelector('#advancedFilters'),
   activeFiltersLabel: document.querySelector('#activeFiltersLabel'),
@@ -158,6 +160,7 @@ const els = {
 };
 
 let searchTimer = null;
+const mobileLayoutQuery = window.matchMedia('(max-width: 760px)');
 
 boot();
 
@@ -179,7 +182,15 @@ async function boot() {
 
 function bindEvents() {
   bindDropdowns();
+  syncMobileStudyStatusDisclosure();
+  mobileLayoutQuery.addEventListener?.('change', syncMobileStudyStatusDisclosure);
   updateAdvancedFiltersSummary();
+
+  els.mobileFilterToggle?.addEventListener('click', () => {
+    const willOpen = !els.filterBar.classList.contains('is-mobile-open');
+    els.filterBar.classList.toggle('is-mobile-open', willOpen);
+    els.mobileFilterToggle.setAttribute('aria-expanded', String(willOpen));
+  });
 
   els.advancedFilterToggle.addEventListener('click', () => {
     const willOpen = els.advancedFilters.hidden;
@@ -594,6 +605,15 @@ function bindEvents() {
   });
 }
 
+function syncMobileStudyStatusDisclosure() {
+  if (!els.studyStatusControl) return;
+  if (mobileLayoutQuery.matches) {
+    els.studyStatusControl.removeAttribute('open');
+  } else {
+    els.studyStatusControl.setAttribute('open', '');
+  }
+}
+
 function bindDropdowns() {
   document.querySelectorAll('[data-dropdown]').forEach((dropdown) => {
     const trigger = dropdown.querySelector('button[aria-expanded]');
@@ -779,7 +799,13 @@ async function saveStudyState(payload) {
 
 async function loadStats() {
   const stats = await api('/api/stats');
+  const currentLaw = stats.currentLawAnswers || {};
+  const currentLawSummary = currentLaw.exists
+    ? `${Number(currentLaw.verified || 0).toLocaleString('pt-BR')} / ${Number(currentLaw.total || 0).toLocaleString('pt-BR')}`
+    : 0;
   els.stats.innerHTML = [
+    statMarkup(currentLawSummary, 'respostas lei atual'),
+    statMarkup(currentLaw.needsAudit || 0, 'pendentes auditoria'),
     statMarkup(stats.questions, 'questões'),
     statMarkup(stats.comments, 'comentários do professor'),
     statMarkup(stats.aiLocalComments ?? stats.aiComments, 'comentários IA locais'),
@@ -1283,17 +1309,19 @@ function renderQuestion(question, options = {}) {
     question.comment.html
       || question.comment.text
       || question.normativeUpdate?.exists
+      || question.currentLawAnswer?.exists
       || question.normativeTeachingComment?.exists
       || question.metadata?.desatualizada
   );
   const hasTeachingSupport = Boolean(
-    question.normativeTeachingComment?.exists
+    question.currentLawAnswer?.exists
+      || question.normativeTeachingComment?.exists
       || question.normativeUpdate?.exists
       || question.metadata?.desatualizada
   );
   els.openTeaching.disabled = !hasTeachingSupport;
-  els.openTeaching.textContent = 'Comentário atualizado';
   els.toggleComment.disabled = !hasSupportExplanation;
+  els.openTeaching.textContent = 'Resposta pela legislacao atual';
   els.toggleComment.textContent = 'Explicação histórica';
   if (els.supportTabTeaching) {
     els.supportTabTeaching.disabled = !hasTeachingSupport;
@@ -1311,7 +1339,12 @@ function renderQuestion(question, options = {}) {
     question.comment.professor || '',
     question.comment.aiModel || ''
   ].filter(Boolean).join(' - ');
-  els.commentInfo.textContent = info;
+  els.commentInfo.textContent = [
+    question.comment.sourceType === 'ai' ? 'gerado por IA' : '',
+    question.comment.studyAnswer ? `Gabarito de estudo: ${question.comment.studyAnswer}` : '',
+    question.comment.professor || '',
+    question.comment.aiModel || ''
+  ].filter(Boolean).join(' - ') || info;
   els.commentBody.innerHTML = question.comment.html || `<p class="empty">${escapeHtml(question.comment.text || 'Comentário ainda não coletado.')}</p>`;
   renderNormativeAlert(question);
   renderNormativeTeachingPanel(question);
@@ -1329,6 +1362,33 @@ function renderQuestion(question, options = {}) {
 
 function renderNormativeAlert(question) {
   const update = question.normativeUpdate;
+  const currentLaw = question.currentLawAnswer;
+  if (question.metadata?.desatualizada) {
+    const status = currentLaw?.status || currentLaw?.currentLawStatus || 'needs_audit';
+    const canAutoScore = currentLaw?.canAutoScore ?? currentLaw?.canAutoScoreCurrentLaw;
+    const tone = status === 'discard'
+      ? 'is-danger'
+      : status === 'needs_audit' || status === 'no_valid_alternative'
+        ? 'is-warning'
+        : 'is-info';
+    const detail = status === 'verified' && canAutoScore
+      ? `Gabarito atual: ${currentAnswerLabel(currentLaw.currentAnswer)}`
+      : status === 'no_valid_alternative'
+        ? 'Sem alternativa compativel pela legislacao atual.'
+        : status === 'discard'
+          ? 'Fora da fila principal pela legislacao atual.'
+          : 'Precisa auditoria; nao pontuar pela legislacao atual.';
+    els.normativeAlert.className = `normative-alert ${tone}`;
+    els.normativeAlert.innerHTML = `
+      <div>
+        <strong>Resposta pela legislacao atual</strong>
+        <span>${escapeHtml(detail)}</span>
+      </div>
+      <button class="button button-primary" type="button" data-action="show-teaching">Ver resposta atual</button>
+    `;
+    els.normativeAlert.hidden = false;
+    return;
+  }
   if (!update?.exists && !question.metadata?.desatualizada) {
     els.normativeAlert.hidden = true;
     els.normativeAlert.innerHTML = '';
@@ -1358,6 +1418,11 @@ function renderNormativeAlert(question) {
 }
 
 function renderNormativeTeachingPanel(question) {
+  if (question.currentLawAnswer?.exists || question.metadata?.desatualizada) {
+    renderCurrentLawAnswerPanel(question);
+    return;
+  }
+
   const teaching = question.normativeTeachingComment;
   if (!teaching?.exists) {
     els.teachingInfo.textContent = question.metadata?.desatualizada ? 'ainda não gerado' : 'indisponível';
@@ -1415,6 +1480,55 @@ function renderNormativeTeachingPanel(question) {
       ${teachingTechnicalDetailsMarkup(teaching)}
     </div>
   `;
+}
+
+function renderCurrentLawAnswerPanel(question) {
+  const answer = question.currentLawAnswer || { exists: false, currentLawStatus: 'needs_audit' };
+  const status = answer.status || answer.currentLawStatus || 'needs_audit';
+  const canAutoScore = answer.canAutoScore ?? answer.canAutoScoreCurrentLaw;
+  const canScore = Boolean(canAutoScore && answer.currentAnswer && status === 'verified');
+  const currentAnswer = canScore
+    ? currentAnswerLabel(answer.currentAnswer)
+    : status === 'no_valid_alternative'
+      ? 'sem alternativa compativel pela legislacao atual'
+      : 'nao definido para pontuacao automatica';
+  const why = answer.teacherExplanation
+    || (status === 'no_valid_alternative'
+      ? 'As alternativas disponiveis nao ficam compativeis com a regra vigente.'
+      : status === 'discard'
+        ? 'Esta questao foi retirada da fila principal de estudo pela legislacao atual.'
+        : 'Esta questao ainda precisa de auditoria antes de ser corrigida pela legislacao atual.');
+  const foundation = [answer.legalBasis, answer.articleReference, answer.articleExcerpt]
+    .filter(Boolean)
+    .join('\n\n');
+  const conclusion = answer.studyConclusion
+    || (canScore
+      ? 'Use este gabarito apenas para estudo pela legislacao atual.'
+      : 'Nao use o gabarito historico para corrigir esta questao no modo de legislacao atual.');
+
+  els.teachingInfo.textContent = currentLawStatusLabel(status);
+  const conflictWarning = answer.hasCurrentLawConflict || question.normativeTeachingComment?.hasCurrentLawConflict
+    ? '<p class="normative-warning is-warning">Texto atualizado antigo divergente foi ignorado. A correcao usa o gabarito verificado pela legislacao atual.</p>'
+    : '';
+  els.supportTeachingBody.innerHTML = `
+    <div class="teaching-v3-card">
+      ${conflictWarning}
+      ${teachingV3Section('Gabarito pela legislacao atual', currentAnswer, { highlight: true })}
+      ${teachingV3Section('Por que?', why)}
+      ${teachingV3Section('Fundamento', foundation)}
+      ${teachingV3Section('Regra em resumo', answer.ruleSummary || '')}
+      ${teachingV3Section('Conclusao para estudo', conclusion)}
+    </div>
+  `;
+}
+
+function currentLawStatusLabel(status) {
+  return {
+    verified: 'verificada',
+    needs_audit: 'precisa auditoria',
+    no_valid_alternative: 'sem alternativa compativel',
+    discard: 'fora da fila principal'
+  }[status] || 'precisa auditoria';
 }
 
 function teachingEditFormMarkup(teaching, answer, policyMessage) {
@@ -1858,6 +1972,12 @@ function applyAnswerResultToCurrentQuestion(result) {
   }
 
   state.currentQuestion.answerStats = stats;
+  if (result.currentLawAnswer) {
+    state.currentQuestion.currentLawAnswer = result.currentLawAnswer;
+  }
+  if (result.normativeTeachingComment) {
+    state.currentQuestion.normativeTeachingComment = result.normativeTeachingComment;
+  }
   state.currentQuestion.lastAnswer = {
     answer_letter: result.answer || '',
     answer_text: result.answerText || '',
@@ -1930,6 +2050,10 @@ function renderQuestionBadges(question) {
   if (meta?.desatualizada) {
     badges.push('<span class="question-badge is-outdated">Desatualizada</span>');
   }
+  if (question?.currentLawAnswer?.exists) {
+    const status = question.currentLawAnswer.status || question.currentLawAnswer.currentLawStatus;
+    badges.push(`<span class="question-badge is-normative">Lei atual: ${escapeHtml(currentLawStatusLabel(status))}</span>`);
+  }
   if (question?.normativeUpdate?.exists) {
     const update = question.normativeUpdate;
     const cls = update.isDiscardable ? 'is-canceled' : update.isManualReview ? 'is-outdated' : 'is-normative';
@@ -1947,7 +2071,7 @@ function renderQuestionBadges(question) {
   if (question?.comment?.html || question?.comment?.text) {
     badges.push('<span class="question-badge is-commented">Comentada</span>');
   }
-  if (!question?.comment?.extractedAnswer) {
+  if (!question?.comment?.studyAnswer) {
     badges.push('<span class="question-badge is-no-answer">Sem gabarito</span>');
   }
   if (question?.lastAnswer?.is_correct === 0) {
@@ -2252,6 +2376,19 @@ function renderAnswerResultBox() {
 }
 
 function normativeAnswerWarning(result) {
+  const currentLaw = result.currentLawAnswer;
+  if (result.correctionMode === 'current_law' || currentLaw?.exists) {
+    const reason = result.nonScoringReason || '';
+    const text = reason === 'no_valid_alternative'
+      ? 'Sem alternativa compativel pela legislacao atual. Tentativa registrada sem pontuacao.'
+      : reason === 'discard'
+        ? 'Questao fora da fila principal pela legislacao atual. Tentativa registrada sem pontuacao.'
+        : reason === 'needs_audit'
+          ? 'Questao pendente de auditoria. O gabarito historico nao foi usado para pontuar.'
+          : `Correcao feita pela legislacao atual. Gabarito atual: ${currentAnswerLabel(result.expectedAnswer || currentLaw?.currentAnswer || '')}.`;
+    return `<span class="answer-result-note">${escapeHtml(text)}</span>`;
+  }
+
   const teaching = result.normativeTeachingComment;
   if (teaching?.exists) {
     const current = teaching.currentAnswer || 'não definido';
@@ -2289,11 +2426,13 @@ function expectedAlternativeLetter(expectedAnswer) {
 }
 
 function showCommentPanel() {
-  const preferredTab = state.currentQuestion?.normativeTeachingComment?.exists
+  const preferredTab = state.currentQuestion?.currentLawAnswer?.exists || state.currentQuestion?.metadata?.desatualizada
     ? 'teaching'
-    : state.currentQuestion?.normativeUpdate?.exists
-      ? 'normative'
-      : 'comment';
+    : state.currentQuestion?.normativeTeachingComment?.exists
+      ? 'teaching'
+      : state.currentQuestion?.normativeUpdate?.exists
+        ? 'normative'
+        : 'comment';
   openSupportPanel(preferredTab);
   state.sawComment = true;
   recordQuestionEvent('opened_comment');
@@ -2406,6 +2545,7 @@ function closeSupportPanel() {
 
 function renderSupportVisibility() {
   if (state.supportTab === 'teaching'
+    && !state.currentQuestion?.currentLawAnswer?.exists
     && !state.currentQuestion?.normativeTeachingComment?.exists
     && !state.currentQuestion?.normativeUpdate?.exists
     && !state.currentQuestion?.metadata?.desatualizada) {
@@ -2434,6 +2574,10 @@ function renderSupportVisibility() {
   const [title, subtitle] = titles[state.supportTab] || titles.comment;
   els.supportTitle.textContent = title;
   els.supportSubtitle.textContent = subtitle;
+  if (state.supportTab === 'teaching') {
+    els.supportTitle.textContent = 'Resposta pela legislacao atual';
+    els.supportSubtitle.textContent = 'Gabarito atual, fundamento e conclusao de estudo';
+  }
 }
 
 function renderSubjectsVisibility() {
@@ -2461,7 +2605,10 @@ function renderPager() {
 }
 
 function statMarkup(value, label) {
-  return `<div class="stat"><strong>${Number(value || 0).toLocaleString('pt-BR')}</strong><span>${label}</span></div>`;
+  const displayValue = typeof value === 'number'
+    ? value.toLocaleString('pt-BR')
+    : String(value || 0);
+  return `<div class="stat"><strong>${escapeHtml(displayValue)}</strong><span>${label}</span></div>`;
 }
 
 function recommendationLabel(value) {

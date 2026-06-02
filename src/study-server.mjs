@@ -361,9 +361,10 @@ function getStats() {
       SELECT COUNT(*) AS n
       FROM questions q
       LEFT JOIN comments c ON c.question_id = q.id_question
-      WHERE ${bestAnswerSql('q', 'c')} != ''
+      WHERE ${currentLawStudyAnswerSql('q', 'c')} != ''
     `).get().n,
     normativeUpdates: getNormativeUpdateCount(),
+    currentLawAnswers: getCurrentLawAnswerStats(),
     normativeTeachingComments: getNormativeTeachingReadyCount(),
     normativeTeachingTotal: getNormativeTeachingCount(),
     normativeTeachingPending: getNormativeTeachingManualReviewCount(),
@@ -374,7 +375,7 @@ function getStats() {
       SELECT COUNT(*) AS n
       FROM questions q
       LEFT JOIN comments c ON c.question_id = q.id_question
-      WHERE ${bestAnswerSql('q', 'c')} = ''
+      WHERE ${currentLawStudyAnswerSql('q', 'c')} = ''
     `).get().n,
     dueReviews: db.prepare(`
       SELECT COUNT(*) AS n
@@ -459,6 +460,10 @@ function hasNormativeUpdateTable() {
 
 function hasNormativeTeachingTable() {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_normative_teaching_comments'").get());
+}
+
+function hasCurrentLawAnswerTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_current_law_answers'").get());
 }
 
 function hasQuestionStudyStatusTable() {
@@ -712,6 +717,38 @@ function getNormativeTeachingStats() {
     pending: getNormativeTeachingPendingCount(),
     withCurrentAnswer: row.with_current_answer || 0,
     withoutSafeAnswer: row.without_safe_answer || 0
+  };
+}
+
+function getCurrentLawAnswerStats() {
+  if (!hasCurrentLawAnswerTable()) {
+    return {
+      exists: false,
+      total: 0,
+      verified: 0,
+      needsAudit: 0,
+      noValidAlternative: 0,
+      discard: 0
+    };
+  }
+
+  const row = db.prepare(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN current_law_status = 'verified' THEN 1 ELSE 0 END) AS verified,
+      SUM(CASE WHEN current_law_status = 'needs_audit' THEN 1 ELSE 0 END) AS needs_audit,
+      SUM(CASE WHEN current_law_status = 'no_valid_alternative' THEN 1 ELSE 0 END) AS no_valid_alternative,
+      SUM(CASE WHEN current_law_status = 'discard' THEN 1 ELSE 0 END) AS discard
+    FROM question_current_law_answers
+  `).get();
+
+  return {
+    exists: true,
+    total: row.total || 0,
+    verified: row.verified || 0,
+    needsAudit: row.needs_audit || 0,
+    noValidAlternative: row.no_valid_alternative || 0,
+    discard: row.discard || 0
   };
 }
 
@@ -1051,7 +1088,7 @@ function getExamCoverageRows(profileId) {
       COUNT(DISTINCT CASE
         WHEN COALESCE(q.anulada, 0) = 0
           AND COALESCE(q.desatualizada, 0) = 0
-          AND ${bestAnswerSql('q', 'c')} != ''
+          AND ${currentLawStudyAnswerSql('q', 'c')} != ''
         THEN q.id_question END
       ) AS valid_with_answer,
       COUNT(DISTINCT CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN q.id_question END) AS comments,
@@ -1173,7 +1210,7 @@ function getQuestions(searchParams) {
       q.assunto,
       q.anulada,
       q.desatualizada,
-      ${bestAnswerSql('q', 'c')} AS extracted_answer,
+      ${currentLawStudyAnswerSql('q', 'c')} AS extracted_answer,
       CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN 1 ELSE 0 END AS has_comment,
       CASE WHEN a.question_id IS NULL THEN 0 ELSE 1 END AS answered
     FROM questions q
@@ -1285,6 +1322,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
   if (hideStudyExcluded) {
     applyQuestionStudyStatusFilter(where);
     applyNormativeTeachingDiscardFilter(where);
+    applyCurrentLawMainStudyFilter(where);
   }
   applyNormativeQuestionFilters(where, normative, { hideDiscarded, hideManualReview, onlyChangedAnswer });
 
@@ -1318,6 +1356,26 @@ function applyNormativeTeachingDiscardFilter(where) {
         qntc_excluded.status = 'discard'
         OR qntc_excluded.answer_policy = 'discard_original'
       )
+  )`);
+}
+
+function applyCurrentLawMainStudyFilter(where) {
+  if (!hasCurrentLawAnswerTable()) {
+    where.push('COALESCE(q.desatualizada, 0) = 0');
+    return;
+  }
+  where.push(`(
+    COALESCE(q.desatualizada, 0) = 0
+    OR EXISTS (
+      SELECT 1
+      FROM question_current_law_answers qcla_main
+      WHERE qcla_main.question_id = q.id_question
+        AND qcla_main.current_law_status = 'verified'
+        AND qcla_main.can_auto_score_current_law IS TRUE
+        AND COALESCE(qcla_main.current_answer, '') != ''
+        AND qcla_main.should_discard_from_current_law_study IS NOT TRUE
+        AND qcla_main.hide_from_main_study_until_verified IS NOT TRUE
+    )
   )`);
 }
 
@@ -1403,6 +1461,29 @@ function bestAnswerSql(questionAlias, commentAlias) {
     ORDER BY nq.notebook_id, nq.position
     LIMIT 1
   ), ''), NULLIF(${commentAlias}.extracted_answer, ''), '')`;
+}
+
+function currentLawVerifiedAnswerSql(questionAlias) {
+  if (!hasCurrentLawAnswerTable()) {
+    return "''";
+  }
+  return `(
+    SELECT qcla_answer.current_answer
+    FROM question_current_law_answers qcla_answer
+    WHERE qcla_answer.question_id = ${questionAlias}.id_question
+      AND qcla_answer.current_law_status = 'verified'
+      AND qcla_answer.can_auto_score_current_law IS TRUE
+      AND COALESCE(qcla_answer.current_answer, '') != ''
+    LIMIT 1
+  )`;
+}
+
+function currentLawStudyAnswerSql(questionAlias, commentAlias) {
+  const historicalAnswerSql = bestAnswerSql(questionAlias, commentAlias);
+  return `CASE
+    WHEN COALESCE(${questionAlias}.desatualizada, 0) = 1 THEN COALESCE(NULLIF(${currentLawVerifiedAnswerSql(questionAlias)}, ''), '')
+    ELSE ${historicalAnswerSql}
+  END`;
 }
 
 function appendWhere(whereSql, condition) {
@@ -1512,7 +1593,7 @@ function getSmartQueueV2Rows(searchParams, { profileId, limit = 50, mode = 'stud
   });
   const finalWhere = appendWhere(whereSql, 'qes.profile_id = ?');
   const coverage = new Map(getExamCoverageRows(profileId).map((row) => [row.subject_key, row]));
-  const answerSql = bestAnswerSql('q', 'c');
+  const answerSql = currentLawStudyAnswerSql('q', 'c');
   const hasNormative = hasNormativeUpdateTable();
   const normativeSelect = hasNormative
     ? `COALESCE(qnu.recomendacao, '') AS normative_recomendacao,
@@ -1858,7 +1939,7 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
   const { whereSql, values } = buildQuestionWhere(searchParams, {
     hideStudyExcluded: resolvedPlan !== 'ver_todas'
   });
-  const answerSql = bestAnswerSql('q', 'c');
+  const answerSql = currentLawStudyAnswerSql('q', 'c');
   const hasNormative = hasNormativeUpdateTable();
   const normativeSelect = hasNormative
     ? `COALESCE(qnu.recomendacao, '') AS normative_recomendacao,
@@ -2865,7 +2946,7 @@ function buildCebraspeRecommendation(rows) {
 
 function getExpectedAnswer(questionId) {
   return db.prepare(`
-    SELECT ${bestAnswerSql('q', 'c')} AS expected_answer
+    SELECT ${currentLawStudyAnswerSql('q', 'c')} AS expected_answer
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
     WHERE q.id_question = ?
@@ -2899,7 +2980,7 @@ function getSmartQueueRows(searchParams, options = {}) {
     ? "qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now')"
     : '';
   const finalWhere = appendWhere(whereSql, extraWhere);
-  const answerSql = bestAnswerSql('q', 'c');
+  const answerSql = currentLawStudyAnswerSql('q', 'c');
 
   return db.prepare(`
     SELECT
@@ -3236,6 +3317,132 @@ function getNormativeUpdate(questionId) {
   };
 }
 
+function getCurrentLawAnswer(questionId) {
+  if (!hasCurrentLawAnswerTable()) {
+    return {
+      exists: false,
+      status: 'needs_audit',
+      currentLawStatus: 'needs_audit',
+      canAutoScore: false,
+      canAutoScoreCurrentLaw: false
+    };
+  }
+
+  const row = db.prepare(`
+    SELECT
+      question_id,
+      historical_answer,
+      current_answer,
+      current_law_status,
+      can_auto_score_current_law,
+      do_not_use_historical_answer_in_current_law_mode,
+      answer_changed,
+      no_valid_alternative,
+      should_discard_from_current_law_study,
+      hide_from_main_study_until_verified,
+      legal_basis,
+      article_reference,
+      article_excerpt,
+      teacher_explanation,
+      rule_summary,
+      professor_complement,
+      study_conclusion,
+      teaching_comment_md,
+      source_url,
+      source_version,
+      imported_at,
+      updated_at
+    FROM question_current_law_answers
+    WHERE question_id = ?
+    LIMIT 1
+  `).get(questionId);
+
+  if (!row) {
+    return {
+      exists: false,
+      status: 'needs_audit',
+      currentLawStatus: 'needs_audit',
+      canAutoScore: false,
+      canAutoScoreCurrentLaw: false
+    };
+  }
+
+  const status = row.current_law_status || 'needs_audit';
+  const canAutoScore = dbBoolean(row.can_auto_score_current_law);
+  const noValidAlternative = dbBoolean(row.no_valid_alternative) || status === 'no_valid_alternative';
+  const shouldDiscard = dbBoolean(row.should_discard_from_current_law_study) || status === 'discard';
+
+  return {
+    exists: true,
+    questionId: row.question_id,
+    historicalAnswer: row.historical_answer || '',
+    currentAnswer: row.current_answer || '',
+    status,
+    currentLawStatus: status,
+    canAutoScore,
+    canAutoScoreCurrentLaw: canAutoScore,
+    doNotUseHistoricalAnswerInCurrentLawMode: row.do_not_use_historical_answer_in_current_law_mode !== false && row.do_not_use_historical_answer_in_current_law_mode !== 0,
+    answerChanged: dbBoolean(row.answer_changed),
+    noValidAlternative,
+    shouldDiscard,
+    shouldDiscardFromCurrentLawStudy: shouldDiscard,
+    hideFromMainStudyUntilVerified: dbBoolean(row.hide_from_main_study_until_verified),
+    hasCurrentLawConflict: false,
+    legalBasis: row.legal_basis || '',
+    articleReference: row.article_reference || '',
+    articleExcerpt: row.article_excerpt || '',
+    teacherExplanation: row.teacher_explanation || '',
+    ruleSummary: row.rule_summary || '',
+    professorComplement: row.professor_complement || '',
+    studyConclusion: row.study_conclusion || '',
+    teachingCommentMd: row.teaching_comment_md || '',
+    sourceUrl: row.source_url || '',
+    sourceVersion: row.source_version || '',
+    importedAt: row.imported_at || '',
+    updatedAt: row.updated_at || ''
+  };
+}
+
+function resolveCurrentLawCorrection(question, currentLawAnswer) {
+  const historicalExpected = String(question.expected_answer || '').trim();
+  if (!Number(question.desatualizada)) {
+    return {
+      mode: 'historical',
+      canScore: Boolean(historicalExpected),
+      expectedAnswer: historicalExpected,
+      answerSource: getBestAnswerSource(question),
+      nonScoringReason: ''
+    };
+  }
+
+  if (currentLawAnswer?.exists
+    && (currentLawAnswer.status || currentLawAnswer.currentLawStatus) === 'verified'
+    && (currentLawAnswer.canAutoScore || currentLawAnswer.canAutoScoreCurrentLaw)
+    && currentLawAnswer.currentAnswer) {
+    return {
+      mode: 'current_law',
+      canScore: true,
+      expectedAnswer: String(currentLawAnswer.currentAnswer || '').trim(),
+      answerSource: 'current_law_verified',
+      nonScoringReason: ''
+    };
+  }
+
+  const status = currentLawAnswer?.status || currentLawAnswer?.currentLawStatus || 'needs_audit';
+  const reason = status === 'no_valid_alternative'
+    ? 'no_valid_alternative'
+    : status === 'discard'
+      ? 'discard'
+      : 'needs_audit';
+  return {
+    mode: 'current_law',
+    canScore: false,
+    expectedAnswer: '',
+    answerSource: `current_law_${reason}`,
+    nonScoringReason: reason
+  };
+}
+
 function getNormativeTeachingComment(questionId) {
   if (!hasNormativeTeachingTable()) {
     return { exists: false };
@@ -3367,6 +3574,31 @@ function getNormativeTeachingComment(questionId) {
       && row.answer_policy === 'current_law_probable'
       && Boolean(row.current_answer)
       && !['baixo', 'low', 'manual'].includes(normalizePlain(row.safety_level))
+  };
+}
+
+function applyCurrentLawTeachingOverride(teachingComment, currentLawAnswer, isOutdatedQuestion) {
+  if (!isOutdatedQuestion || !currentLawAnswer?.exists || !teachingComment?.exists) {
+    return teachingComment;
+  }
+
+  const canonicalAnswer = normalizeAnswer(currentLawAnswer.currentAnswer);
+  const teachingAnswer = normalizeAnswer(teachingComment.currentAnswer);
+  const hasCurrentLawConflict = Boolean(canonicalAnswer && teachingAnswer && canonicalAnswer !== teachingAnswer);
+
+  currentLawAnswer.hasCurrentLawConflict = hasCurrentLawConflict;
+  currentLawAnswer.conflictingTeachingAnswer = hasCurrentLawConflict ? teachingComment.currentAnswer || '' : '';
+
+  return {
+    ...teachingComment,
+    supersededByCurrentLawAnswer: true,
+    hasCurrentLawConflict,
+    currentLawCanonicalAnswer: currentLawAnswer.currentAnswer || '',
+    currentAnswer: currentLawAnswer.currentAnswer || '',
+    currentAnswerRaw: currentLawAnswer.currentAnswer || '',
+    currentAnswerConfidence: 0,
+    answerPolicy: `superseded_by_current_law_answer:${currentLawAnswer.status || currentLawAnswer.currentLawStatus || 'needs_audit'}`,
+    isSafeCurrentRule: false
   };
 }
 
@@ -3653,6 +3885,7 @@ async function getQuestion(questionId) {
         ORDER BY nq.notebook_id, nq.position
         LIMIT 1
       ), ''), NULLIF(c.extracted_answer, ''), '') AS extracted_answer,
+      ${currentLawStudyAnswerSql('q', 'c')} AS study_answer,
       COALESCE(NULLIF(q.official_answer_source, ''), NULLIF((
         SELECT nq.answer_source
         FROM notebook_questions nq
@@ -3703,7 +3936,12 @@ async function getQuestion(questionId) {
     statementText: question.statement_text || ''
   });
   const normativeUpdate = getNormativeUpdate(questionId);
-  const normativeTeachingComment = getNormativeTeachingComment(questionId);
+  const currentLawAnswer = getCurrentLawAnswer(questionId);
+  const normativeTeachingComment = applyCurrentLawTeachingOverride(
+    getNormativeTeachingComment(questionId),
+    currentLawAnswer,
+    Boolean(question.desatualizada)
+  );
   const adaptive = getQuestionAdaptiveSummary(questionId);
   const studyStatus = getQuestionStudyStatus(questionId);
 
@@ -3723,6 +3961,7 @@ async function getQuestion(questionId) {
       desatualizada: Boolean(question.desatualizada)
     },
     normativeUpdate,
+    currentLawAnswer,
     normativeTeachingComment,
     studyStatus,
     adaptive,
@@ -3732,6 +3971,7 @@ async function getQuestion(questionId) {
       professor: question.professor || '',
       date: question.comment_date || '',
       extractedAnswer: question.extracted_answer || '',
+      studyAnswer: question.study_answer || '',
       answerSource: question.answer_source || '',
       sourceType: question.comment_source_type || '',
       aiModel: question.comment_ai_model || '',
@@ -3812,8 +4052,10 @@ function saveAnswer(questionId, body) {
     return { error: 'Questao nao encontrada' };
   }
 
-  const expected = String(question.expected_answer || '').trim();
-  const isCorrect = expected ? Number(matchesExpectedAnswer(alternative, expected)) : null;
+  const currentLawAnswer = getCurrentLawAnswer(questionId);
+  const correction = resolveCurrentLawCorrection(question, currentLawAnswer);
+  const expected = correction.expectedAnswer;
+  const isCorrect = correction.canScore && expected ? Number(matchesExpectedAnswer(alternative, expected)) : null;
   const attemptMeta = normalizeAttemptMeta(body, isCorrect);
 
   db.prepare(`
@@ -3851,12 +4093,19 @@ function saveAnswer(questionId, body) {
     answer: alternative.letter,
     answerText: alternative.text || '',
     expectedAnswer: expected,
-    answerSource: getBestAnswerSource(question),
+    answerSource: correction.answerSource,
+    correctionMode: correction.mode,
+    nonScoringReason: correction.nonScoringReason,
     confidence: attemptMeta.confidence,
     errorType: attemptMeta.errorType,
     answeredAt: new Date().toISOString(),
     normativeUpdate: getNormativeUpdate(questionId),
-    normativeTeachingComment: getNormativeTeachingComment(questionId),
+    currentLawAnswer,
+    normativeTeachingComment: applyCurrentLawTeachingOverride(
+      getNormativeTeachingComment(questionId),
+      currentLawAnswer,
+      Boolean(question.desatualizada)
+    ),
     isCorrect,
     masteryScore: mastery.masteryScore,
     nextDueAt: mastery.nextDueAt,
@@ -4674,6 +4923,10 @@ function normalizeAnswer(value) {
   if (text.includes('ERRADO')) return 'ERRADO';
   const letter = text.match(/\b[A-E]\b/);
   return letter ? letter[0] : text;
+}
+
+function dbBoolean(value) {
+  return value === true || value === 1 || value === '1' || String(value || '').toLowerCase() === 'true';
 }
 
 function validChoice(value, allowed, fallback) {
