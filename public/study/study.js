@@ -2461,12 +2461,26 @@ function expectedAlternativeLetter(expectedAnswer) {
   if (!expected || !state.currentQuestion?.alternatives) {
     return '';
   }
+  if (String(state.currentQuestion.metadata?.tipo || '').toUpperCase() === 'CERTO_ERRADO') {
+    const certoErrado = state.currentQuestion.alternatives.find((item) => (
+      normalizeAnswer(item.text) === expected
+      || matchesCertoErradoAlias(expected, normalizeAnswer(item.text))
+    ));
+    if (certoErrado) {
+      return certoErrado.letter || '';
+    }
+  }
+
   if (/^[A-E]$/.test(expected)) {
     return expected;
   }
 
   const alternative = state.currentQuestion.alternatives.find((item) => normalizeAnswer(item.text) === expected);
   return alternative?.letter || '';
+}
+
+function matchesCertoErradoAlias(answer, text) {
+  return (answer === 'C' && text === 'CERTO') || (answer === 'E' && text === 'ERRADO');
 }
 
 function showCommentPanel() {

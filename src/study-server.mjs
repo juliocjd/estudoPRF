@@ -4909,7 +4909,13 @@ function matchesExpectedAnswer(alternative, expected) {
   const normalizedExpected = normalizeAnswer(expected);
   const normalizedLetter = normalizeAnswer(alternative.letter);
   const normalizedText = normalizeAnswer(alternative.text);
-  return normalizedExpected === normalizedLetter || normalizedExpected === normalizedText;
+  return normalizedExpected === normalizedLetter
+    || normalizedExpected === normalizedText
+    || matchesCertoErradoAlias(normalizedExpected, normalizedText);
+}
+
+function matchesCertoErradoAlias(answer, text) {
+  return (answer === 'C' && text === 'CERTO') || (answer === 'E' && text === 'ERRADO');
 }
 
 function normalizeAnswer(value) {
