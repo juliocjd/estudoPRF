@@ -63,7 +63,12 @@ function migrate(database) {
     ['saw_comment', 'INTEGER DEFAULT 0'],
     ['opened_theory', 'INTEGER DEFAULT 0'],
     ['session_id', 'TEXT'],
-    ['created_at', 'TEXT']
+    ['created_at', 'TEXT'],
+    ['correction_mode', 'TEXT'],
+    ['expected_answer_source', 'TEXT'],
+    ['non_scoring_reason', 'TEXT'],
+    ['current_law_status_at_answer', 'TEXT'],
+    ['scoring_version', 'TEXT']
   ];
   for (const [name, definition] of studyAnswerColumns) {
     if (ensureColumn(database, 'study_answers', name, definition)) {

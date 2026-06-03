@@ -28,6 +28,7 @@ const PRF_BLOCK_TARGETS = new Map([
 ]);
 const ADAPTIVE_ANSWER_COOLDOWN_MINUTES = 30;
 const ADAPTIVE_SERVED_COOLDOWN_MINUTES = 10;
+const SCORING_VERSION = 'scoring-v9-current-law-canonical';
 const THEORY_DIRECTORY_MIN_SCORE = 0.3;
 const THEORY_PAGE_MIN_SCORE = 0.12;
 const THEORY_CONTENT_FALLBACK_MIN_SCORE = 0.18;
@@ -1462,7 +1463,7 @@ function bestAnswerSql(questionAlias, commentAlias) {
       AND COALESCE(nq.answer, '') != ''
     ORDER BY nq.notebook_id, nq.position
     LIMIT 1
-  ), ''), NULLIF(${commentAlias}.extracted_answer, ''), '')`;
+  ), ''), '')`;
 }
 
 function currentLawVerifiedAnswerSql(questionAlias) {
@@ -1792,7 +1793,13 @@ function getAdaptiveStudyNext(searchParams) {
     mode: plan,
     profileId,
     source: 'adaptive_next',
-    reason: target.reasonText
+    reason: target.reasonText,
+    clusterId: target.clusterId,
+    servedContext: {
+      score: target.score,
+      reasons: target.reasons,
+      clusterPolicy: target.clusterPolicy
+    }
   });
   return adaptiveTargetPayload(target, plan, profileId);
 }
@@ -1897,7 +1904,13 @@ function getStudyResumeTarget(searchParams) {
       mode: plan,
       profileId,
       source: 'resume',
-      reason
+      reason,
+      clusterId: target.clusterId,
+      servedContext: {
+        score: target.score,
+        reasons: target.reasons,
+        clusterPolicy: target.clusterPolicy
+      }
     });
     return {
       ...adaptiveTargetPayload(target, plan, profileId),
@@ -2021,6 +2034,8 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
           qc.representative_question_id,
           qc.size AS cluster_size,
           qc.confidence AS cluster_confidence,
+          COALESCE(qc.cluster_policy, '') AS cluster_policy,
+          COALESCE(qc.max_visible_per_pass, 1) AS max_visible_per_pass,
           ROW_NUMBER() OVER (
             PARTITION BY qcm.question_id
             ORDER BY
@@ -2077,6 +2092,8 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
       pc.similarity,
       pc.cluster_reason,
       pc.cluster_confidence,
+      pc.cluster_policy,
+      pc.max_visible_per_pass,
       ${normativeSelect},
       CASE WHEN EXISTS (
         SELECT 1
@@ -2122,12 +2139,14 @@ function scoreAdaptiveQuestion(row, context) {
   const blockPct = Number(context.blockExpectedPct || 0);
   const coverageGap = Number(context.coverageRow?.coverage_gap_pct || 0);
   const isRepresentative = row.cluster_role === 'representative';
-  const duplicateCluster = ['exact_hash', 'normalized_statement', 'near_duplicate'].includes(row.cluster_type);
-  const variantUnlocked = row.cluster_last_result === 0
+  const clusterPolicy = resolveClusterPolicy(row.cluster_policy, row.cluster_type, Number(row.cluster_size || 0));
+  const clusterCanSuppress = ['suppress_variants', 'reinforcement'].includes(clusterPolicy);
+  const duplicateCluster = clusterCanSuppress && ['exact_hash', 'normalized_statement', 'near_duplicate'].includes(row.cluster_type);
+  const variantUnlocked = clusterCanSuppress && (row.cluster_last_result === 0
     || ['doubt', 'guess'].includes(row.cluster_last_confidence)
     || cMastery < 0.35
-    || clusterDue;
-  const clusterDominated = cMastery >= 0.85 && !clusterDue;
+    || clusterDue);
+  const clusterDominated = clusterCanSuppress && cMastery >= 0.85 && !clusterDue;
   const reasons = [];
   let score = 0;
 
@@ -2224,6 +2243,7 @@ function scoreAdaptiveQuestion(row, context) {
     score: round(score, 2),
     clusterId: row.cluster_id || null,
     clusterType: row.cluster_type || '',
+    clusterPolicy,
     clusterRole: row.cluster_role || '',
     clusterSize: Number(row.cluster_size || 0),
     clusterTitle: row.cluster_title || '',
@@ -2309,6 +2329,7 @@ function adaptiveTargetPayload(row, plan, profileId) {
     profile: profileId,
     clusterId: row.clusterId,
     clusterType: row.clusterType,
+    clusterPolicy: row.clusterPolicy,
     clusterSize: row.clusterSize,
     isRepresentative: row.isRepresentative,
     score: row.score,
@@ -2357,6 +2378,10 @@ function adaptiveSessionAlerts(rows, size) {
 
 function adaptiveReasonText(row, reasons) {
   if (row.cluster_id && Number(row.cluster_size || 0) > 1) {
+    const clusterPolicy = resolveClusterPolicy(row.cluster_policy, row.cluster_type, Number(row.cluster_size || 0));
+    if (clusterPolicy === 'stats_only') {
+      return '';
+    }
     if (row.cluster_type === 'same_skill') {
       if (row.cluster_role === 'representative') return 'Questão central deste assunto.';
       if (reasons.includes('variacao_reforco') || row.cluster_last_result === 0) return 'Reforço dentro do mesmo assunto.';
@@ -2373,6 +2398,23 @@ function adaptiveReasonText(row, reasons) {
   if (reasons.includes('erro_recente')) return 'Você errou este tema recentemente.';
   if (reasons.includes('bloco_importante_prf') || reasons.includes('disciplina_importante_prf')) return 'Tema importante para a PRF.';
   return 'Selecionada pelo PRF Otimizado.';
+}
+
+function deriveClusterPolicy(clusterType, clusterSize) {
+  const size = Number(clusterSize || 0);
+  if (!clusterType) return 'interleave';
+  if (size > 40) return 'stats_only';
+  if (['exact_hash', 'normalized_statement', 'near_duplicate'].includes(clusterType)) return 'suppress_variants';
+  if (clusterType === 'same_skill') return 'stats_only';
+  return 'interleave';
+}
+
+function resolveClusterPolicy(storedPolicy, clusterType, clusterSize) {
+  const policy = String(storedPolicy || '').trim();
+  const derived = deriveClusterPolicy(clusterType, clusterSize);
+  if (!policy) return derived;
+  if (policy === 'interleave' && derived !== 'interleave') return derived;
+  return policy;
 }
 
 function getQuestionCluster(clusterId) {
@@ -2493,6 +2535,8 @@ function serializeCluster(cluster) {
     size: Number(cluster.size || 0),
     confidence: Number(cluster.confidence || 0),
     status: cluster.status || '',
+    policy: resolveClusterPolicy(cluster.cluster_policy, cluster.cluster_type, Number(cluster.size || 0)),
+    maxVisiblePerPass: Number(cluster.max_visible_per_pass || 1),
     masteryScore: Number(cluster.mastery_score || 0),
     nextDueAt: cluster.next_due_at || '',
     lastResult: cluster.last_result,
@@ -2947,12 +2991,23 @@ function buildCebraspeRecommendation(rows) {
 }
 
 function getExpectedAnswer(questionId) {
-  return db.prepare(`
-    SELECT ${currentLawStudyAnswerSql('q', 'c')} AS expected_answer
+  const question = db.prepare(`
+    SELECT q.id_question, q.type_question, q.desatualizada,
+      ${currentLawStudyAnswerSql('q', 'c')} AS expected_answer
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
     WHERE q.id_question = ?
-  `).get(questionId)?.expected_answer || '';
+  `).get(questionId);
+  if (!question) {
+    return '';
+  }
+  const alternatives = db.prepare(`
+    SELECT letter, text
+    FROM alternatives
+    WHERE question_id = ?
+    ORDER BY position
+  `).all(questionId);
+  return normalizeExpectedAnswerForScoring(question, alternatives, question.expected_answer).answer;
 }
 
 function normalizeSimulationAnswer(questionId, rawAnswer, expected) {
@@ -3405,15 +3460,21 @@ function getCurrentLawAnswer(questionId) {
   };
 }
 
-function resolveCurrentLawCorrection(question, currentLawAnswer) {
-  const historicalExpected = String(question.expected_answer || '').trim();
+function resolveCurrentLawCorrection(question, currentLawAnswer, alternatives = []) {
+  const historicalExpected = normalizeExpectedAnswerForScoring(question, alternatives, question.expected_answer);
+  const isCanceled = Boolean(Number(question.anulada || 0));
   if (!Number(question.desatualizada)) {
+    const canScore = !isCanceled && Boolean(historicalExpected.answer);
     return {
       mode: 'historical',
-      canScore: Boolean(historicalExpected),
-      expectedAnswer: historicalExpected,
-      answerSource: getBestAnswerSource(question),
-      nonScoringReason: ''
+      canScore,
+      expectedAnswer: historicalExpected.answer,
+      answerSource: historicalExpected.answer ? getBestAnswerSource(question) : 'missing',
+      currentLawStatus: 'not_applicable',
+      nonScoringReason: canScore ? '' : (isCanceled ? 'canceled' : historicalExpected.reason),
+      shouldAppearInStudyNow: canScore,
+      shouldAppearInViewAll: true,
+      scoringVersion: SCORING_VERSION
     };
   }
 
@@ -3421,12 +3482,18 @@ function resolveCurrentLawCorrection(question, currentLawAnswer) {
     && (currentLawAnswer.status || currentLawAnswer.currentLawStatus) === 'verified'
     && (currentLawAnswer.canAutoScore || currentLawAnswer.canAutoScoreCurrentLaw)
     && currentLawAnswer.currentAnswer) {
+    const currentExpected = normalizeExpectedAnswerForScoring(question, alternatives, currentLawAnswer.currentAnswer);
+    const canScore = !isCanceled && Boolean(currentExpected.answer);
     return {
       mode: 'current_law',
-      canScore: true,
-      expectedAnswer: String(currentLawAnswer.currentAnswer || '').trim(),
-      answerSource: 'current_law_verified',
-      nonScoringReason: ''
+      canScore,
+      expectedAnswer: currentExpected.answer,
+      answerSource: currentExpected.answer ? 'current_law_verified' : 'invalid_current_law_answer',
+      currentLawStatus: currentLawAnswer.status || currentLawAnswer.currentLawStatus || 'verified',
+      nonScoringReason: canScore ? '' : (isCanceled ? 'canceled' : currentExpected.reason),
+      shouldAppearInStudyNow: canScore,
+      shouldAppearInViewAll: true,
+      scoringVersion: SCORING_VERSION
     };
   }
 
@@ -3437,12 +3504,105 @@ function resolveCurrentLawCorrection(question, currentLawAnswer) {
       ? 'discard'
       : 'needs_audit';
   return {
-    mode: 'current_law',
+    mode: 'non_scoring',
     canScore: false,
     expectedAnswer: '',
-    answerSource: `current_law_${reason}`,
-    nonScoringReason: reason
+    answerSource: reason,
+    currentLawStatus: status,
+    nonScoringReason: reason,
+    shouldAppearInStudyNow: false,
+    shouldAppearInViewAll: reason !== 'discard',
+    scoringVersion: SCORING_VERSION
   };
+}
+
+function resolveQuestionScoring(questionId) {
+  const question = db.prepare(`
+    SELECT
+      q.id_question,
+      q.type_question,
+      q.anulada,
+      q.desatualizada,
+      q.official_answer,
+      q.official_answer_source,
+      (
+        SELECT nq.answer
+        FROM notebook_questions nq
+        WHERE nq.question_id = q.id_question
+          AND COALESCE(nq.answer, '') != ''
+        ORDER BY nq.notebook_id, nq.position
+        LIMIT 1
+      ) AS notebook_answer,
+      (
+        SELECT nq.answer_source
+        FROM notebook_questions nq
+        WHERE nq.question_id = q.id_question
+          AND COALESCE(nq.answer, '') != ''
+        ORDER BY nq.notebook_id, nq.position
+        LIMIT 1
+      ) AS notebook_answer_source,
+      ${currentLawStudyAnswerSql('q', 'c')} AS expected_answer
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    WHERE q.id_question = ?
+  `).get(questionId);
+  if (!question) {
+    return { exists: false, questionId };
+  }
+  const alternatives = db.prepare(`
+    SELECT letter, text
+    FROM alternatives
+    WHERE question_id = ?
+    ORDER BY position
+  `).all(questionId);
+  const currentLawAnswer = getCurrentLawAnswer(questionId);
+  const correction = resolveCurrentLawCorrection(question, currentLawAnswer, alternatives);
+  return {
+    exists: true,
+    questionId,
+    isOutdated: Boolean(Number(question.desatualizada || 0)),
+    isCanceled: Boolean(Number(question.anulada || 0)),
+    ...correction
+  };
+}
+
+function normalizeExpectedAnswerForScoring(question, alternatives = [], rawExpected = '') {
+  const normalized = normalizeAnswer(rawExpected);
+  if (!normalized) {
+    return { answer: '', reason: 'missing_answer' };
+  }
+
+  const type = String(question?.type_question || '').toUpperCase();
+  if (type === 'CERTO_ERRADO') {
+    if (normalized === 'CERTO' || normalized === 'ERRADO') {
+      return { answer: normalized, reason: '' };
+    }
+    if (normalized === 'C') {
+      return { answer: 'CERTO', reason: '' };
+    }
+    if (normalized === 'E') {
+      return { answer: 'ERRADO', reason: '' };
+    }
+
+    const alternative = alternatives.find((item) => normalizeAnswer(item.letter) === normalized);
+    const alternativeText = normalizeAnswer(alternative?.text || '');
+    if (alternativeText === 'CERTO' || alternativeText === 'ERRADO') {
+      return { answer: alternativeText, reason: '' };
+    }
+
+    return { answer: '', reason: 'invalid_true_false_answer' };
+  }
+
+  if (/^[A-E]$/.test(normalized)) {
+    return alternatives.length && !alternatives.some((item) => normalizeAnswer(item.letter) === normalized)
+      ? { answer: '', reason: 'answer_alternative_not_found' }
+      : { answer: normalized, reason: '' };
+  }
+
+  const alternative = alternatives.find((item) => normalizeAnswer(item.text) === normalized);
+  return alternative
+    ? { answer: normalizeAnswer(alternative.letter), reason: '' }
+    : { answer: '', reason: 'invalid_multiple_choice_answer' };
 }
 
 function getNormativeTeachingComment(questionId) {
@@ -3886,7 +4046,7 @@ async function getQuestion(questionId) {
           AND COALESCE(nq.answer, '') != ''
         ORDER BY nq.notebook_id, nq.position
         LIMIT 1
-      ), ''), NULLIF(c.extracted_answer, ''), '') AS extracted_answer,
+      ), ''), '') AS extracted_answer,
       ${currentLawStudyAnswerSql('q', 'c')} AS study_answer,
       COALESCE(NULLIF(q.official_answer_source, ''), NULLIF((
         SELECT nq.answer_source
@@ -3895,7 +4055,7 @@ async function getQuestion(questionId) {
           AND COALESCE(nq.answer, '') != ''
         ORDER BY nq.notebook_id, nq.position
         LIMIT 1
-      ), ''), CASE WHEN c.source_type = 'ai' THEN 'ai' ELSE '' END) AS answer_source
+      ), ''), '') AS answer_source
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
     LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
@@ -4000,11 +4160,13 @@ async function getQuestion(questionId) {
 }
 
 function saveAnswer(questionId, body) {
-  const alternative = db.prepare(`
+  const alternatives = db.prepare(`
     SELECT letter, text
     FROM alternatives
-    WHERE question_id = ? AND letter = ?
-  `).get(questionId, String(body?.answer || '').toUpperCase());
+    WHERE question_id = ?
+    ORDER BY position
+  `).all(questionId);
+  const alternative = alternatives.find((item) => item.letter === String(body?.answer || '').toUpperCase());
 
   if (!alternative) {
     return { error: 'Alternativa invalida' };
@@ -4038,13 +4200,13 @@ function saveAnswer(questionId, body) {
         LIMIT 1
       ) AS notebook_answer_source,
       COALESCE(NULLIF(q.official_answer, ''), NULLIF((
-      SELECT nq.answer
-      FROM notebook_questions nq
-      WHERE nq.question_id = q.id_question
-        AND COALESCE(nq.answer, '') != ''
-      ORDER BY nq.notebook_id, nq.position
-      LIMIT 1
-    ), ''), NULLIF(c.extracted_answer, ''), '') AS expected_answer
+        SELECT nq.answer
+        FROM notebook_questions nq
+        WHERE nq.question_id = q.id_question
+          AND COALESCE(nq.answer, '') != ''
+        ORDER BY nq.notebook_id, nq.position
+        LIMIT 1
+      ), ''), '') AS expected_answer
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
     WHERE q.id_question = ?
@@ -4055,18 +4217,20 @@ function saveAnswer(questionId, body) {
   }
 
   const currentLawAnswer = getCurrentLawAnswer(questionId);
-  const correction = resolveCurrentLawCorrection(question, currentLawAnswer);
+  const correction = resolveCurrentLawCorrection(question, currentLawAnswer, alternatives);
   const expected = correction.expectedAnswer;
   const isCorrect = correction.canScore && expected ? Number(matchesExpectedAnswer(alternative, expected)) : null;
   const attemptMeta = normalizeAttemptMeta(body, isCorrect);
+  const storedCorrectionMode = correction.canScore ? correction.mode : 'non_scoring';
 
   db.prepare(`
     INSERT INTO study_answers (
       question_id, answer_letter, answer_text, expected_answer, is_correct, answered_at,
       confidence, error_type, elapsed_ms, study_mode, saw_comment, opened_theory,
-      session_id, created_at
+      session_id, correction_mode, expected_answer_source, non_scoring_reason,
+      current_law_status_at_answer, scoring_version, created_at
     )
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `).run(
     questionId,
     alternative.letter,
@@ -4079,12 +4243,23 @@ function saveAnswer(questionId, body) {
     attemptMeta.studyMode,
     attemptMeta.sawComment,
     attemptMeta.openedTheory,
-    attemptMeta.sessionId
+    attemptMeta.sessionId,
+    storedCorrectionMode,
+    correction.answerSource || '',
+    correction.nonScoringReason || '',
+    correction.currentLawStatus || '',
+    correction.scoringVersion || SCORING_VERSION
   );
 
-  const mastery = updateQuestionMastery(db, question, { isCorrect }, attemptMeta);
-  const clusterMastery = updateClusterMastery(db, questionId, { isCorrect }, attemptMeta);
-  updateSubjectMastery(db, question);
+  const mastery = isCorrect === null
+    ? { masteryScore: null, nextDueAt: '', recommendation: 'not_scored' }
+    : updateQuestionMastery(db, question, { isCorrect }, attemptMeta);
+  const clusterMastery = isCorrect === null
+    ? null
+    : updateClusterMastery(db, questionId, { isCorrect }, attemptMeta);
+  if (isCorrect !== null) {
+    updateSubjectMastery(db, question);
+  }
   updateStudySession(db, question, isCorrect, attemptMeta);
   setSetting('last_question_id', String(questionId));
   setSetting('last_answered_question_id', String(questionId));
@@ -4096,8 +4271,10 @@ function saveAnswer(questionId, body) {
     answerText: alternative.text || '',
     expectedAnswer: expected,
     answerSource: correction.answerSource,
-    correctionMode: correction.mode,
+    correctionMode: storedCorrectionMode,
     nonScoringReason: correction.nonScoringReason,
+    currentLawStatusAtAnswer: correction.currentLawStatus || '',
+    scoringVersion: correction.scoringVersion || SCORING_VERSION,
     confidence: attemptMeta.confidence,
     errorType: attemptMeta.errorType,
     answeredAt: new Date().toISOString(),
@@ -4339,10 +4516,7 @@ function getBestAnswerSource(question) {
   if (question.notebook_answer) {
     return question.notebook_answer_source || 'notebook';
   }
-  if (question.extracted_answer) {
-    return 'comment_inferred';
-  }
-  return '';
+  return 'missing';
 }
 
 function initQuestionStudyStatusSchema(database) {
@@ -4607,6 +4781,11 @@ function initStudySchema(database) {
   ensureColumn(database, 'study_answers', 'opened_theory', 'INTEGER DEFAULT 0');
   ensureColumn(database, 'study_answers', 'session_id', 'TEXT');
   ensureColumn(database, 'study_answers', 'created_at', 'TEXT');
+  ensureColumn(database, 'study_answers', 'correction_mode', 'TEXT');
+  ensureColumn(database, 'study_answers', 'expected_answer_source', 'TEXT');
+  ensureColumn(database, 'study_answers', 'non_scoring_reason', 'TEXT');
+  ensureColumn(database, 'study_answers', 'current_law_status_at_answer', 'TEXT');
+  ensureColumn(database, 'study_answers', 'scoring_version', 'TEXT');
   ensureColumn(database, 'questions', 'official_answer', 'TEXT');
   ensureColumn(database, 'questions', 'official_answer_source', 'TEXT');
   ensureColumn(database, 'notebook_questions', 'answer', 'TEXT');
@@ -4664,6 +4843,8 @@ function initAdaptiveStudySchema(database) {
       representative_question_id INTEGER,
       size INTEGER DEFAULT 0,
       confidence REAL DEFAULT 1,
+      cluster_policy TEXT DEFAULT 'interleave',
+      max_visible_per_pass INTEGER DEFAULT 1,
       status TEXT DEFAULT 'active',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT
@@ -4738,7 +4919,9 @@ function initAdaptiveStudySchema(database) {
       profile_id TEXT,
       served_at TEXT DEFAULT CURRENT_TIMESTAMP,
       source TEXT,
-      reason TEXT
+      reason TEXT,
+      cluster_id INTEGER,
+      served_context_json TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_question_clusters_key ON question_clusters(cluster_key);
@@ -4756,6 +4939,33 @@ function initAdaptiveStudySchema(database) {
     CREATE INDEX IF NOT EXISTS idx_session_items_plan ON study_session_items(plan_id, status);
     CREATE INDEX IF NOT EXISTS idx_study_served_questions_question ON study_served_questions(question_id, served_at);
     CREATE INDEX IF NOT EXISTS idx_study_served_questions_mode ON study_served_questions(mode, served_at);
+  `);
+
+  ensureColumn(database, 'question_clusters', 'cluster_policy', "TEXT DEFAULT 'interleave'");
+  ensureColumn(database, 'question_clusters', 'max_visible_per_pass', 'INTEGER DEFAULT 1');
+  ensureColumn(database, 'study_served_questions', 'cluster_id', 'INTEGER');
+  ensureColumn(database, 'study_served_questions', 'served_context_json', 'TEXT');
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_study_served_questions_cluster_recent
+      ON study_served_questions(cluster_id, served_at);
+
+    UPDATE question_clusters
+    SET
+      cluster_policy = CASE
+        WHEN COALESCE(size, 0) > 40 THEN 'stats_only'
+        WHEN cluster_type IN ('exact_hash', 'normalized_statement', 'near_duplicate') THEN 'suppress_variants'
+        WHEN cluster_type = 'same_skill' THEN 'stats_only'
+        ELSE COALESCE(NULLIF(cluster_policy, ''), 'interleave')
+      END,
+      max_visible_per_pass = CASE
+        WHEN COALESCE(size, 0) <= 40
+          AND cluster_type IN ('exact_hash', 'normalized_statement', 'near_duplicate') THEN 1
+        ELSE COALESCE(max_visible_per_pass, 999)
+      END
+    WHERE COALESCE(cluster_policy, '') = ''
+       OR cluster_policy = 'interleave'
+       OR max_visible_per_pass IS NULL;
   `);
 
   const upsert = database.prepare(`
@@ -4873,17 +5083,21 @@ function wasQuestionAnsweredAfter(questionId, openedAt) {
   return Boolean(row);
 }
 
-function recordServedQuestion(questionId, { mode = '', profileId = '', source = '', reason = '' } = {}) {
+function recordServedQuestion(questionId, { mode = '', profileId = '', source = '', reason = '', clusterId = null, servedContext = null } = {}) {
   if (!questionId) return;
   db.prepare(`
-    INSERT INTO study_served_questions (question_id, mode, profile_id, source, reason, served_at)
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT INTO study_served_questions (
+      question_id, mode, profile_id, source, reason, cluster_id, served_context_json, served_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `).run(
     questionId,
     String(mode || '').slice(0, 80),
     String(profileId || '').slice(0, 120),
     String(source || '').slice(0, 80),
-    String(reason || '').slice(0, 300)
+    String(reason || '').slice(0, 300),
+    clusterId ? Number(clusterId) : null,
+    servedContext ? JSON.stringify(servedContext) : null
   );
 }
 

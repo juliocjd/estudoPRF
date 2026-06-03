@@ -355,7 +355,7 @@ function bestAnswerSql(questionAlias, commentAlias) {
       AND COALESCE(nq.answer, '') != ''
     ORDER BY nq.notebook_id, nq.position
     LIMIT 1
-  ), ''), NULLIF(${commentAlias}.extracted_answer, ''), '')`;
+  ), ''), '')`;
 }
 
 function normalizePlain(value) {

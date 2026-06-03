@@ -62,6 +62,7 @@ function rebuildClusters(database, questions, profile) {
 
   const inserted = insertClusters(database, clusters, profile);
   const byType = countBy(inserted, (cluster) => cluster.type);
+  const byPolicy = countBy(inserted, (cluster) => cluster.policy);
   const duplicateClusters = inserted.filter((cluster) => cluster.type !== 'same_skill');
   const duplicatedQuestions = new Set(duplicateClusters.flatMap((cluster) => cluster.questionIds));
   const sameSkillQuestions = new Set(inserted.filter((cluster) => cluster.type === 'same_skill').flatMap((cluster) => cluster.questionIds));
@@ -74,6 +75,7 @@ function rebuildClusters(database, questions, profile) {
     questionsAnalyzed: questions.length,
     totalClusters: inserted.length,
     clustersByType: byType,
+    clustersByPolicy: byPolicy,
     duplicateClusters: duplicateClusters.length,
     duplicatedQuestions: duplicatedQuestions.size,
     sameSkillClusters: byType.same_skill || 0,
@@ -272,7 +274,9 @@ function addCluster(clusters, signatures, allQuestions, ids, options, similariti
     materia: representative.materia || '',
     assunto: representative.assunto || '',
     skillKey: representative.skillKey || '',
-    title: buildClusterTitle(options.type, representative)
+    title: buildClusterTitle(options.type, representative),
+    policy: deriveClusterPolicy(options.type, questions.length),
+    maxVisiblePerPass: deriveMaxVisiblePerPass(options.type, questions.length)
   });
 }
 
@@ -280,9 +284,10 @@ function insertClusters(database, clusters, profile) {
   const insertCluster = database.prepare(`
     INSERT INTO question_clusters (
       cluster_key, cluster_type, profile_id, subject_key, subject_label, materia, assunto,
-      skill_key, title, representative_question_id, size, confidence, status, updated_at
+      skill_key, title, representative_question_id, size, confidence, status, cluster_policy,
+      max_visible_per_pass, updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, CURRENT_TIMESTAMP)
   `);
   const insertMember = database.prepare(`
     INSERT INTO question_cluster_members (
@@ -314,7 +319,9 @@ function insertClusters(database, clusters, profile) {
         cluster.title,
         cluster.representative.id,
         cluster.questionIds.length,
-        cluster.confidence
+        cluster.confidence,
+        cluster.policy,
+        cluster.maxVisiblePerPass
       );
       const clusterId = Number(result.lastInsertRowid);
       for (const question of cluster.questions) {
@@ -375,6 +382,18 @@ function buildClusterTitle(type, representative) {
     same_skill: 'Familia de treino'
   }[type] || 'Cluster';
   return `${prefix}: ${subject}`.slice(0, 220);
+}
+
+function deriveClusterPolicy(type, size) {
+  const clusterSize = Number(size || 0);
+  if (clusterSize > 40) return 'stats_only';
+  if (['exact_hash', 'normalized_statement', 'near_duplicate'].includes(type)) return 'suppress_variants';
+  if (type === 'same_skill') return 'stats_only';
+  return 'interleave';
+}
+
+function deriveMaxVisiblePerPass(type, size) {
+  return deriveClusterPolicy(type, size) === 'suppress_variants' ? 1 : 999;
 }
 
 function similarityToRepresentative(cluster, questionId) {
@@ -508,7 +527,7 @@ function bestAnswerSql(questionAlias, commentAlias) {
       AND COALESCE(nq.answer, '') != ''
     ORDER BY nq.notebook_id, nq.position
     LIMIT 1
-  ), ''), NULLIF(${commentAlias}.extracted_answer, ''), '')`;
+  ), ''), '')`;
 }
 
 function tableExists(database, tableName) {

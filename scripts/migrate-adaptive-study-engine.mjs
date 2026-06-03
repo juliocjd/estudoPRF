@@ -39,6 +39,8 @@ export function migrateAdaptiveStudyEngine(database) {
       size INTEGER DEFAULT 0,
       confidence REAL DEFAULT 1,
       status TEXT DEFAULT 'active',
+      cluster_policy TEXT DEFAULT 'interleave',
+      max_visible_per_pass INTEGER DEFAULT 1,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT
     );
@@ -112,7 +114,9 @@ export function migrateAdaptiveStudyEngine(database) {
       profile_id TEXT,
       served_at TEXT DEFAULT CURRENT_TIMESTAMP,
       source TEXT,
-      reason TEXT
+      reason TEXT,
+      cluster_id INTEGER,
+      served_context_json TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_question_clusters_key ON question_clusters(cluster_key);
@@ -130,6 +134,35 @@ export function migrateAdaptiveStudyEngine(database) {
     CREATE INDEX IF NOT EXISTS idx_session_items_plan ON study_session_items(plan_id, status);
     CREATE INDEX IF NOT EXISTS idx_study_served_questions_question ON study_served_questions(question_id, served_at);
     CREATE INDEX IF NOT EXISTS idx_study_served_questions_mode ON study_served_questions(mode, served_at);
+  `);
+
+  ensureColumn(database, 'question_clusters', 'cluster_policy', "TEXT DEFAULT 'interleave'");
+  ensureColumn(database, 'question_clusters', 'max_visible_per_pass', 'INTEGER DEFAULT 1');
+  ensureColumn(database, 'study_served_questions', 'cluster_id', 'INTEGER');
+  ensureColumn(database, 'study_served_questions', 'served_context_json', 'TEXT');
+
+  database.exec(`
+    CREATE INDEX IF NOT EXISTS idx_study_served_questions_cluster_recent
+      ON study_served_questions(cluster_id, served_at);
+  `);
+
+  database.exec(`
+    UPDATE question_clusters
+    SET
+      cluster_policy = CASE
+        WHEN COALESCE(size, 0) > 40 THEN 'stats_only'
+        WHEN cluster_type IN ('exact_hash', 'normalized_statement', 'near_duplicate') THEN 'suppress_variants'
+        WHEN cluster_type = 'same_skill' THEN 'stats_only'
+        ELSE COALESCE(NULLIF(cluster_policy, ''), 'interleave')
+      END,
+      max_visible_per_pass = CASE
+        WHEN COALESCE(size, 0) <= 40
+          AND cluster_type IN ('exact_hash', 'normalized_statement', 'near_duplicate') THEN 1
+        ELSE COALESCE(max_visible_per_pass, 999)
+      END
+    WHERE COALESCE(cluster_policy, '') = ''
+       OR cluster_policy = 'interleave'
+       OR max_visible_per_pass IS NULL;
   `);
 
   const upsert = database.prepare(`
@@ -157,6 +190,13 @@ export function migrateAdaptiveStudyEngine(database) {
     database.exec('ROLLBACK');
     throw error;
   }
+}
+
+function ensureColumn(database, tableName, columnName, definition) {
+  const columns = database.prepare(`PRAGMA table_info(${tableName})`).all();
+  if (columns.some((column) => column.name === columnName)) return false;
+  database.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  return true;
 }
 
 function createBackup(database, sourcePath) {

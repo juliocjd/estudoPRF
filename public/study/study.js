@@ -1456,13 +1456,7 @@ function renderNormativeTeachingPanel(question) {
   const needsManual = teaching.status === 'needs_manual_review'
     || teaching.answerPolicy === 'not_assertive_manual_review'
     || teaching.reviewStatus === 'needs_manual_review';
-  const confidence = Number(teaching.currentAnswerConfidence || 0);
-  els.teachingInfo.textContent = [
-    teaching.status ? teachingStatusLabel(teaching.status) : '',
-    teaching.currentAnswer ? `gabarito atual: ${teaching.currentAnswer}` : 'sem gabarito atual seguro',
-    teaching.studentEdit?.exists ? 'editado pelo aluno' : '',
-    teaching.displayVersion || teaching.sourceVersion || ''
-  ].filter(Boolean).join(' - ');
+  els.teachingInfo.textContent = teaching.currentAnswer ? 'disponivel' : 'sem resposta segura';
 
   const policyMessage = isDiscard
     ? '<p class="normative-warning is-danger">Questão não recomendada para estudo sem reformulação.</p>'
@@ -1470,7 +1464,7 @@ function renderNormativeTeachingPanel(question) {
       ? '<p class="normative-warning is-warning">Esta questão precisa de revisão manual antes de ser usada para correção segura.</p>'
       : '';
   const answer = teaching.currentAnswer
-    ? `${currentAnswerLabel(teaching.currentAnswer)}${confidence ? ` (${Math.round(confidence * 100)}% de confiança)` : ''}`
+    ? currentAnswerLabel(teaching.currentAnswer)
     : 'não definido com segurança';
 
   if (state.teachingEditMode) {
@@ -1497,7 +1491,6 @@ function renderNormativeTeachingPanel(question) {
       ${teachingV3Section('Regra atual em resumo', teaching.currentRuleSummaryMd || teaching.currentRuleSummary)}
       ${teachingV3Section('Complementação de professor', teaching.professorComplementMd)}
       ${teachingV3Section('Conclusão para estudo', teaching.studyConclusionMd)}
-      ${teachingTechnicalDetailsMarkup(teaching)}
     </div>
   `;
 }
@@ -1526,13 +1519,9 @@ function renderCurrentLawAnswerPanel(question) {
       ? 'Use este gabarito apenas para estudo pela legislacao atual.'
       : 'Nao use o gabarito historico para corrigir esta questao no modo de legislacao atual.');
 
-  els.teachingInfo.textContent = currentLawStatusLabel(status);
-  const conflictWarning = answer.hasCurrentLawConflict || question.normativeTeachingComment?.hasCurrentLawConflict
-    ? '<p class="normative-warning is-warning">Texto atualizado antigo divergente foi ignorado. A correcao usa o gabarito verificado pela legislacao atual.</p>'
-    : '';
+  els.teachingInfo.textContent = canScore ? 'disponivel' : 'sem pontuacao';
   els.supportTeachingBody.innerHTML = `
     <div class="teaching-v3-card">
-      ${conflictWarning}
       ${teachingV3Section('Gabarito pela legislacao atual', currentAnswer, { highlight: true })}
       ${teachingV3Section('Por que?', why)}
       ${teachingV3Section('Fundamento', foundation)}
@@ -1682,39 +1671,6 @@ function teachingLegalBasisMarkup(teaching) {
       ${excerpt ? `<blockquote>${escapeHtml(excerpt)}</blockquote>` : ''}
       ${note}
     </section>
-  `;
-}
-
-function teachingTechnicalDetailsMarkup(teaching) {
-  const details = teaching.technicalDetailsJson && typeof teaching.technicalDetailsJson === 'object'
-    ? teaching.technicalDetailsJson
-    : {};
-  const rows = [
-    ['Versão', teaching.displayVersion || teaching.sourceVersion],
-    ['Status', teachingStatusLabel(teaching.status)],
-    ['Política de correção', answerPolicyLabel(teaching.answerPolicy)],
-    ['Gabarito histórico', teaching.historicalAnswer],
-    ['Resposta bruta', teaching.currentAnswerRaw],
-    ['Exatidão do artigo', articleExactnessLabel(teaching.articleExactness)],
-    ['Revisão', reviewStatusLabel(teaching.reviewStatus)]
-  ].filter(([, value]) => value);
-  const technicalJson = Object.keys(details).length
-    ? `<pre>${escapeHtml(JSON.stringify(details, null, 2))}</pre>`
-    : '';
-  if (!rows.length && !technicalJson) return '';
-  return `
-    <details class="teaching-technical">
-      <summary>Mostrar detalhes técnicos</summary>
-      <div class="teaching-technical-grid">
-        ${rows.map(([label, value]) => `
-          <span>
-            <small>${escapeHtml(label)}</small>
-            <strong>${escapeHtml(value)}</strong>
-          </span>
-        `).join('')}
-      </div>
-      ${technicalJson}
-    </details>
   `;
 }
 
@@ -2094,20 +2050,8 @@ function renderQuestionBadges(question) {
   if (meta?.desatualizada) {
     badges.push('<span class="question-badge is-outdated">Desatualizada</span>');
   }
-  if (question?.currentLawAnswer?.exists) {
-    const status = question.currentLawAnswer.status || question.currentLawAnswer.currentLawStatus;
-    badges.push(`<span class="question-badge is-normative">Lei atual: ${escapeHtml(currentLawStatusLabel(status))}</span>`);
-  }
-  if (question?.normativeUpdate?.exists) {
-    const update = question.normativeUpdate;
-    const cls = update.isDiscardable ? 'is-canceled' : update.isManualReview ? 'is-outdated' : 'is-normative';
-    badges.push(`<span class="question-badge ${cls}">Normativa: ${escapeHtml(update.recomendacao || 'analisada')}</span>`);
-  }
   if (question?.normativeTeachingComment?.exists) {
     badges.push('<span class="question-badge is-normative">Comentário atualizado</span>');
-  }
-  if (question?.normativeUpdate?.hasChangedAnswer) {
-    badges.push('<span class="question-badge is-last-wrong">Gabarito provável mudou</span>');
   }
   if (meta?.anulada) {
     badges.push('<span class="question-badge is-canceled">Anulada</span>');
@@ -2433,27 +2377,7 @@ function normativeAnswerWarning(result) {
     return `<span class="answer-result-note">${escapeHtml(text)}</span>`;
   }
 
-  const teaching = result.normativeTeachingComment;
-  if (teaching?.exists) {
-    const current = teaching.currentAnswer || 'não definido';
-    const policy = teaching.isSafeCurrentRule ? 'regra atual provável disponível no comentário atualizado' : answerPolicyLabel(teaching.answerPolicy);
-    return `
-      <span class="answer-result-note">
-        Gabarito histórico do banco: ${escapeHtml(result.expectedAnswer || teaching.historicalAnswer || 'não informado')}.
-        Gabarito provável pela regra atual: ${escapeHtml(current)}.
-        Correção exibida: gabarito histórico do banco; política normativa: ${escapeHtml(policy)}.
-      </span>
-    `;
-  }
-  const update = result.normativeUpdate;
-  if (!update?.exists || !update.hasChangedAnswer) {
-    return '';
-  }
-  return `
-    <span class="answer-result-note">
-      Atenção: o gabarito histórico do banco é ${escapeHtml(result.expectedAnswer || update.gabaritoBanco || 'não informado')}, mas a análise normativa indica que, pela regra atual, o gabarito provável seria ${escapeHtml(update.gabaritoAtualizadoProvavel || 'não informado')}.
-    </span>
-  `;
+  return '';
 }
 
 function expectedAlternativeLetter(expectedAnswer) {
