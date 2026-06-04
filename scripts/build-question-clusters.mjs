@@ -520,14 +520,17 @@ ${repeated || '|  |  | 0 | 0 |'}
 }
 
 function bestAnswerSql(questionAlias, commentAlias) {
-  return `COALESCE(NULLIF(${questionAlias}.official_answer, ''), NULLIF((
+  return `CASE
+    WHEN COALESCE(${questionAlias}.desatualizada, 0) = 1 THEN ''
+    ELSE COALESCE(NULLIF(${questionAlias}.official_answer, ''), NULLIF((
     SELECT nq.answer
     FROM notebook_questions nq
     WHERE nq.question_id = ${questionAlias}.id_question
       AND COALESCE(nq.answer, '') != ''
     ORDER BY nq.notebook_id, nq.position
     LIMIT 1
-  ), ''), '')`;
+  ), ''), NULLIF(${commentAlias}.extracted_answer, ''), '')
+  END`;
 }
 
 function tableExists(database, tableName) {

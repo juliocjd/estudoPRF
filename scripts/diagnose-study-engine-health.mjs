@@ -103,6 +103,7 @@ function diagnose(database, meta) {
 
   const currentLawDivergences = hasCurrentLaw && hasAnswers ? findCurrentLawAnswerDivergences(database, studyAnswerCols) : [];
   const qntcDivergences = hasCurrentLaw && hasQntc ? findTeachingCommentDivergences(database, qntcCols) : [];
+  const answerCoverage = diagnoseAnswerCoverage(database, hasCurrentLaw);
   const clusters = hasClusters ? diagnoseClusters(database) : { byPolicy: [], giantClusters: [] };
   const cases = diagnoseCases(database, hasCurrentLaw);
 
@@ -130,6 +131,7 @@ function diagnose(database, meta) {
         ORDER BY questions DESC
       `).all() : []
     },
+    answerCoverage,
     scoringBlocks: {
       blockedStatusesWithScoredAttempts: blockedAttemptRows,
       blockedStatusesWithQuestionMastery: blockedMastery,
@@ -140,6 +142,85 @@ function diagnose(database, meta) {
     clusters,
     cases
   };
+}
+
+function diagnoseAnswerCoverage(database, hasCurrentLaw) {
+  const currentLawJoin = hasCurrentLaw
+    ? 'LEFT JOIN question_current_law_answers qcla ON qcla.question_id = q.id_question'
+    : 'LEFT JOIN (SELECT NULL AS question_id, NULL AS current_law_status, NULL AS can_auto_score_current_law, NULL AS current_answer) qcla ON 0 = 1';
+  const row = database.prepare(`
+    SELECT
+      COUNT(*) AS total_questions,
+      SUM(CASE WHEN COALESCE(q.anulada, 0) = 1 THEN 1 ELSE 0 END) AS canceled_questions,
+      SUM(CASE WHEN COALESCE(q.desatualizada, 0) = 1 THEN 1 ELSE 0 END) AS outdated_questions,
+      SUM(CASE WHEN COALESCE(q.official_answer, '') != '' THEN 1 ELSE 0 END) AS official_answer,
+      SUM(CASE WHEN EXISTS (
+        SELECT 1 FROM notebook_questions nq
+        WHERE nq.question_id = q.id_question
+          AND COALESCE(nq.answer, '') != ''
+      ) THEN 1 ELSE 0 END) AS notebook_answer,
+      SUM(CASE WHEN COALESCE(c.extracted_answer, '') != '' THEN 1 ELSE 0 END) AS comment_extracted_answer,
+      SUM(CASE WHEN COALESCE(q.desatualizada, 0) = 0 AND COALESCE(q.anulada, 0) = 0 AND (
+        COALESCE(q.official_answer, '') != ''
+        OR EXISTS (
+          SELECT 1 FROM notebook_questions nq
+          WHERE nq.question_id = q.id_question
+            AND COALESCE(nq.answer, '') != ''
+        )
+        OR COALESCE(c.extracted_answer, '') != ''
+      ) THEN 1 ELSE 0 END) AS normal_historical_scoreable,
+      SUM(CASE WHEN COALESCE(q.desatualizada, 0) = 0 AND COALESCE(q.anulada, 0) = 0 AND (
+        COALESCE(q.official_answer, '') != ''
+        OR EXISTS (
+          SELECT 1 FROM notebook_questions nq
+          WHERE nq.question_id = q.id_question
+            AND COALESCE(nq.answer, '') != ''
+        )
+      ) THEN 1 ELSE 0 END) AS normal_without_comment_fallback,
+      SUM(CASE WHEN COALESCE(q.desatualizada, 0) = 1
+        AND qcla.current_law_status = 'verified'
+        AND qcla.can_auto_score_current_law IS TRUE
+        AND COALESCE(qcla.current_answer, '') != ''
+      THEN 1 ELSE 0 END) AS current_law_verified,
+      SUM(CASE WHEN COALESCE(q.anulada, 0) = 0 AND (
+        (COALESCE(q.desatualizada, 0) = 0 AND (
+          COALESCE(q.official_answer, '') != ''
+          OR EXISTS (
+            SELECT 1 FROM notebook_questions nq
+            WHERE nq.question_id = q.id_question
+              AND COALESCE(nq.answer, '') != ''
+          )
+          OR COALESCE(c.extracted_answer, '') != ''
+        ))
+        OR (COALESCE(q.desatualizada, 0) = 1
+          AND qcla.current_law_status = 'verified'
+          AND qcla.can_auto_score_current_law IS TRUE
+          AND COALESCE(qcla.current_answer, '') != ''
+        )
+      ) THEN 1 ELSE 0 END) AS study_now_scoreable,
+      SUM(CASE WHEN COALESCE(q.anulada, 0) = 0 AND COALESCE(q.desatualizada, 0) = 0
+        AND COALESCE(q.official_answer, '') = ''
+        AND NOT EXISTS (
+          SELECT 1 FROM notebook_questions nq
+          WHERE nq.question_id = q.id_question
+            AND COALESCE(nq.answer, '') != ''
+        )
+        AND COALESCE(c.extracted_answer, '') = ''
+      THEN 1 ELSE 0 END) AS normal_missing_answer
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    ${currentLawJoin}
+  `).get();
+  const coverage = normalizeRow(row);
+  coverage.commentFallbackGain = Number(coverage.normal_historical_scoreable || 0) - Number(coverage.normal_without_comment_fallback || 0);
+  coverage.alerts = [];
+  if (Number(coverage.normal_historical_scoreable || 0) < 1000 && Number(coverage.comment_extracted_answer || 0) >= 1000) {
+    coverage.alerts.push('ALERTA: cobertura pontuavel historica muito baixa. Provavel perda de fallback comments.extracted_answer.');
+  }
+  if (Number(coverage.commentFallbackGain || 0) <= 0 && Number(coverage.comment_extracted_answer || 0) > Number(coverage.official_answer || 0)) {
+    coverage.alerts.push('ALERTA: comments.extracted_answer existe, mas nao aumenta a cobertura historica.');
+  }
+  return coverage;
 }
 
 function findCurrentLawAnswerDivergences(database, studyAnswerCols) {
@@ -222,8 +303,18 @@ function diagnoseCases(database, hasCurrentLaw) {
       q.desatualizada,
       q.anulada,
       q.official_answer,
+      c.extracted_answer,
+      (
+        SELECT nq.answer
+        FROM notebook_questions nq
+        WHERE nq.question_id = q.id_question
+          AND COALESCE(nq.answer, '') != ''
+        ORDER BY nq.notebook_id, nq.position
+        LIMIT 1
+      ) AS notebook_answer,
       ${hasCurrentLaw ? 'qcla.current_law_status, qcla.can_auto_score_current_law, qcla.current_answer, qcla.no_valid_alternative, qcla.should_discard_from_current_law_study' : "'' AS current_law_status, NULL AS can_auto_score_current_law, '' AS current_answer, NULL AS no_valid_alternative, NULL AS should_discard_from_current_law_study"}
     FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
     ${hasCurrentLaw ? 'LEFT JOIN question_current_law_answers qcla ON qcla.question_id = q.id_question' : ''}
     WHERE q.id_question IN (${ids.map(() => '?').join(', ')})
     ORDER BY q.id_question
@@ -234,15 +325,23 @@ function diagnoseCases(database, hasCurrentLaw) {
       && row.current_law_status === 'verified'
       && truthy(row.can_auto_score_current_law)
       && String(row.current_answer || '').trim();
+    const historicalAnswer = row.official_answer || row.notebook_answer || row.extracted_answer || '';
+    const historicalSource = row.official_answer
+      ? 'official'
+      : row.notebook_answer
+        ? 'notebook'
+        : row.extracted_answer
+          ? 'comment_extracted'
+          : 'missing';
     return {
       questionId: Number(row.id_question),
       typeQuestion: row.type_question || '',
       isOutdated,
       isCanceled: Boolean(Number(row.anulada || 0)),
       currentLawStatus: row.current_law_status || (isOutdated ? 'missing_current_law_row' : 'not_applicable'),
-      canScore: isOutdated ? Boolean(currentLawCanScore) : Boolean(String(row.official_answer || '').trim()),
-      expectedAnswer: isOutdated ? (currentLawCanScore ? row.current_answer : '') : row.official_answer || '',
-      answerSource: isOutdated ? (currentLawCanScore ? 'current_law_verified' : 'blocked_current_law') : 'historical_question_answer'
+      canScore: isOutdated ? Boolean(currentLawCanScore) : Boolean(String(historicalAnswer || '').trim()),
+      expectedAnswer: isOutdated ? (currentLawCanScore ? row.current_answer : '') : historicalAnswer,
+      answerSource: isOutdated ? (currentLawCanScore ? 'current_law_verified' : 'blocked_current_law') : historicalSource
     };
   });
 }
@@ -260,6 +359,22 @@ function renderMarkdown(report) {
   lines.push(`- questoes desatualizadas: ${num(report.currentLawSource.outdated.total_outdated)}`);
   lines.push(`- desatualizadas pontuaveis por lei atual: ${num(report.currentLawSource.outdated.scoreable_by_current_law)}`);
   lines.push(`- desatualizadas bloqueadas: ${num(report.currentLawSource.outdated.blocked_by_current_law)}`);
+  lines.push('');
+  lines.push('## Cobertura de gabarito');
+  lines.push('');
+  lines.push(`- total de questoes: ${num(report.answerCoverage.total_questions)}`);
+  lines.push(`- anuladas: ${num(report.answerCoverage.canceled_questions)}`);
+  lines.push(`- desatualizadas: ${num(report.answerCoverage.outdated_questions)}`);
+  lines.push(`- fonte official_answer: ${num(report.answerCoverage.official_answer)}`);
+  lines.push(`- fonte notebook_questions.answer: ${num(report.answerCoverage.notebook_answer)}`);
+  lines.push(`- fonte comments.extracted_answer: ${num(report.answerCoverage.comment_extracted_answer)}`);
+  lines.push(`- normais pontuaveis com fallback historico: ${num(report.answerCoverage.normal_historical_scoreable)}`);
+  lines.push(`- normais pontuaveis sem comments.extracted_answer: ${num(report.answerCoverage.normal_without_comment_fallback)}`);
+  lines.push(`- ganho do fallback comments.extracted_answer: ${num(report.answerCoverage.commentFallbackGain)}`);
+  lines.push(`- desatualizadas verificadas pontuaveis: ${num(report.answerCoverage.current_law_verified)}`);
+  lines.push(`- prontas para Estudar agora: ${num(report.answerCoverage.study_now_scoreable)}`);
+  lines.push(`- normais sem gabarito: ${num(report.answerCoverage.normal_missing_answer)}`);
+  for (const alert of report.answerCoverage.alerts || []) lines.push(`- ${alert}`);
   lines.push('');
   lines.push('## Bloqueios de pontuacao');
   lines.push('');

@@ -194,6 +194,32 @@ Depois disso, faca novo deploy na Vercel. O frontend passa a mostrar:
 - comentarios atualizados prontos;
 - pendentes de revisao normativa.
 
+## Respostas pela legislacao atual
+
+A tabela canonica para corrigir questoes desatualizadas no modo legislacao atual e `question_current_law_answers`.
+
+Em ambiente limpo, aplique a migration versionada e importe o seed:
+
+```powershell
+$env:DATABASE_URL="postgres://USUARIO:SENHA@HOST/BANCO?sslmode=require"
+npm run pg:migrate-current-law-answers
+npm run import-current-law-answers
+```
+
+Depois do deploy e da importacao, repare tentativas antigas para remover pontuacao indevida de questoes `needs_audit`, `discard` ou `no_valid_alternative`:
+
+```powershell
+$env:DB_CLIENT="postgres"
+$env:DATABASE_URL="postgres://USUARIO:SENHA@HOST/BANCO?sslmode=require"
+node scripts/repair-study-scoring-v10.mjs --apply
+```
+
+Para smoke test local do motor:
+
+```powershell
+npm run smoke-study-engine-v12
+```
+
 ## Recomendacao pratica
 
 Para publicar rapido mantendo o maximo do sistema atual:

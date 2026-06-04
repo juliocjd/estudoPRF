@@ -209,6 +209,7 @@ function normalizeRow(row) {
 }
 
 function normalizeValue(key, value) {
+  if (value instanceof Date) return value.toISOString();
   if (typeof value !== 'string') return value;
   if (!/^-?\d+(\.\d+)?$/.test(value)) return value;
   if (/(^|_)(text|html|json|url|source|answer|letter|key|label|name|status|mode|type|notes?)$/i.test(key)) {

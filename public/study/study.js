@@ -799,22 +799,11 @@ async function saveStudyState(payload) {
 
 async function loadStats() {
   const stats = await api('/api/stats');
-  const currentLaw = stats.currentLawAnswers || {};
-  const currentLawSummary = currentLaw.exists
-    ? `${Number(currentLaw.verified || 0).toLocaleString('pt-BR')} / ${Number(currentLaw.total || 0).toLocaleString('pt-BR')}`
-    : 0;
   els.stats.innerHTML = [
-    statMarkup(currentLawSummary, 'respostas lei atual'),
-    statMarkup(currentLaw.needsAudit || 0, 'pendentes auditoria'),
-    statMarkup(stats.questions, 'questões'),
-    statMarkup(stats.comments, 'comentários do professor'),
-    statMarkup(stats.aiLocalComments ?? stats.aiComments, 'comentários IA locais'),
-    statMarkup(stats.normativeUpdates, 'análises normativas'),
-    statMarkup(stats.normativeTeachingComments, 'comentários atualizados'),
-    statMarkup(stats.normativeTeachingPending, 'revisão normativa'),
-    statMarkup(stats.normativeTeachingDiscard, 'descartar'),
-    statMarkup(stats.outOfStudyQuestions, 'fora do estudo'),
-    statMarkup(stats.dueReviews, 'revisões')
+    statMarkup(stats.readyToStudy ?? stats.knownAnswers ?? 0, 'prontas para estudar'),
+    statMarkup(stats.dueReviews || 0, 'revisar hoje'),
+    statMarkup(stats.repairQuestions || 0, 'corrigir erros'),
+    statMarkup(stats.answered || 0, 'resolvidas')
   ].join('');
 }
 
@@ -1306,14 +1295,16 @@ function renderQuestion(question, options = {}) {
     ? `Abrir teoria: ${question.theory.title}`
     : 'PDF de teoria não encontrado para este assunto';
   const hasSupportExplanation = Boolean(
-    question.comment.html
+    canRevealExplanation(question) && (
+      question.comment.html
       || question.comment.text
       || question.normativeUpdate?.exists
-      || (canRevealCurrentLawAnswer(question) && (
+      || (
         question.currentLawAnswer?.exists
         || question.normativeTeachingComment?.exists
         || question.metadata?.desatualizada
-      ))
+      )
+    )
   );
   const hasTeachingSupport = Boolean(
     canRevealCurrentLawAnswer(question) && (
@@ -1329,26 +1320,37 @@ function renderQuestion(question, options = {}) {
   if (els.supportTabTeaching) {
     els.supportTabTeaching.disabled = !hasTeachingSupport;
   }
-  const hasSimilar = Boolean(question.adaptive?.exists && question.adaptive?.clusterId);
-  els.showSimilar.disabled = !hasSimilar;
-  els.showSimilar.textContent = 'Semelhantes';
-  els.similarQuestions.disabled = !hasSimilar;
-  els.toggleNormativeSupport.disabled = !question.normativeUpdate?.exists;
+  const hasCluster = Boolean(question.adaptive?.exists && question.adaptive?.clusterId);
+  const isStatsOnlyCluster = question.adaptive?.clusterPolicy === 'stats_only';
+  els.showSimilar.disabled = !hasCluster;
+  els.showSimilar.textContent = isStatsOnlyCluster ? 'Outras do assunto' : 'Semelhantes';
+  els.similarQuestions.disabled = !hasCluster || isStatsOnlyCluster;
+  els.similarQuestions.textContent = isStatsOnlyCluster ? 'Outras do assunto' : 'Ver semelhantes';
+  els.toggleNormativeSupport.disabled = !canRevealExplanation(question) || !question.normativeUpdate?.exists;
   els.toggleNormativeSupport.textContent = 'Atualização normativa';
 
+  const answering = question.answering || {};
+  const historicalAnswer = answering.historicalAnswer || question.comment.historicalAnswer || question.comment.extractedAnswer || '';
+  const studyAnswer = answering.studyAnswer || question.comment.studyAnswer || '';
   const info = [
     question.comment.sourceType === 'ai' ? 'gerado por IA' : '',
-    question.comment.extractedAnswer ? `Gabarito: ${question.comment.extractedAnswer}` : '',
+    historicalAnswer ? `Gabarito histórico: ${historicalAnswer}` : '',
     question.comment.professor || '',
     question.comment.aiModel || ''
   ].filter(Boolean).join(' - ');
   els.commentInfo.textContent = [
     question.comment.sourceType === 'ai' ? 'gerado por IA' : '',
-    question.comment.studyAnswer ? `Gabarito de estudo: ${question.comment.studyAnswer}` : '',
+    historicalAnswer ? `Gabarito histórico: ${historicalAnswer}` : '',
     question.comment.professor || '',
     question.comment.aiModel || ''
   ].filter(Boolean).join(' - ') || info;
-  els.commentBody.innerHTML = question.comment.html || `<p class="empty">${escapeHtml(question.comment.text || 'Comentário ainda não coletado.')}</p>`;
+  const historicalWarning = question.metadata?.desatualizada
+    && historicalAnswer
+    && studyAnswer
+    && normalizeAnswerText(historicalAnswer) !== normalizeAnswerText(studyAnswer)
+    ? `<p class="normative-warning is-warning">Atenção: este comentário explica o gabarito original. Pela legislação atual, o gabarito de estudo é ${escapeHtml(currentAnswerLabel(studyAnswer))}.</p>`
+    : '';
+  els.commentBody.innerHTML = historicalWarning + (question.comment.html || `<p class="empty">${escapeHtml(question.comment.text || 'Comentário ainda não coletado.')}</p>`);
   renderNormativeAlert(question);
   renderNormativeTeachingPanel(question);
   renderNormativePanel(question);
@@ -1713,6 +1715,42 @@ function renderNormativePanel(question) {
     return;
   }
 
+  if (question.currentLawAnswer?.exists) {
+    const currentLaw = question.currentLawAnswer;
+    const status = currentLaw.status || currentLaw.currentLawStatus || 'needs_audit';
+    const currentAnswer = currentLaw.currentAnswer
+      ? currentAnswerLabel(currentLaw.currentAnswer)
+      : status === 'no_valid_alternative'
+        ? 'sem alternativa compatível'
+        : 'não definido para pontuação';
+    els.normativeSupportInfo.textContent = 'registro antigo de auditoria';
+    els.supportNormativeBody.innerHTML = `
+      <div class="normative-card">
+        <p class="normative-warning is-info">Esta análise normativa é um registro antigo de auditoria. A resposta de estudo é definida pela tabela de resposta pela legislação atual.</p>
+        <div class="normative-summary-grid">
+          ${normativeField('Resposta atual de estudo', currentAnswer)}
+          ${normativeField('Status atual', currentLawStatusLabel(status))}
+        </div>
+        <details class="normative-details">
+          <summary>Dados antigos de auditoria</summary>
+          <div class="normative-summary-grid">
+            ${normativeField('Recomendação antiga', update.recomendacao)}
+            ${normativeField('Segurança antiga', update.nivelSeguranca)}
+            ${normativeField('Gabarito histórico', update.gabaritoBanco)}
+            ${normativeField('Gabarito atualizado provável antigo', update.gabaritoAtualizadoProvavel)}
+            ${normativeField('Mudança de gabarito antiga', update.mudancaGabarito)}
+            ${normativeField('Fonte-base', update.fonteBase)}
+          </div>
+          ${normativeTextBlock('Por que estava desatualizada', update.porQueDesatualizada)}
+          ${normativeTextBlock('Nova regra registrada na auditoria antiga', update.novaRegraEstadoAtual)}
+          ${normativeTextBlock('Fundamento antigo', update.fundamentoJuridicoAtual)}
+          ${normativeTextBlock('Observação antiga sobre o enunciado literal', update.observacaoEnunciadoLiteral)}
+        </details>
+      </div>
+    `;
+    return;
+  }
+
   els.normativeSupportInfo.textContent = [
     update.recomendacao || '',
     update.nivelSeguranca ? `segurança ${update.nivelSeguranca}` : '',
@@ -1824,13 +1862,29 @@ function questionQuickStatus(question) {
 }
 
 function canRevealCurrentLawAnswer(question = state.currentQuestion) {
-  if (!question) return false;
-  const totalAttempts = Number(question.answerStats?.total || 0);
+  return canRevealExplanation(question);
+}
+
+function isAnswerFirstStudyMode() {
+  return ['adaptive', 'smart', 'study'].includes(state.studyMode);
+}
+
+function hasAnsweredCurrentPrompt(question = state.currentQuestion) {
   return Boolean(
-    totalAttempts > 0
-    || question.lastAnswer?.answered_at
-    || question.lastAnswer?.answer_letter
+    question
+    && state.answerResult
+    && Number(state.answerResult.questionId) === Number(question.id)
   );
+}
+
+function canRevealExplanation(question = state.currentQuestion) {
+  if (!question) return false;
+  if (!isAnswerFirstStudyMode()) return true;
+  return hasAnsweredCurrentPrompt(question);
+}
+
+function supportTabRequiresAnswer(tab) {
+  return ['comment', 'normative', 'teaching', 'history'].includes(tab);
 }
 
 function updateAnswerActions() {
@@ -1838,7 +1892,15 @@ function updateAnswerActions() {
   const question = state.currentQuestion;
   const result = state.answerResult;
   const hasAlternatives = Boolean(question?.alternatives?.length);
-  const hasExplanation = Boolean(question?.comment?.html || question?.comment?.text);
+  const hasExplanation = Boolean(
+    question?.comment?.html
+    || question?.comment?.text
+    || question?.normativeUpdate?.exists
+    || question?.currentLawAnswer?.exists
+    || question?.normativeTeachingComment?.exists
+    || question?.metadata?.desatualizada
+  );
+  const canRevealSupport = canRevealExplanation(question);
   const hasPreviousAnswer = Boolean(question?.answerStats?.total);
 
   els.secondaryExplain.disabled = !question;
@@ -1852,7 +1914,7 @@ function updateAnswerActions() {
       els.submitAnswer.disabled = false;
       els.secondaryExplain.textContent = 'Ver explicação';
       els.secondaryExplain.dataset.action = 'explain';
-      els.secondaryExplain.disabled = !hasExplanation;
+      els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
       return;
     }
 
@@ -1874,7 +1936,7 @@ function updateAnswerActions() {
     els.submitAnswer.disabled = false;
     els.secondaryExplain.textContent = 'Ver explicação';
     els.secondaryExplain.dataset.action = 'explain';
-    els.secondaryExplain.disabled = !hasExplanation;
+    els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
     return;
   }
 
@@ -1883,13 +1945,23 @@ function updateAnswerActions() {
     els.submitAnswer.textContent = hasPreviousAnswer ? 'Responder novamente' : 'Responder';
     els.submitAnswer.dataset.action = 'respond';
     els.submitAnswer.disabled = !hasAlternatives;
-    els.secondaryExplain.textContent = 'Ver explicação';
+    els.secondaryExplain.textContent = canRevealSupport ? 'Ver explicação' : 'Responda para liberar';
     els.secondaryExplain.dataset.action = 'explain';
-    els.secondaryExplain.disabled = !hasExplanation;
+    els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
     return;
   }
 
   if (hasPreviousAnswer) {
+    if (isAnswerFirstStudyMode() && !canRevealSupport) {
+      els.answerHint.textContent = 'Responda para liberar a explicação';
+      els.submitAnswer.textContent = 'Responder';
+      els.submitAnswer.dataset.action = 'respond';
+      els.submitAnswer.disabled = true;
+      els.secondaryExplain.textContent = 'Responda para liberar';
+      els.secondaryExplain.dataset.action = 'explain';
+      els.secondaryExplain.disabled = true;
+      return;
+    }
     els.answerHint.textContent = state.studyMode === 'adaptive'
       ? 'Esta questão já foi respondida. Você pode revisar ou seguir.'
       : 'Questão já respondida';
@@ -1906,9 +1978,9 @@ function updateAnswerActions() {
   els.submitAnswer.textContent = 'Responder';
   els.submitAnswer.dataset.action = 'respond';
   els.submitAnswer.disabled = true;
-  els.secondaryExplain.textContent = 'Ver explicação';
+  els.secondaryExplain.textContent = canRevealSupport ? 'Ver explicação' : 'Responda para liberar';
   els.secondaryExplain.dataset.action = 'explain';
-  els.secondaryExplain.disabled = !hasExplanation;
+  els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
 }
 
 function renderAnswerResult(result) {
@@ -1939,6 +2011,8 @@ function renderAnswerResult(result) {
   renderAnswerStatus(state.currentQuestion);
   renderNormativeAlert(state.currentQuestion);
   renderNormativeTeachingPanel(state.currentQuestion);
+  els.toggleComment.disabled = !canRevealExplanation(state.currentQuestion);
+  els.toggleNormativeSupport.disabled = !canRevealExplanation(state.currentQuestion) || !state.currentQuestion?.normativeUpdate?.exists;
   const hasTeachingSupportAfterAnswer = Boolean(
     canRevealCurrentLawAnswer(state.currentQuestion) && (
       state.currentQuestion?.currentLawAnswer?.exists
@@ -2453,12 +2527,15 @@ function renderSimilarPanelIntro(question) {
     els.supportSimilarBody.innerHTML = '<p class="empty">Esta questão ainda não está em uma família adaptativa.</p>';
     return;
   }
-  els.similarInfo.textContent = adaptive.clusterType === 'same_skill'
+  const isStatsOnly = adaptive.clusterPolicy === 'stats_only';
+  els.similarInfo.textContent = isStatsOnly
+    ? `${Number(adaptive.size || 0).toLocaleString('pt-BR')} no assunto`
+    : adaptive.clusterType === 'same_skill'
     ? `${Number(adaptive.size || 0).toLocaleString('pt-BR')} no mesmo assunto`
     : `${Number(adaptive.size || 0).toLocaleString('pt-BR')} semelhantes`;
   els.supportSimilarBody.innerHTML = `
-    <p>${escapeHtml(adaptive.reasonText || 'Família adaptativa da questão.')}</p>
-    <p class="empty">Abra este painel para ver representante, variações e domínio.</p>
+    <p>${escapeHtml(isStatsOnly ? 'Agrupamento amplo do mesmo assunto.' : (adaptive.reasonText || 'Questões relacionadas pelo motor adaptativo.'))}</p>
+    <p class="empty">Abra este painel para ver outras questões relacionadas.</p>
   `;
 }
 
@@ -2472,12 +2549,15 @@ async function loadSimilarQuestions() {
     els.supportSimilarBody.innerHTML = '<p class="empty">Nenhuma questão semelhante cadastrada.</p>';
     return;
   }
-  els.similarInfo.textContent = data.cluster.type === 'same_skill'
+  const isStatsOnly = data.cluster.policy === 'stats_only';
+  els.similarInfo.textContent = isStatsOnly
+    ? `${Number(data.cluster.size || 0).toLocaleString('pt-BR')} no assunto`
+    : data.cluster.type === 'same_skill'
     ? `${Number(data.cluster.size || 0).toLocaleString('pt-BR')} no mesmo assunto`
     : `${Number(data.cluster.size || 0).toLocaleString('pt-BR')} semelhantes`;
   const members = data.members || [];
   els.supportSimilarBody.innerHTML = `
-    <p>${escapeHtml(data.cluster.type === 'same_skill' ? 'Família de treino do mesmo assunto.' : 'Questões muito próximas identificadas pelo motor adaptativo.')}</p>
+    <p>${escapeHtml(isStatsOnly ? 'Outras questões do mesmo assunto.' : data.cluster.type === 'same_skill' ? 'Reforços dentro do mesmo assunto.' : 'Questões muito próximas identificadas pelo motor adaptativo.')}</p>
     ${members.length
       ? `<div class="similar-list">${members.map((member) => similarMemberMarkup(member)).join('')}</div>`
       : '<p class="empty">Nenhuma outra questao semelhante cadastrada nesta familia.</p>'}
@@ -2507,6 +2587,10 @@ function hideCommentPanel() {
 }
 
 function openSupportPanel(tab = 'comment', options = {}) {
+  if (supportTabRequiresAnswer(tab) && !canRevealExplanation(state.currentQuestion)) {
+    els.answerHint.textContent = 'Responda para liberar a explicação';
+    return;
+  }
   state.supportOpen = true;
   state.supportTab = tab;
   if (!options.keepFocus) {
@@ -2560,6 +2644,9 @@ function renderSupportVisibility() {
   if (state.supportTab === 'teaching') {
     els.supportTitle.textContent = 'Resposta pela legislacao atual';
     els.supportSubtitle.textContent = 'Gabarito atual, fundamento e conclusao de estudo';
+  } else if (state.supportTab === 'similar' && state.currentQuestion?.adaptive?.clusterPolicy === 'stats_only') {
+    els.supportTitle.textContent = 'Outras do assunto';
+    els.supportSubtitle.textContent = 'Agrupamento amplo para consulta, sem supressao de variacoes';
   }
 }
 

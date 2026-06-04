@@ -366,6 +366,15 @@ function getStats() {
       LEFT JOIN comments c ON c.question_id = q.id_question
       WHERE ${currentLawStudyAnswerSql('q', 'c')} != ''
     `).get().n,
+    readyToStudy: db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM questions q
+      LEFT JOIN comments c ON c.question_id = q.id_question
+      LEFT JOIN question_study_status qss ON qss.question_id = q.id_question
+      WHERE ${currentLawStudyAnswerSql('q', 'c')} != ''
+        AND COALESCE(q.anulada, 0) = 0
+        AND COALESCE(qss.status, 'active') != 'excluded'
+    `).get().n,
     normativeUpdates: getNormativeUpdateCount(),
     currentLawAnswers: getCurrentLawAnswerStats(),
     normativeTeachingComments: getNormativeTeachingReadyCount(),
@@ -1456,6 +1465,20 @@ function duplicateKeySql(alias) {
 }
 
 function bestAnswerSql(questionAlias, commentAlias) {
+  return `CASE
+    WHEN COALESCE(${questionAlias}.desatualizada, 0) = 1 THEN ''
+    ELSE COALESCE(NULLIF(${questionAlias}.official_answer, ''), NULLIF((
+    SELECT nq.answer
+    FROM notebook_questions nq
+    WHERE nq.question_id = ${questionAlias}.id_question
+      AND COALESCE(nq.answer, '') != ''
+    ORDER BY nq.notebook_id, nq.position
+    LIMIT 1
+  ), ''), NULLIF(${commentAlias}.extracted_answer, ''), '')
+  END`;
+}
+
+function historicalAnswerSql(questionAlias, commentAlias) {
   return `COALESCE(NULLIF(${questionAlias}.official_answer, ''), NULLIF((
     SELECT nq.answer
     FROM notebook_questions nq
@@ -1463,7 +1486,21 @@ function bestAnswerSql(questionAlias, commentAlias) {
       AND COALESCE(nq.answer, '') != ''
     ORDER BY nq.notebook_id, nq.position
     LIMIT 1
-  ), ''), '')`;
+  ), ''), NULLIF(${commentAlias}.extracted_answer, ''), '')`;
+}
+
+function historicalAnswerSourceSql(questionAlias, commentAlias) {
+  return `COALESCE(NULLIF(${questionAlias}.official_answer_source, ''), NULLIF((
+    SELECT nq.answer_source
+    FROM notebook_questions nq
+    WHERE nq.question_id = ${questionAlias}.id_question
+      AND COALESCE(nq.answer, '') != ''
+    ORDER BY nq.notebook_id, nq.position
+    LIMIT 1
+  ), ''), CASE
+    WHEN COALESCE(${commentAlias}.extracted_answer, '') != '' THEN 'comment_extracted'
+    ELSE ''
+  END)`;
 }
 
 function currentLawVerifiedAnswerSql(questionAlias) {
@@ -1489,6 +1526,40 @@ function currentLawStudyAnswerSql(questionAlias, commentAlias) {
   END`;
 }
 
+function currentLawQueueSelect(alias = 'qcla') {
+  if (!hasCurrentLawAnswerTable()) {
+    return `'' AS current_law_status,
+      0 AS can_auto_score_current_law,
+      '' AS current_answer,
+      0 AS should_discard_from_current_law_study,
+      0 AS no_valid_alternative`;
+  }
+
+  return `COALESCE(${alias}.current_law_status, '') AS current_law_status,
+      ${alias}.can_auto_score_current_law AS can_auto_score_current_law,
+      COALESCE(${alias}.current_answer, '') AS current_answer,
+      ${alias}.should_discard_from_current_law_study AS should_discard_from_current_law_study,
+      ${alias}.no_valid_alternative AS no_valid_alternative`;
+}
+
+function currentLawQueueJoin(questionAlias = 'q') {
+  return hasCurrentLawAnswerTable()
+    ? `LEFT JOIN question_current_law_answers qcla ON qcla.question_id = ${questionAlias}.id_question`
+    : '';
+}
+
+function currentLawVerifiedRowSql(alias = 'qcla') {
+  if (!hasCurrentLawAnswerTable()) {
+    return '0 = 1';
+  }
+
+  return `${alias}.current_law_status = 'verified'
+    AND ${alias}.can_auto_score_current_law IS TRUE
+    AND COALESCE(${alias}.current_answer, '') != ''
+    AND ${alias}.should_discard_from_current_law_study IS NOT TRUE
+    AND ${alias}.no_valid_alternative IS NOT TRUE`;
+}
+
 function appendWhere(whereSql, condition) {
   if (!condition) {
     return whereSql;
@@ -1498,14 +1569,16 @@ function appendWhere(whereSql, condition) {
 
 function smartReasons(row) {
   const reasons = [];
-  if (row.next_due_at && row.next_due_at <= currentSqlTimestamp()) reasons.push('revisao_vencida');
+  if (isDue(row.next_due_at)) reasons.push('revisao_vencida');
   if (Number(row.recent_wrong)) reasons.push('ultimo_erro');
   if (Number(row.never_answered)) reasons.push('nunca_resolvida');
   if (Number(row.mastery_score || 0) < 0.4) reasons.push('baixa_consolidacao');
   if (Number(row.has_comment)) reasons.push('tem_comentario');
   if (Number(row.has_answer)) reasons.push('tem_gabarito');
   if (Number(row.anulada)) reasons.push('anulada');
-  if (Number(row.desatualizada)) reasons.push('desatualizada');
+  if (Number(row.desatualizada)) {
+    reasons.push(isCurrentLawVerifiedRow(row) ? 'lei_atual_verificada' : 'desatualizada');
+  }
   if (Number(row.mastery_score || 0) >= 0.85) reasons.push('dominada');
   return reasons;
 }
@@ -1627,6 +1700,7 @@ function getSmartQueueV2Rows(searchParams, { profileId, limit = 50, mode = 'stud
       CASE WHEN last_answer.is_correct = 0 OR qm.last_result = 0 THEN 1 ELSE 0 END AS recent_wrong,
       CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN 1 ELSE 0 END AS has_comment,
       CASE WHEN ${answerSql} != '' THEN 1 ELSE 0 END AS has_answer,
+      ${currentLawQueueSelect('qcla')},
       ${normativeSelect},
       CASE WHEN EXISTS (
         SELECT 1
@@ -1640,6 +1714,7 @@ function getSmartQueueV2Rows(searchParams, { profileId, limit = 50, mode = 'stud
       ON w.profile_id = qes.profile_id
       AND w.subject_key = qes.subject_key
     LEFT JOIN comments c ON c.question_id = q.id_question
+    ${currentLawQueueJoin('q')}
     ${normativeJoin}
     LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
     LEFT JOIN (
@@ -1658,7 +1733,7 @@ function getSmartQueueV2Rows(searchParams, { profileId, limit = 50, mode = 'stud
 }
 
 function scoreSmartQueueV2Row(row, coverageRow, mode) {
-  const due = row.next_due_at && row.next_due_at <= currentSqlTimestamp();
+  const due = isDue(row.next_due_at);
   const mastery = Number(row.mastery_score || 0);
   const expectedPct = Number(row.expected_pct || 0);
   const coverageGap = Number(coverageRow?.coverage_gap_pct || 0);
@@ -1676,11 +1751,16 @@ function scoreSmartQueueV2Row(row, coverageRow, mode) {
   if (Number(row.has_answer)) score += 25;
   if (!Number(row.opened_theory)) score += 15;
   if (Number(row.anulada)) score -= 100;
-  if (Number(row.desatualizada)) score -= 80;
-  if (normalizePlain(row.normative_recomendacao).includes('descartar')) score -= 220;
-  if (normativeTextHasManual(row.normative_recomendacao) || normativeTextHasManual(row.normative_mudanca_gabarito) || ['baixo', 'manual'].includes(normalizePlain(row.normative_nivel_seguranca))) score -= 160;
-  if (normalizePlain(row.normative_recomendacao).includes('adaptar') && normalizePlain(row.normative_nivel_seguranca) === 'alto') score += 8;
-  if (normalizePlain(row.normative_mudanca_gabarito).startsWith('sim')) score -= 45;
+  const currentLawVerified = Number(row.desatualizada) && isCurrentLawVerifiedRow(row);
+  if (currentLawVerified) {
+    score += 20;
+  } else {
+    if (Number(row.desatualizada)) score -= 80;
+    if (normalizePlain(row.normative_recomendacao).includes('descartar')) score -= 220;
+    if (normativeTextHasManual(row.normative_recomendacao) || normativeTextHasManual(row.normative_mudanca_gabarito) || ['baixo', 'manual'].includes(normalizePlain(row.normative_nivel_seguranca))) score -= 160;
+    if (normalizePlain(row.normative_recomendacao).includes('adaptar') && normalizePlain(row.normative_nivel_seguranca) === 'alto') score += 8;
+    if (normalizePlain(row.normative_mudanca_gabarito).startsWith('sim')) score -= 45;
+  }
   if (dominant) score -= 70;
   if (mode === 'weakness') score += (1 - mastery) * 40;
 
@@ -1697,8 +1777,9 @@ function scoreSmartQueueV2Row(row, coverageRow, mode) {
     hasAnswer: Boolean(row.has_answer),
     normativeRecommendation: row.normative_recomendacao || '',
     normativeSecurity: row.normative_nivel_seguranca || '',
-    normativeChangedAnswer: row.normative_mudanca_gabarito || '',
-    reasons: smartQueueV2Reasons(row, { due, lowMastery, dominant, coverageGap, expectedPct })
+    normativeChangedAnswer: currentLawVerified ? '' : (row.normative_mudanca_gabarito || ''),
+    currentLawStatus: row.current_law_status || '',
+    reasons: smartQueueV2Reasons(row, { due, lowMastery, dominant, coverageGap, expectedPct, currentLawVerified })
   };
 }
 
@@ -1714,10 +1795,14 @@ function smartQueueV2Reasons(row, flags) {
   if (Number(row.has_answer)) reasons.push('tem_gabarito');
   if (!Number(row.opened_theory)) reasons.push('teoria_nao_aberta');
   if (Number(row.anulada)) reasons.push('anulada');
-  if (Number(row.desatualizada)) reasons.push('desatualizada');
-  if (normalizePlain(row.normative_recomendacao).includes('descartar')) reasons.push('normativa_descartar');
-  if (normativeTextHasManual(row.normative_recomendacao) || normativeTextHasManual(row.normative_mudanca_gabarito)) reasons.push('revisao_normativa_manual');
-  if (normalizePlain(row.normative_mudanca_gabarito).startsWith('sim')) reasons.push('gabarito_normativo_alterado');
+  if (flags.currentLawVerified) {
+    reasons.push('lei_atual_verificada');
+  } else {
+    if (Number(row.desatualizada)) reasons.push('desatualizada');
+    if (normalizePlain(row.normative_recomendacao).includes('descartar')) reasons.push('normativa_descartar');
+    if (normativeTextHasManual(row.normative_recomendacao) || normativeTextHasManual(row.normative_mudanca_gabarito)) reasons.push('revisao_normativa_manual');
+    if (normalizePlain(row.normative_mudanca_gabarito).startsWith('sim')) reasons.push('gabarito_normativo_alterado');
+  }
   if (flags.dominant) reasons.push('dominada');
   return reasons;
 }
@@ -2083,6 +2168,7 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
       CASE WHEN last_answer.is_correct = 0 OR qm.last_result = 0 THEN 1 ELSE 0 END AS recent_wrong,
       CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN 1 ELSE 0 END AS has_comment,
       CASE WHEN ${answerSql} != '' THEN 1 ELSE 0 END AS has_answer,
+      ${currentLawQueueSelect('qcla')},
       pc.cluster_id,
       pc.cluster_type,
       pc.cluster_role,
@@ -2103,6 +2189,7 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
       ) THEN 1 ELSE 0 END AS opened_theory
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
+    ${currentLawQueueJoin('q')}
     LEFT JOIN question_exam_subjects qes
       ON qes.question_id = q.id_question
       AND qes.profile_id = ?
@@ -2131,8 +2218,8 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
 }
 
 function scoreAdaptiveQuestion(row, context) {
-  const due = Boolean(row.next_due_at && row.next_due_at <= currentSqlTimestamp());
-  const clusterDue = Boolean(row.cluster_next_due_at && row.cluster_next_due_at <= currentSqlTimestamp());
+  const due = isDue(row.next_due_at);
+  const clusterDue = isDue(row.cluster_next_due_at);
   const qMastery = Number(row.mastery_score || 0);
   const cMastery = Number(row.cluster_mastery_score || 0);
   const expectedPct = Number(row.expected_pct || 0);
@@ -2202,21 +2289,29 @@ function scoreAdaptiveQuestion(row, context) {
     score += 15;
     reasons.push('teoria_util_apos_erro');
   }
+  const currentLawVerified = Number(row.desatualizada) && isCurrentLawVerifiedRow(row);
+
   if (Number(row.anulada)) {
     score -= 120;
     reasons.push('anulada');
   }
-  if (Number(row.desatualizada) && !normativeRowSafe(row)) {
+  if (currentLawVerified) {
+    score += 20;
+    reasons.push('lei_atual_verificada');
+  }
+  if (Number(row.desatualizada) && !currentLawVerified && !normativeRowSafe(row)) {
     score -= 100;
     reasons.push('desatualizada_sem_seguranca');
   }
-  if (normalizePlain(row.normative_recomendacao).includes('descartar')) {
-    score -= 120;
-    reasons.push('normativa_descartar');
-  }
-  if (normativeTextHasManual(row.normative_recomendacao) || normativeTextHasManual(row.normative_mudanca_gabarito) || ['baixo', 'manual'].includes(normalizePlain(row.normative_nivel_seguranca))) {
-    score -= 80;
-    reasons.push('revisao_normativa_manual');
+  if (!currentLawVerified) {
+    if (normalizePlain(row.normative_recomendacao).includes('descartar')) {
+      score -= 120;
+      reasons.push('normativa_descartar');
+    }
+    if (normativeTextHasManual(row.normative_recomendacao) || normativeTextHasManual(row.normative_mudanca_gabarito) || ['baixo', 'manual'].includes(normalizePlain(row.normative_nivel_seguranca))) {
+      score -= 80;
+      reasons.push('revisao_normativa_manual');
+    }
   }
   if (clusterDominated) {
     score -= 90;
@@ -2581,10 +2676,12 @@ function getQuestionAdaptiveSummary(questionId) {
     };
   }
   const isRepresentative = row.role === 'representative';
+  const clusterPolicy = resolveClusterPolicy(row.cluster_policy, row.cluster_type, Number(row.size || 0));
   return {
     exists: true,
     clusterId: row.id,
     clusterType: row.cluster_type || '',
+    clusterPolicy,
     role: row.role || '',
     isRepresentative,
     size: Number(row.size || 0),
@@ -2595,8 +2692,10 @@ function getQuestionAdaptiveSummary(questionId) {
     nextDueAt: row.next_due_at || '',
     lastResult: row.last_result,
     lastConfidence: row.last_confidence || '',
-    reasonText: row.cluster_type === 'same_skill'
-      ? (isRepresentative ? 'Questão central deste assunto.' : 'Família de treino do mesmo assunto.')
+    reasonText: clusterPolicy === 'stats_only'
+      ? ''
+      : row.cluster_type === 'same_skill'
+        ? (isRepresentative ? 'Questão central deste assunto.' : 'Reforço dentro do mesmo assunto.')
       : isRepresentative && Number(row.size || 0) > 1
         ? `Representante de ${Number(row.size || 0).toLocaleString('pt-BR')} questões semelhantes.`
         : Number(row.size || 0) > 1
@@ -2750,6 +2849,14 @@ function normativeRowSafe(row) {
     && !normativeTextHasManual(row.normative_recomendacao)
     && !['baixo', 'manual'].includes(security)
     && (security === 'alto' || recommendation.includes('manter') || recommendation.includes('adaptar'));
+}
+
+function isCurrentLawVerifiedRow(row) {
+  return String(row?.current_law_status || '') === 'verified'
+    && dbBoolean(row?.can_auto_score_current_law)
+    && String(row?.current_answer || '').trim() !== ''
+    && !dbBoolean(row?.should_discard_from_current_law_study)
+    && !dbBoolean(row?.no_valid_alternative);
 }
 
 function distributeItems(weights, size) {
@@ -3038,6 +3145,7 @@ function getSmartQueueRows(searchParams, options = {}) {
     : '';
   const finalWhere = appendWhere(whereSql, extraWhere);
   const answerSql = currentLawStudyAnswerSql('q', 'c');
+  const currentLawVerifiedSql = currentLawVerifiedRowSql('qcla');
 
   return db.prepare(`
     SELECT
@@ -3054,6 +3162,7 @@ function getSmartQueueRows(searchParams, options = {}) {
       CASE WHEN last_answer.is_correct = 0 OR qm.last_result = 0 THEN 1 ELSE 0 END AS recent_wrong,
       CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN 1 ELSE 0 END AS has_comment,
       CASE WHEN ${answerSql} != '' THEN 1 ELSE 0 END AS has_answer,
+      ${currentLawQueueSelect('qcla')},
       (
         CASE WHEN qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now') THEN 100 ELSE 0 END
         + CASE WHEN last_answer.is_correct = 0 OR qm.last_result = 0 THEN 80 ELSE 0 END
@@ -3062,7 +3171,8 @@ function getSmartQueueRows(searchParams, options = {}) {
         + CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN 20 ELSE 0 END
         + CASE WHEN ${answerSql} != '' THEN 20 ELSE 0 END
         - CASE WHEN COALESCE(q.anulada, 0) = 1 THEN 80 ELSE 0 END
-        - CASE WHEN COALESCE(q.desatualizada, 0) = 1 THEN 60 ELSE 0 END
+        + CASE WHEN COALESCE(q.desatualizada, 0) = 1 AND (${currentLawVerifiedSql}) THEN 20 ELSE 0 END
+        - CASE WHEN COALESCE(q.desatualizada, 0) = 1 AND NOT (${currentLawVerifiedSql}) THEN 60 ELSE 0 END
         - CASE
             WHEN COALESCE(qm.mastery_score, 0) >= 0.85
               AND (qm.next_due_at IS NULL OR CAST(qm.next_due_at AS TEXT) = '' OR qm.next_due_at > datetime('now'))
@@ -3071,6 +3181,7 @@ function getSmartQueueRows(searchParams, options = {}) {
       ) AS score
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
+    ${currentLawQueueJoin('q')}
     LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
     LEFT JOIN (
       SELECT
@@ -4032,6 +4143,7 @@ async function getQuestion(questionId) {
       COALESCE(c.source_type, '') AS comment_source_type,
       COALESCE(c.ai_model, '') AS comment_ai_model,
       COALESCE(CAST(c.ai_generated_at AS TEXT), '') AS comment_ai_generated_at,
+      COALESCE(c.extracted_answer, '') AS extracted_answer,
       COALESCE(qm.mastery_score, 0) AS mastery_score,
       COALESCE(qm.difficulty, 0.5) AS difficulty,
       COALESCE(qm.stability, 0) AS stability,
@@ -4039,23 +4151,10 @@ async function getQuestion(questionId) {
       qm.last_seen_at,
       qm.last_confidence,
       qm.last_error_type,
-      COALESCE(NULLIF(q.official_answer, ''), NULLIF((
-        SELECT nq.answer
-        FROM notebook_questions nq
-        WHERE nq.question_id = q.id_question
-          AND COALESCE(nq.answer, '') != ''
-        ORDER BY nq.notebook_id, nq.position
-        LIMIT 1
-      ), ''), '') AS extracted_answer,
+      ${historicalAnswerSql('q', 'c')} AS historical_answer,
+      ${historicalAnswerSourceSql('q', 'c')} AS historical_answer_source,
       ${currentLawStudyAnswerSql('q', 'c')} AS study_answer,
-      COALESCE(NULLIF(q.official_answer_source, ''), NULLIF((
-        SELECT nq.answer_source
-        FROM notebook_questions nq
-        WHERE nq.question_id = q.id_question
-          AND COALESCE(nq.answer, '') != ''
-        ORDER BY nq.notebook_id, nq.position
-        LIMIT 1
-      ), ''), '') AS answer_source
+      ${currentLawStudyAnswerSql('q', 'c')} AS expected_answer
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
     LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
@@ -4099,6 +4198,7 @@ async function getQuestion(questionId) {
   });
   const normativeUpdate = getNormativeUpdate(questionId);
   const currentLawAnswer = getCurrentLawAnswer(questionId);
+  const correction = resolveCurrentLawCorrection(question, currentLawAnswer, alternatives);
   const normativeTeachingComment = applyCurrentLawTeachingOverride(
     getNormativeTeachingComment(questionId),
     currentLawAnswer,
@@ -4125,6 +4225,16 @@ async function getQuestion(questionId) {
     normativeUpdate,
     currentLawAnswer,
     normativeTeachingComment,
+    answering: {
+      historicalAnswer: question.historical_answer || '',
+      historicalAnswerSource: question.historical_answer_source || '',
+      studyAnswer: correction.expectedAnswer || '',
+      studyAnswerSource: correction.answerSource || '',
+      correctionMode: correction.mode || '',
+      currentLawStatus: correction.currentLawStatus || '',
+      nonScoringReason: correction.nonScoringReason || '',
+      canScore: Boolean(correction.canScore)
+    },
     studyStatus,
     adaptive,
     comment: {
@@ -4132,9 +4242,11 @@ async function getQuestion(questionId) {
       text: question.comment_text || '',
       professor: question.professor || '',
       date: question.comment_date || '',
-      extractedAnswer: question.extracted_answer || '',
-      studyAnswer: question.study_answer || '',
-      answerSource: question.answer_source || '',
+      extractedAnswer: question.historical_answer || '',
+      historicalAnswer: question.historical_answer || '',
+      historicalAnswerSource: question.historical_answer_source || '',
+      studyAnswer: correction.expectedAnswer || '',
+      answerSource: correction.answerSource || '',
       sourceType: question.comment_source_type || '',
       aiModel: question.comment_ai_model || '',
       aiGeneratedAt: question.comment_ai_generated_at || ''
@@ -4199,14 +4311,7 @@ function saveAnswer(questionId, body) {
         ORDER BY nq.notebook_id, nq.position
         LIMIT 1
       ) AS notebook_answer_source,
-      COALESCE(NULLIF(q.official_answer, ''), NULLIF((
-        SELECT nq.answer
-        FROM notebook_questions nq
-        WHERE nq.question_id = q.id_question
-          AND COALESCE(nq.answer, '') != ''
-        ORDER BY nq.notebook_id, nq.position
-        LIMIT 1
-      ), ''), '') AS expected_answer
+      ${bestAnswerSql('q', 'c')} AS expected_answer
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
     WHERE q.id_question = ?
@@ -4230,7 +4335,7 @@ function saveAnswer(questionId, body) {
       session_id, correction_mode, expected_answer_source, non_scoring_reason,
       current_law_status_at_answer, scoring_version, created_at
     )
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `).run(
     questionId,
     alternative.letter,
@@ -4515,6 +4620,9 @@ function getBestAnswerSource(question) {
   }
   if (question.notebook_answer) {
     return question.notebook_answer_source || 'notebook';
+  }
+  if (question.extracted_answer) {
+    return 'comment_extracted';
   }
   return 'missing';
 }
@@ -5199,6 +5307,14 @@ function formatSqlDate(date) {
 
 function currentSqlTimestamp() {
   return formatSqlDate(new Date());
+}
+
+function isDue(value) {
+  if (!value) return false;
+  if (value instanceof Date) return value.getTime() <= Date.now();
+  const normalized = String(value).trim().replace(' ', 'T');
+  const parsed = new Date(normalized);
+  return !Number.isNaN(parsed.getTime()) && parsed.getTime() <= Date.now();
 }
 
 function sanitizeStoredHtml(html) {
