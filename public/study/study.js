@@ -1228,6 +1228,14 @@ async function selectQuestion(questionId, options = {}) {
   recordQuestionEvent('started_question');
 }
 
+function scrollToStatementStart() {
+  const target = els.statement?.closest('.question-card') || els.statement;
+  if (!target) return;
+  window.requestAnimationFrame(() => {
+    target.scrollIntoView({ block: 'start', inline: 'nearest', behavior: 'auto' });
+  });
+}
+
 async function openQuestionDirect(questionId, options = {}) {
   const targetId = Number(questionId || 0);
   if (!targetId) return;
@@ -1363,6 +1371,10 @@ function renderQuestion(question, options = {}) {
   renderSelectedAlternative();
   updateAnswerActions();
   renderSupportVisibility();
+
+  if (previousQuestionId !== nextQuestionId && options.scrollToStatement !== false) {
+    scrollToStatementStart();
+  }
 }
 
 function renderNormativeAlert(question) {

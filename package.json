@@ -39,6 +39,8 @@
     "diagnose-study-health": "node --no-warnings scripts/diagnose-study-engine-health.mjs --db questoes-prf.sqlite",
     "repair-study-scoring-v10": "node --no-warnings scripts/repair-study-scoring-v10.mjs --db questoes-prf.sqlite --dry-run",
     "repair-study-scoring-v10:apply": "node --no-warnings scripts/repair-study-scoring-v10.mjs --db questoes-prf.sqlite --apply",
+    "repair-comment-extracted-answers": "node --no-warnings scripts/repair-comment-extracted-answers.mjs --db questoes-prf.sqlite",
+    "repair-comment-extracted-answers:apply": "node --no-warnings scripts/repair-comment-extracted-answers.mjs --db questoes-prf.sqlite --apply",
     "smoke-study-engine-v12": "node --no-warnings scripts/smoke-study-engine-v12.mjs --db questoes-prf.sqlite",
     "diagnose-study-flow": "node --no-warnings scripts/diagnose-study-flow.mjs --db questoes-prf.sqlite",
     "index-theory-pages": "node --no-warnings scripts/index-theory-pages.mjs --db questoes-prf.sqlite --pdfs pdfs",

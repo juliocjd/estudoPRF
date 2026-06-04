@@ -2191,6 +2191,32 @@ function extractAnswerFromQuestionComment(question, alternatives, text) {
 
 function extractAnswerFromQuestionCommentV2(question, alternatives, text) {
   const candidates = [];
+  const labeled = extractLabeledAlternativeStatuses(text);
+  const targetStatus = commentLikelyAsksForWrongAnswer(question, text) ? 'ERRADA' : 'CORRETA';
+  const labeledMatches = labeled.filter((item) => item.status === targetStatus);
+
+  if (labeledMatches.length === 1) {
+    const directCandidates = extractDirectAnswerCandidates(text);
+    const authoritativeDirect = directCandidates.filter((candidate) => (
+      candidate.method.startsWith('gabarito_')
+      || candidate.method.startsWith('resposta_')
+      || candidate.method === 'logo_correta'
+    ));
+    const authoritativeAnswers = new Set(authoritativeDirect.map((candidate) => candidate.answer));
+    if (authoritativeAnswers.size > 0 && !authoritativeAnswers.has(labeledMatches[0].letter)) {
+      return { answer: '', rejectReason: 'candidatos_conflitantes' };
+    }
+    return {
+      answer: labeledMatches[0].letter,
+      confidence: 0.95,
+      evidenceText: trimPreview(labeledMatches[0].evidenceText || labeledMatches[0].block || '', 500),
+      method: `alternativa_${targetStatus.toLowerCase()}_explicita`
+    };
+  }
+
+  if (labeledMatches.length > 1) {
+    return { answer: '', rejectReason: 'multiplas_alternativas_rotuladas' };
+  }
 
   for (const candidate of extractDirectAnswerCandidates(text)) {
     candidates.push(candidate);
@@ -2201,9 +2227,7 @@ function extractAnswerFromQuestionCommentV2(question, alternatives, text) {
     candidates.push(byAnswerCue);
   }
 
-  const labeled = extractLabeledAlternativeStatuses(text);
   if (labeled.length) {
-    const targetStatus = commentLikelyAsksForWrongAnswer(question, text) ? 'ERRADA' : 'CORRETA';
     const matches = labeled.filter((item) => item.status === targetStatus);
     if (matches.length === 1) {
       candidates.push({
@@ -2537,6 +2561,18 @@ function extractLabeledAlternativeStatuses(text) {
   }
 
   const seen = new Set(items.map((item) => `${item.letter}:${item.status}`));
+  const explicitAlternativePattern = /\balternativa\s+([a-e])\s*(?:[-:]\s*)?(incorreta|incorreto|errada|errado|correta|correto)\b/gi;
+  for (const match of normalizeSearchText(text).matchAll(explicitAlternativePattern)) {
+    const letter = match[1].toUpperCase();
+    const status = mapCorrectWrongStatus(match[2]) === 'CERTO' ? 'CORRETA' : 'ERRADA';
+    const key = `${letter}:${status}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    items.push({ letter, status, block: match[0], evidenceText: match[0] });
+  }
+
   const directPattern = /\b([a-e])\)\s*(correta|correto|errada|errado|incorreta|incorreto)\s*[:.;-]/gi;
   for (const match of normalizeSearchText(text).matchAll(directPattern)) {
     const letter = match[1].toUpperCase();

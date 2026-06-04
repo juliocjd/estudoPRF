@@ -68,6 +68,13 @@ async function runChecks() {
   const q1198Right = await answer(1198, 'D');
   check('1198 D scores correct historically', q1198Right.expectedAnswer === 'D' && q1198Right.isCorrect === 1 && q1198Right.answerSource === 'comment_extracted', JSON.stringify(q1198Right));
 
+  const q27884 = await api('/api/questions/27884');
+  check('27884 uses explicit comment fallback E', q27884.answering?.studyAnswer === 'E' && q27884.answering?.studyAnswerSource === 'comment_extracted', JSON.stringify(q27884.answering));
+  const q27884Right = await answer(27884, 'E');
+  check('27884 E scores correct historically', q27884Right.expectedAnswer === 'E' && q27884Right.isCorrect === 1 && q27884Right.answerSource === 'comment_extracted', JSON.stringify(q27884Right));
+  const q27884Wrong = await answer(27884, 'B');
+  check('27884 B scores wrong historically', q27884Wrong.expectedAnswer === 'E' && q27884Wrong.isCorrect === 0 && q27884Wrong.answerSource === 'comment_extracted', JSON.stringify(q27884Wrong));
+
   const q42747 = await api('/api/questions/42747');
   check('42747 needs_audit has no current-law study answer', q42747.answering?.currentLawStatus === 'needs_audit' && !q42747.answering?.studyAnswer, JSON.stringify(q42747.answering));
   check('42747 keeps historical answer separated', Boolean(q42747.answering?.historicalAnswer), JSON.stringify(q42747.answering));
