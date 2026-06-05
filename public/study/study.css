@@ -1348,7 +1348,7 @@ button:disabled {
 
 .support-tabs {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
   min-width: 0;
@@ -1396,6 +1396,76 @@ button:disabled {
 
 .support-body p {
   margin: 0 0 12px;
+}
+
+.quick-theory-card {
+  display: grid;
+  gap: 14px;
+}
+
+.quick-theory-title {
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.quick-theory-section {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: var(--surface-muted);
+}
+
+.quick-theory-section span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.quick-theory-section p,
+.quick-theory-section ul {
+  margin: 0;
+}
+
+.quick-theory-section ul {
+  padding-left: 18px;
+}
+
+.quick-theory-section li + li {
+  margin-top: 4px;
+}
+
+.quick-theory-official {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.quick-theory-official summary {
+  cursor: pointer;
+  padding: 11px 12px;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.quick-theory-official article {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding: 12px;
+}
+
+.quick-theory-official blockquote {
+  margin: 0;
+  border-left: 3px solid var(--border-strong);
+  padding-left: 10px;
+  color: var(--text-muted);
+}
+
+.quick-theory-secondary {
+  margin: 0;
 }
 
 .support-body a {

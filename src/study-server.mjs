@@ -61,6 +61,7 @@ if (activeDbClient === 'sqlite') {
 initQuestionStudyStatusSchema(db);
 initTheoryPagesSchema(db);
 initNormativeTeachingStudentEditsSchema(db);
+initLegalKnowledgeSchema(db, activeDbClient);
 
 export async function handleStudyRequest(request, response) {
   try {
@@ -138,6 +139,16 @@ async function routeRequest(request, response) {
 
   if (url.pathname === '/api/exam-coverage' && request.method === 'GET') {
     sendJson(response, 200, getExamCoverage(url.searchParams));
+    return;
+  }
+
+  if (url.pathname === '/api/legal-dashboard' && request.method === 'GET') {
+    sendJson(response, 200, getLegalDashboard());
+    return;
+  }
+
+  if (url.pathname === '/api/legal-search' && request.method === 'GET') {
+    sendJson(response, 200, getLegalSearch(url.searchParams));
     return;
   }
 
@@ -220,6 +231,18 @@ async function routeRequest(request, response) {
   const questionMatch = url.pathname.match(/^\/api\/questions\/(\d+)$/);
   if (questionMatch && request.method === 'GET') {
     sendJson(response, 200, await getQuestion(Number(questionMatch[1])));
+    return;
+  }
+
+  const questionLegalStudyMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/legal-study$/);
+  if (questionLegalStudyMatch && request.method === 'GET') {
+    sendJson(response, 200, getQuestionLegalStudy(Number(questionLegalStudyMatch[1])));
+    return;
+  }
+
+  const legalCardMatch = url.pathname.match(/^\/api\/legal-cards\/(\d+)$/);
+  if (legalCardMatch && request.method === 'GET') {
+    sendJson(response, 200, getLegalCard(Number(legalCardMatch[1])));
     return;
   }
 
@@ -488,6 +511,319 @@ function hasNormativeTeachingStudentEditsTable() {
 
 function hasTheoryPagesTable() {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'theory_pages'").get());
+}
+
+function hasLegalKnowledgeTables() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'legal_topic_cards'").get())
+    && Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_legal_links'").get());
+}
+
+function getQuestionLegalStudy(questionId) {
+  if (!hasLegalKnowledgeTables()) {
+    return { available: false, reason: 'Camada de teoria rapida ainda nao criada.' };
+  }
+
+  const rows = db.prepare(`
+    SELECT
+      qll.question_id,
+      qll.relation_type,
+      qll.relevance_score,
+      qll.reason,
+      c.id AS card_id,
+      c.card_key,
+      c.title AS card_title,
+      c.materia,
+      c.assunto,
+      c.microtema,
+      c.level,
+      c.answer_summary,
+      c.rule_summary,
+      c.professor_note,
+      c.common_traps,
+      c.memory_hook,
+      c.example_text,
+      c.source_refs,
+      c.verified_status,
+      a.id AS article_id,
+      a.article_ref,
+      a.heading,
+      a.text AS article_text,
+      a.excerpt AS article_excerpt,
+      s.source_key,
+      s.title AS source_title,
+      s.url AS source_url,
+      s.source_org
+    FROM question_legal_links qll
+    LEFT JOIN legal_topic_cards c ON c.id = qll.legal_card_id
+    LEFT JOIN legal_articles a ON a.id = qll.legal_article_id
+    LEFT JOIN legal_sources s ON s.id = a.source_id
+    WHERE qll.question_id = ?
+    ORDER BY qll.relevance_score DESC, c.verified_status = 'reviewed' DESC, c.id
+    LIMIT 6
+  `).all(questionId);
+
+  const primaryRow = rows.find((row) => row.card_id) || rows[0];
+  if (!primaryRow?.card_id) {
+    return { available: false, reason: 'Teoria rapida ainda nao disponivel para este ponto.' };
+  }
+
+  const primaryCard = legalCardPayload(primaryRow, rows);
+  const relatedCards = rows
+    .filter((row) => row.card_id && row.card_id !== primaryCard.id)
+    .map((row) => legalCardPayload(row, [row]));
+
+  return {
+    available: true,
+    primaryCard,
+    relatedCards,
+    officialText: {
+      collapsedByDefault: true,
+      articles: buildOfficialArticles(rows)
+    }
+  };
+}
+
+function getLegalCard(cardId) {
+  if (!hasLegalKnowledgeTables()) {
+    return { available: false, reason: 'Camada de teoria rapida ainda nao criada.' };
+  }
+  const rows = db.prepare(`
+    SELECT
+      c.id AS card_id,
+      c.card_key,
+      c.title AS card_title,
+      c.materia,
+      c.assunto,
+      c.microtema,
+      c.level,
+      c.answer_summary,
+      c.rule_summary,
+      c.professor_note,
+      c.common_traps,
+      c.memory_hook,
+      c.example_text,
+      c.source_refs,
+      c.verified_status,
+      a.id AS article_id,
+      a.article_ref,
+      a.heading,
+      a.text AS article_text,
+      a.excerpt AS article_excerpt,
+      s.source_key,
+      s.title AS source_title,
+      s.url AS source_url,
+      s.source_org
+    FROM legal_topic_cards c
+    LEFT JOIN question_legal_links qll ON qll.legal_card_id = c.id
+    LEFT JOIN legal_articles a ON a.id = qll.legal_article_id
+    LEFT JOIN legal_sources s ON s.id = a.source_id
+    WHERE c.id = ?
+    ORDER BY a.article_order, a.id
+    LIMIT 8
+  `).all(cardId);
+  if (!rows.length) {
+    return { available: false, reason: 'Card nao encontrado.' };
+  }
+  return {
+    available: true,
+    primaryCard: legalCardPayload(rows[0], rows),
+    officialText: {
+      collapsedByDefault: true,
+      articles: buildOfficialArticles(rows)
+    }
+  };
+}
+
+function getLegalSearch(searchParams) {
+  if (!hasLegalKnowledgeTables()) {
+    return { available: false, rows: [] };
+  }
+  const query = String(searchParams.get('q') || '').trim();
+  if (query.length < 2) {
+    return { available: true, rows: [] };
+  }
+  const like = `%${query}%`;
+  const rows = db.prepare(`
+    SELECT id, card_key, title, materia, assunto, microtema, answer_summary, verified_status
+    FROM legal_topic_cards
+    WHERE title LIKE ?
+       OR materia LIKE ?
+       OR assunto LIKE ?
+       OR microtema LIKE ?
+       OR answer_summary LIKE ?
+       OR rule_summary LIKE ?
+       OR common_traps LIKE ?
+    ORDER BY verified_status = 'reviewed' DESC, title
+    LIMIT 30
+  `).all(like, like, like, like, like, like, like);
+
+  return {
+    available: true,
+    rows: rows.map((row) => ({
+      id: row.id,
+      title: row.title || '',
+      materia: row.materia || '',
+      assunto: row.assunto || '',
+      microtema: row.microtema || '',
+      answerSummary: row.answer_summary || '',
+      verifiedStatus: row.verified_status || ''
+    }))
+  };
+}
+
+function getLegalDashboard() {
+  if (!hasLegalKnowledgeTables()) {
+    return { available: false, reason: 'Camada de teoria rapida ainda nao criada.' };
+  }
+
+  const totalQuestions = db.prepare('SELECT COUNT(*) AS n FROM questions WHERE COALESCE(anulada, 0) = 0').get().n || 0;
+  const withQuickTheory = db.prepare(`
+    SELECT COUNT(DISTINCT qll.question_id) AS n
+    FROM question_legal_links qll
+    JOIN questions q ON q.id_question = qll.question_id
+    WHERE COALESCE(q.anulada, 0) = 0
+  `).get().n || 0;
+  const stats = {
+    sources: db.prepare('SELECT COUNT(*) AS n FROM legal_sources').get().n || 0,
+    articles: db.prepare('SELECT COUNT(*) AS n FROM legal_articles').get().n || 0,
+    cards: db.prepare('SELECT COUNT(*) AS n FROM legal_topic_cards').get().n || 0,
+    links: db.prepare('SELECT COUNT(*) AS n FROM question_legal_links').get().n || 0,
+    totalQuestions,
+    withQuickTheory,
+    withoutQuickTheory: Math.max(0, totalQuestions - withQuickTheory),
+    pendingReview: db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM legal_topic_cards
+      WHERE COALESCE(verified_status, '') NOT IN ('reviewed', 'verified')
+    `).get().n || 0,
+    importErrors: db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM legal_sources
+      WHERE COALESCE(import_error, '') != ''
+    `).get().n || 0
+  };
+
+  const bySubject = db.prepare(`
+    SELECT
+      q.materia,
+      q.assunto,
+      COUNT(DISTINCT q.id_question) AS total,
+      COUNT(DISTINCT qll.question_id) AS covered,
+      SUM(CASE WHEN sa.is_correct = 0 THEN 1 ELSE 0 END) AS wrong_attempts
+    FROM questions q
+    LEFT JOIN question_legal_links qll ON qll.question_id = q.id_question
+    LEFT JOIN study_answers sa ON sa.question_id = q.id_question
+    WHERE COALESCE(q.anulada, 0) = 0
+    GROUP BY q.materia, q.assunto
+    ORDER BY (COUNT(*) - COUNT(DISTINCT qll.question_id)) DESC, wrong_attempts DESC
+    LIMIT 40
+  `).all();
+
+  const sourcesWithErrors = db.prepare(`
+    SELECT source_key, title, import_error
+    FROM legal_sources
+    WHERE COALESCE(import_error, '') != ''
+    ORDER BY updated_at DESC
+    LIMIT 20
+  `).all();
+
+  return {
+    available: true,
+    stats,
+    bySubject: bySubject.map((row) => ({
+      materia: row.materia || '',
+      assunto: row.assunto || '',
+      total: row.total || 0,
+      covered: row.covered || 0,
+      missing: Math.max(0, Number(row.total || 0) - Number(row.covered || 0)),
+      wrongAttempts: row.wrong_attempts || 0
+    })),
+    sourcesWithErrors: sourcesWithErrors.map((row) => ({
+      sourceKey: row.source_key || '',
+      title: row.title || '',
+      error: row.import_error || ''
+    }))
+  };
+}
+
+function legalCardPayload(row, sourceRows = []) {
+  return {
+    id: row.card_id,
+    cardKey: row.card_key || '',
+    title: row.card_title || '',
+    materia: row.materia || '',
+    assunto: row.assunto || '',
+    microtema: row.microtema || '',
+    level: row.level || 'beginner',
+    answerSummary: row.answer_summary || '',
+    ruleSummary: row.rule_summary || '',
+    professorNote: row.professor_note || '',
+    commonTraps: row.common_traps || '',
+    memoryHook: row.memory_hook || '',
+    exampleText: row.example_text || '',
+    bullets: buildLegalBullets(row),
+    sourceRefs: buildSourceRefs(row, sourceRows),
+    verifiedStatus: row.verified_status || ''
+  };
+}
+
+function buildLegalBullets(row) {
+  const chunks = [
+    row.answer_summary || '',
+    row.rule_summary || '',
+    row.common_traps || ''
+  ].flatMap((text) => String(text || '').split(/;|\.\s+/));
+  const seen = new Set();
+  return chunks
+    .map((item) => item.replace(/\s+/g, ' ').trim())
+    .filter((item) => item.length >= 12)
+    .filter((item) => {
+      const key = normalizeTheoryTitle(item);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 5);
+}
+
+function buildSourceRefs(row, sourceRows = []) {
+  const refs = safeJsonParse(row.source_refs, []);
+  const explicitRefs = Array.isArray(refs) ? refs : [];
+  const articleRefs = buildOfficialArticles(sourceRows);
+  if (articleRefs.length) {
+    return articleRefs.map((item) => ({
+      label: item.label,
+      excerpt: item.excerpt,
+      sourceUrl: item.sourceUrl
+    }));
+  }
+  return explicitRefs.map((item) => ({
+    label: item.label || [item.source_key, item.article_ref].filter(Boolean).join(', '),
+    excerpt: item.excerpt || '',
+    sourceUrl: item.source_url || item.sourceUrl || ''
+  }));
+}
+
+function buildOfficialArticles(rows = []) {
+  const seen = new Set();
+  const articles = [];
+  for (const row of rows) {
+    if (!row.article_id && !row.article_ref) continue;
+    const key = `${row.source_key || ''}:${row.article_ref || ''}:${row.article_id || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    articles.push({
+      id: row.article_id || null,
+      label: [row.source_title || '', row.article_ref || ''].filter(Boolean).join(', '),
+      articleRef: row.article_ref || '',
+      heading: row.heading || '',
+      text: row.article_text || '',
+      excerpt: row.article_excerpt || trimPreview(row.article_text || '', 420),
+      sourceTitle: row.source_title || '',
+      sourceUrl: row.source_url || ''
+    });
+  }
+  return articles;
 }
 
 function columnExists(tableName, columnName) {
@@ -4207,6 +4543,7 @@ async function getQuestion(questionId) {
     currentLawAnswer,
     Boolean(question.desatualizada)
   );
+  const legalStudy = getQuestionLegalStudy(questionId);
   const adaptive = getQuestionAdaptiveSummary(questionId);
   const studyStatus = getQuestionStudyStatus(questionId);
 
@@ -4228,6 +4565,7 @@ async function getQuestion(questionId) {
     normativeUpdate,
     currentLawAnswer,
     normativeTeachingComment,
+    legalStudy,
     answering: {
       historicalAnswer: question.historical_answer || '',
       historicalAnswerSource: question.historical_answer_source || '',
@@ -4687,6 +5025,239 @@ function initNormativeTeachingStudentEditsSchema(database) {
 
     CREATE INDEX IF NOT EXISTS idx_qntc_student_edits_updated
       ON question_normative_teaching_student_edits(updated_at);
+  `);
+}
+
+function initLegalKnowledgeSchema(database, client = 'sqlite') {
+  if (client === 'postgres') {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS legal_sources (
+        id BIGSERIAL PRIMARY KEY,
+        source_key TEXT UNIQUE NOT NULL,
+        source_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        source_org TEXT,
+        url TEXT NOT NULL,
+        status TEXT,
+        number TEXT,
+        year INTEGER,
+        published_at DATE,
+        effective_at DATE,
+        revoked_by TEXT,
+        priority INTEGER DEFAULT 50,
+        raw_text TEXT,
+        raw_hash TEXT,
+        fetched_at TIMESTAMPTZ,
+        indexed_at TIMESTAMPTZ,
+        import_error TEXT,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS legal_articles (
+        id BIGSERIAL PRIMARY KEY,
+        source_id BIGINT NOT NULL REFERENCES legal_sources(id) ON DELETE CASCADE,
+        article_ref TEXT NOT NULL,
+        article_order INTEGER,
+        heading TEXT,
+        text TEXT NOT NULL,
+        normalized_text TEXT,
+        excerpt TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(source_id, article_ref)
+      );
+
+      CREATE TABLE IF NOT EXISTS legal_topic_cards (
+        id BIGSERIAL PRIMARY KEY,
+        card_key TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        materia TEXT,
+        assunto TEXT,
+        microtema TEXT,
+        level TEXT DEFAULT 'beginner',
+        answer_summary TEXT,
+        rule_summary TEXT,
+        professor_note TEXT,
+        common_traps TEXT,
+        memory_hook TEXT,
+        example_text TEXT,
+        source_refs JSONB DEFAULT '[]'::jsonb,
+        verified_status TEXT DEFAULT 'draft',
+        generated_by TEXT DEFAULT 'system',
+        reviewed_at TIMESTAMPTZ,
+        reviewed_by TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS question_legal_links (
+        id BIGSERIAL PRIMARY KEY,
+        question_id BIGINT NOT NULL,
+        legal_article_id BIGINT REFERENCES legal_articles(id) ON DELETE SET NULL,
+        legal_card_id BIGINT REFERENCES legal_topic_cards(id) ON DELETE SET NULL,
+        relation_type TEXT DEFAULT 'supports_answer',
+        relevance_score NUMERIC DEFAULT 0,
+        reason TEXT,
+        source TEXT DEFAULT 'auto',
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(question_id, legal_article_id, legal_card_id, relation_type)
+      );
+
+      CREATE TABLE IF NOT EXISTS legal_change_events (
+        id BIGSERIAL PRIMARY KEY,
+        source_id BIGINT REFERENCES legal_sources(id) ON DELETE SET NULL,
+        change_key TEXT UNIQUE,
+        title TEXT NOT NULL,
+        previous_rule TEXT,
+        current_rule TEXT,
+        affected_topics JSONB DEFAULT '[]'::jsonb,
+        affected_question_count INTEGER DEFAULT 0,
+        effective_at DATE,
+        source_url TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS daily_study_lessons (
+        id BIGSERIAL PRIMARY KEY,
+        question_id BIGINT,
+        legal_card_id BIGINT REFERENCES legal_topic_cards(id) ON DELETE SET NULL,
+        lesson_type TEXT NOT NULL DEFAULT 'error_remedy',
+        title TEXT NOT NULL,
+        short_text TEXT NOT NULL,
+        created_from TEXT DEFAULT 'system',
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_legal_sources_type_number
+        ON legal_sources(source_type, number, year);
+      CREATE INDEX IF NOT EXISTS idx_legal_articles_source_ref
+        ON legal_articles(source_id, article_ref);
+      CREATE INDEX IF NOT EXISTS idx_legal_cards_materia_assunto
+        ON legal_topic_cards(materia, assunto, microtema);
+      CREATE INDEX IF NOT EXISTS idx_question_legal_links_question
+        ON question_legal_links(question_id);
+      CREATE INDEX IF NOT EXISTS idx_question_legal_links_card
+        ON question_legal_links(legal_card_id);
+    `);
+    return;
+  }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS legal_sources (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_key TEXT UNIQUE NOT NULL,
+      source_type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      source_org TEXT,
+      url TEXT NOT NULL,
+      status TEXT,
+      number TEXT,
+      year INTEGER,
+      published_at TEXT,
+      effective_at TEXT,
+      revoked_by TEXT,
+      priority INTEGER DEFAULT 50,
+      raw_text TEXT,
+      raw_hash TEXT,
+      fetched_at TEXT,
+      indexed_at TEXT,
+      import_error TEXT,
+      notes TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS legal_articles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_id INTEGER NOT NULL,
+      article_ref TEXT NOT NULL,
+      article_order INTEGER,
+      heading TEXT,
+      text TEXT NOT NULL,
+      normalized_text TEXT,
+      excerpt TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(source_id, article_ref)
+    );
+
+    CREATE TABLE IF NOT EXISTS legal_topic_cards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      card_key TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      materia TEXT,
+      assunto TEXT,
+      microtema TEXT,
+      level TEXT DEFAULT 'beginner',
+      answer_summary TEXT,
+      rule_summary TEXT,
+      professor_note TEXT,
+      common_traps TEXT,
+      memory_hook TEXT,
+      example_text TEXT,
+      source_refs TEXT DEFAULT '[]',
+      verified_status TEXT DEFAULT 'draft',
+      generated_by TEXT DEFAULT 'system',
+      reviewed_at TEXT,
+      reviewed_by TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS question_legal_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id INTEGER NOT NULL,
+      legal_article_id INTEGER,
+      legal_card_id INTEGER,
+      relation_type TEXT DEFAULT 'supports_answer',
+      relevance_score REAL DEFAULT 0,
+      reason TEXT,
+      source TEXT DEFAULT 'auto',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(question_id, legal_article_id, legal_card_id, relation_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS legal_change_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_id INTEGER,
+      change_key TEXT UNIQUE,
+      title TEXT NOT NULL,
+      previous_rule TEXT,
+      current_rule TEXT,
+      affected_topics TEXT DEFAULT '[]',
+      affected_question_count INTEGER DEFAULT 0,
+      effective_at TEXT,
+      source_url TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS daily_study_lessons (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id INTEGER,
+      legal_card_id INTEGER,
+      lesson_type TEXT NOT NULL DEFAULT 'error_remedy',
+      title TEXT NOT NULL,
+      short_text TEXT NOT NULL,
+      created_from TEXT DEFAULT 'system',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_legal_sources_type_number
+      ON legal_sources(source_type, number, year);
+    CREATE INDEX IF NOT EXISTS idx_legal_articles_source_ref
+      ON legal_articles(source_id, article_ref);
+    CREATE INDEX IF NOT EXISTS idx_legal_articles_normalized_text
+      ON legal_articles(normalized_text);
+    CREATE INDEX IF NOT EXISTS idx_legal_cards_materia_assunto
+      ON legal_topic_cards(materia, assunto, microtema);
+    CREATE INDEX IF NOT EXISTS idx_question_legal_links_question
+      ON question_legal_links(question_id);
+    CREATE INDEX IF NOT EXISTS idx_question_legal_links_card
+      ON question_legal_links(legal_card_id);
   `);
 }
 

@@ -2227,6 +2227,11 @@ function extractAnswerFromQuestionCommentV2(question, alternatives, text) {
     candidates.push(candidate);
   }
 
+  const semanticAlternativeCue = extractSemanticAlternativeCueCandidate(question, alternatives, text);
+  if (semanticAlternativeCue) {
+    candidates.push(semanticAlternativeCue);
+  }
+
   const byAnswerCue = extractLetterByAnswerCueCandidate(text);
   if (byAnswerCue) {
     candidates.push(byAnswerCue);
@@ -2525,6 +2530,58 @@ function extractDirectAnswerCandidates(text) {
     });
   }
   return candidates;
+}
+
+function extractSemanticAlternativeCueCandidate(question, alternatives, text) {
+  if (String(question?.type_question || '').toUpperCase() !== 'MULTIPLA_ESCOLHA') {
+    return null;
+  }
+
+  const normalized = normalizeSearchText(`${question?.statement_text || ''}\n${text || ''}`);
+  if (!/\bidentific(?:a|ar|acao|acao|ara|arao|ou)\b/.test(normalized)) {
+    return null;
+  }
+
+  const matches = [];
+  for (const alternative of alternatives || []) {
+    const terms = meaningfulAlternativeTerms(alternative.text || '');
+    if (!terms.length) {
+      continue;
+    }
+    const matchedTerm = terms.find((term) => (
+      new RegExp(`\\bidentific\\w*\\W{0,80}${escapeRegExp(term)}\\b`).test(normalized)
+      || new RegExp(`\\b${escapeRegExp(term)}\\b\\W{0,80}\\b(?:do|da|de)?\\s*veiculo\\b`).test(normalized)
+    ));
+    if (matchedTerm) {
+      matches.push({
+        answer: alternative.letter,
+        term: matchedTerm
+      });
+    }
+  }
+
+  const letters = [...new Set(matches.map((match) => match.answer))];
+  if (letters.length !== 1) {
+    return null;
+  }
+
+  return {
+    answer: letters[0],
+    confidence: 0.94,
+    evidenceText: trimPreview(matches[0].term, 500),
+    method: 'alternativa_por_pista_material_identificacao'
+  };
+}
+
+function meaningfulAlternativeTerms(text) {
+  const stopwords = new Set(['a', 'as', 'o', 'os', 'de', 'da', 'do', 'das', 'dos', 'um', 'uma', 'veiculo', 'veiculos']);
+  const normalized = normalizeSearchText(text)
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+  const words = normalized
+    .split(/\s+/)
+    .filter((word) => word.length >= 4 && !stopwords.has(word));
+  return [...new Set(words)];
 }
 
 function mapCorrectWrongStatus(value) {

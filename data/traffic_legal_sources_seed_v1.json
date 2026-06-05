@@ -1,0 +1,98 @@
+{
+  "version": "traffic-legal-sources-v1",
+  "generated_at": "2026-06-05",
+  "purpose": "Fontes oficiais iniciais para camada de legislacao e microteoria de transito no sistema de estudo PRF.",
+  "canonical_sources": [
+    {
+      "key": "ctb_compilado_planalto",
+      "type": "law_html",
+      "title": "Codigo de Transito Brasileiro - Lei n. 9.503/1997 compilada",
+      "source_org": "Planalto",
+      "url": "https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm",
+      "priority": 100,
+      "notes": "Fonte principal para artigos do CTB. Fonte canonica da lei federal compilada."
+    },
+    {
+      "key": "contran_resolucoes_index",
+      "type": "official_index",
+      "title": "Resolucoes CONTRAN - lista oficial SENATRAN/Ministerio dos Transportes",
+      "source_org": "SENATRAN/Ministerio dos Transportes",
+      "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-Senatran/resolucoes-contran",
+      "priority": 100,
+      "notes": "Indice oficial para descobrir resolucoes em vigor, alteracoes, revogacoes, anexos e PDFs."
+    },
+    {
+      "key": "contran_resolucoes_consolidadas_index",
+      "type": "official_index",
+      "title": "Resolucoes CONTRAN em vigor consolidadas",
+      "source_org": "SENATRAN/Ministerio dos Transportes",
+      "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes_consolidadas/resolucoes-contran-homologacao",
+      "priority": 90,
+      "notes": "Usar como apoio; preferir PDF oficial e pagina oficial quando houver conflito."
+    }
+  ],
+  "high_priority_resolution_examples": [
+    {
+      "key": "contran_960_2022",
+      "type": "resolution_pdf",
+      "resolution_number": "960",
+      "year": 2022,
+      "title": "Vidros, peliculas, visibilidade e transmitancia luminosa",
+      "source_org": "CONTRAN/SENATRAN",
+      "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9602022.pdf",
+      "topic_tags": ["vidros", "peliculas", "transmitancia", "visibilidade", "equipamentos"],
+      "notes": "Exemplo usado no sistema: pelicula refletiva nas areas envidracadas e vedada."
+    },
+    {
+      "key": "contran_967_2022",
+      "type": "resolution_pdf",
+      "resolution_number": "967",
+      "year": 2022,
+      "title": "Baixa do registro de veiculos",
+      "source_org": "CONTRAN/SENATRAN",
+      "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9672022.pdf",
+      "topic_tags": ["baixa de veiculo", "veiculo irrecuperavel", "sinistro", "laudo", "prazo"],
+      "notes": "Exemplo usado no sistema: prazo atual de 30 dias para baixa apos constatacao por laudo."
+    },
+    {
+      "key": "contran_985_2022",
+      "type": "resolution_pdf",
+      "resolution_number": "985",
+      "year": 2022,
+      "title": "Manual Brasileiro de Fiscalizacao de Transito - MBFT",
+      "source_org": "CONTRAN/SENATRAN",
+      "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9852022.pdf",
+      "topic_tags": ["MBFT", "fiscalizacao", "infracoes", "enquadramentos"]
+    },
+    {
+      "key": "contran_993_2023",
+      "type": "resolution_pdf",
+      "resolution_number": "993",
+      "year": 2023,
+      "title": "Equipamentos obrigatorios para a frota de veiculos em circulacao",
+      "source_org": "CONTRAN/SENATRAN",
+      "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9932023.pdf",
+      "topic_tags": ["equipamentos obrigatorios", "veiculos", "seguranca veicular"]
+    },
+    {
+      "key": "contran_918_2022",
+      "type": "resolution_pdf",
+      "resolution_number": "918",
+      "year": 2022,
+      "title": "Procedimentos para aplicacao de multas por infracoes",
+      "source_org": "CONTRAN/SENATRAN",
+      "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9182022.pdf",
+      "topic_tags": ["multas", "AIT", "processo administrativo", "penalidades"]
+    },
+    {
+      "key": "contran_1020_2025",
+      "type": "resolution_pdf",
+      "resolution_number": "1020",
+      "year": 2025,
+      "title": "Aprendizagem, habilitacao, expedicao de documentos de condutores e formacao",
+      "source_org": "CONTRAN/SENATRAN",
+      "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao10202025.pdf",
+      "topic_tags": ["habilitacao", "aprendizagem", "CNH", "formacao de condutores"]
+    }
+  ]
+}

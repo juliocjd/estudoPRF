@@ -12,6 +12,9 @@ pdfs-prf-sample/
 *.zip
 study-*.png
 data/
+!data/
+data/*
+!data/traffic_legal_sources_seed_v1.json
 exports/
 postgres-export/
 tmp-*.sqlite

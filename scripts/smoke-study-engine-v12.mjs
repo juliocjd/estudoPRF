@@ -21,6 +21,7 @@ let server = null;
 try {
   await fsp.copyFile(sourceDb, tempDb);
   seedCurrentLawAnswers(tempDb, seedPath);
+  seedManualAnswerFixes(tempDb);
   server = spawn(process.execPath, [
     '--no-warnings',
     path.join(ROOT_DIR, 'src/study-server.mjs'),
@@ -67,6 +68,13 @@ async function runChecks() {
   check('1198 uses comment_extracted historical fallback', q1198.answering?.historicalAnswer === 'D' && q1198.answering?.historicalAnswerSource === 'comment_extracted', JSON.stringify(q1198.answering));
   const q1198Right = await answer(1198, 'D');
   check('1198 D scores correct historically', q1198Right.expectedAnswer === 'D' && q1198Right.isCorrect === 1 && q1198Right.answerSource === 'comment_extracted', JSON.stringify(q1198Right));
+
+  const q300141 = await api('/api/questions/300141');
+  check('300141 manual contradiction fix uses E/modelo', q300141.answering?.studyAnswer === 'E', JSON.stringify(q300141.answering));
+  const q300141Right = await answer(300141, 'E');
+  check('300141 E/modelo scores correct', q300141Right.expectedAnswer === 'E' && q300141Right.isCorrect === 1, JSON.stringify(q300141Right));
+  const q300141Wrong = await answer(300141, 'A');
+  check('300141 A/lotacao scores wrong', q300141Wrong.expectedAnswer === 'E' && q300141Wrong.isCorrect === 0, JSON.stringify(q300141Wrong));
 
   const q27884 = await api('/api/questions/27884');
   check('27884 uses explicit comment fallback E', q27884.answering?.studyAnswer === 'E' && q27884.answering?.studyAnswerSource === 'comment_extracted', JSON.stringify(q27884.answering));
@@ -169,6 +177,23 @@ function seedCurrentLawAnswers(dbPath, jsonPath) {
       item.source_version || ''
     );
   }
+  db.close();
+}
+
+function seedManualAnswerFixes(dbPath) {
+  const db = new DatabaseSync(dbPath);
+  db.prepare(`
+    UPDATE comments
+    SET extracted_answer = 'E',
+        checked_at = CURRENT_TIMESTAMP
+    WHERE question_id = 300141
+  `).run();
+  db.prepare(`
+    UPDATE questions
+    SET official_answer = 'E',
+        official_answer_source = 'manual_comment_contradiction_20260605'
+    WHERE id_question = 300141
+  `).run();
   db.close();
 }
 

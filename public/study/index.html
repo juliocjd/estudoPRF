@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260605-support-tabs">
+    <link rel="stylesheet" href="/study.css?v=20260605-legal-theory">
   </head>
   <body>
     <div class="app-shell">
@@ -136,6 +136,7 @@
               </button>
               <div class="dropdown-menu" role="menu" hidden>
                 <button id="toggleCoverage" class="menu-item" type="button">Base x Prova</button>
+                <button id="toggleTheoryCoverage" class="menu-item" type="button">Cobertura de teoria</button>
                 <button id="toggleSubjects" class="menu-item" type="button">Ranking de assuntos</button>
                 <button id="toggleNormative" class="menu-item" type="button">Revisão normativa</button>
               </div>
@@ -147,9 +148,10 @@
               </button>
               <div class="dropdown-menu" role="menu" hidden>
                 <button id="openTeaching" class="menu-item" type="button" disabled>Resposta pela legislação atual</button>
+                <button id="openQuickTheory" class="menu-item" type="button" disabled>Teoria rápida</button>
                 <button id="toggleNormativeSupport" class="menu-item" type="button" disabled hidden>Atualização normativa</button>
                 <button id="toggleComment" class="menu-item" type="button" disabled>Explicação histórica</button>
-                <button id="openTheory" class="menu-item" type="button" disabled>Teoria</button>
+                <button id="openTheory" class="menu-item" type="button" disabled>PDF de teoria</button>
                 <button id="openHistory" class="menu-item" type="button">Histórico da questão</button>
                 <button id="showSimilar" class="menu-item" type="button" disabled>Semelhantes</button>
               </div>
@@ -272,6 +274,15 @@
           <div class="coverage-table" id="coverageTable"></div>
         </section>
 
+        <section class="coverage-panel theory-coverage-panel" id="theoryCoveragePanel" hidden>
+          <div class="subjects-head">
+            <strong>Cobertura de teoria</strong>
+            <span id="theoryCoverageInfo"></span>
+          </div>
+          <div id="theoryCoverageStats" class="normative-stats"></div>
+          <div class="coverage-table" id="theoryCoverageTable"></div>
+        </section>
+
         <section class="normative-panel" id="normativePanel" hidden>
           <div class="subjects-head">
             <strong>Revisão normativa</strong>
@@ -341,9 +352,10 @@
 
       <nav class="support-tabs" aria-label="Abas de apoio">
         <button id="supportTabTeaching" class="support-tab" type="button" data-support-tab="teaching">Resposta atual</button>
+        <button id="supportTabQuickTheory" class="support-tab" type="button" data-support-tab="quickTheory">Teoria rápida</button>
         <button id="supportTabNormative" class="support-tab" type="button" data-support-tab="normative">Atualização normativa</button>
         <button id="supportTabComment" class="support-tab is-active" type="button" data-support-tab="comment">Explicação histórica</button>
-        <button id="supportTabTheory" class="support-tab" type="button" data-support-tab="theory">Teoria</button>
+        <button id="supportTabTheory" class="support-tab" type="button" data-support-tab="theory">PDF</button>
         <button id="supportTabHistory" class="support-tab" type="button" data-support-tab="history">Histórico</button>
         <button id="supportTabSimilar" class="support-tab" type="button" data-support-tab="similar">Semelhantes</button>
       </nav>
@@ -354,6 +366,14 @@
           <span id="teachingInfo"></span>
         </div>
         <div id="supportTeachingBody" class="support-body"></div>
+      </article>
+
+      <article class="support-tab-panel" id="supportQuickTheoryPanel" hidden>
+        <div class="comment-head">
+          <strong>Teoria rápida</strong>
+          <span id="quickTheoryInfo"></span>
+        </div>
+        <div id="supportQuickTheoryBody" class="support-body"></div>
       </article>
 
       <article class="support-tab-panel comment-panel" id="commentPanel">
@@ -397,6 +417,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260605-support-tabs" type="module"></script>
+    <script src="/study.js?v=20260605-legal-theory" type="module"></script>
   </body>
 </html>

@@ -39,6 +39,7 @@ const state = {
   subjects: [],
   subjectsVisible: false,
   coverageVisible: false,
+  theoryCoverageVisible: false,
   normativeVisible: false,
   teachingEditMode: false
 };
@@ -78,6 +79,7 @@ const els = {
   reportsMenuButton: document.querySelector('#reportsMenuButton'),
   supportMenuButton: document.querySelector('#supportMenuButton'),
   toggleCoverage: document.querySelector('#toggleCoverage'),
+  toggleTheoryCoverage: document.querySelector('#toggleTheoryCoverage'),
   toggleSubjects: document.querySelector('#toggleSubjects'),
   toggleNormative: document.querySelector('#toggleNormative'),
   pageLabel: document.querySelector('#pageLabel'),
@@ -87,6 +89,7 @@ const els = {
   questionTitle: document.querySelector('#questionTitle'),
   normativeAlert: document.querySelector('#normativeAlert'),
   openTeaching: document.querySelector('#openTeaching'),
+  openQuickTheory: document.querySelector('#openQuickTheory'),
   openTheory: document.querySelector('#openTheory'),
   openHistory: document.querySelector('#openHistory'),
   toggleNormativeSupport: document.querySelector('#toggleNormativeSupport'),
@@ -117,6 +120,8 @@ const els = {
   closeSupport: document.querySelector('#closeSupport'),
   supportTabs: document.querySelectorAll('[data-support-tab]'),
   supportTheoryPanel: document.querySelector('#supportTheoryPanel'),
+  supportQuickTheoryPanel: document.querySelector('#supportQuickTheoryPanel'),
+  supportTabQuickTheory: document.querySelector('#supportTabQuickTheory'),
   supportNormativePanel: document.querySelector('#supportNormativePanel'),
   supportTabNormative: document.querySelector('#supportTabNormative'),
   supportHistoryPanel: document.querySelector('#supportHistoryPanel'),
@@ -125,6 +130,8 @@ const els = {
   supportNormativeBody: document.querySelector('#supportNormativeBody'),
   theoryInfo: document.querySelector('#theoryInfo'),
   supportTheoryBody: document.querySelector('#supportTheoryBody'),
+  quickTheoryInfo: document.querySelector('#quickTheoryInfo'),
+  supportQuickTheoryBody: document.querySelector('#supportQuickTheoryBody'),
   historyInfo: document.querySelector('#historyInfo'),
   supportHistoryBody: document.querySelector('#supportHistoryBody'),
   similarInfo: document.querySelector('#similarInfo'),
@@ -139,6 +146,10 @@ const els = {
   coverageInfo: document.querySelector('#coverageInfo'),
   coverageAlerts: document.querySelector('#coverageAlerts'),
   coverageTable: document.querySelector('#coverageTable'),
+  theoryCoveragePanel: document.querySelector('#theoryCoveragePanel'),
+  theoryCoverageInfo: document.querySelector('#theoryCoverageInfo'),
+  theoryCoverageStats: document.querySelector('#theoryCoverageStats'),
+  theoryCoverageTable: document.querySelector('#theoryCoverageTable'),
   normativePanel: document.querySelector('#normativePanel'),
   normativeInfo: document.querySelector('#normativeInfo'),
   normativeStats: document.querySelector('#normativeStats'),
@@ -205,6 +216,7 @@ function bindEvents() {
     await loadCurrentModeTarget();
     if (state.subjectsVisible) await loadSubjectsRanking();
     if (state.coverageVisible) await loadExamCoverage();
+    if (state.theoryCoverageVisible) await loadTheoryCoverage();
     if (state.normativeVisible) await loadNormativeReview();
   });
 
@@ -246,6 +258,7 @@ function bindEvents() {
     });
     if (state.subjectsVisible) await loadSubjectsRanking();
     if (state.coverageVisible) await loadExamCoverage();
+    if (state.theoryCoverageVisible) await loadTheoryCoverage();
   });
 
   els.commentedOnly.addEventListener('change', () => {
@@ -372,6 +385,14 @@ function bindEvents() {
       await loadExamCoverage();
     }
   });
+  els.toggleTheoryCoverage?.addEventListener('click', async () => {
+    closeAllDropdowns();
+    state.theoryCoverageVisible = !state.theoryCoverageVisible;
+    renderTheoryCoverageVisibility();
+    if (state.theoryCoverageVisible) {
+      await loadTheoryCoverage();
+    }
+  });
   els.toggleSubjects.addEventListener('click', async () => {
     closeAllDropdowns();
     state.subjectsVisible = !state.subjectsVisible;
@@ -433,6 +454,11 @@ function bindEvents() {
   els.openTeaching.addEventListener('click', () => {
     closeAllDropdowns();
     showTeachingPanel();
+  });
+
+  els.openQuickTheory?.addEventListener('click', () => {
+    closeAllDropdowns();
+    showQuickTheoryPanel();
   });
 
   els.openTheory.addEventListener('click', () => {
@@ -1162,6 +1188,35 @@ async function loadExamCoverage() {
     : '<p class="empty">Nenhum mapeamento encontrado para este perfil.</p>';
 }
 
+async function loadTheoryCoverage() {
+  if (!els.theoryCoverageInfo || !els.theoryCoverageTable) return;
+  els.theoryCoverageInfo.textContent = 'carregando';
+  els.theoryCoverageStats.innerHTML = '';
+  els.theoryCoverageTable.innerHTML = '<p class="empty">Carregando cobertura de teoria...</p>';
+  const data = await api('/api/legal-dashboard');
+  if (!data.available) {
+    els.theoryCoverageInfo.textContent = 'sem camada criada';
+    els.theoryCoverageTable.innerHTML = `<p class="empty">${escapeHtml(data.reason || 'Camada de teoria rapida indisponivel.')}</p>`;
+    return;
+  }
+  const stats = data.stats || {};
+  els.theoryCoverageInfo.textContent = `${Number(stats.withQuickTheory || 0).toLocaleString('pt-BR')} com teoria rapida`;
+  els.theoryCoverageStats.innerHTML = [
+    statMarkup(stats.sources, 'fontes'),
+    statMarkup(stats.articles, 'artigos'),
+    statMarkup(stats.cards, 'microcards'),
+    statMarkup(stats.links, 'vinculos'),
+    statMarkup(stats.withQuickTheory, 'com teoria'),
+    statMarkup(stats.withoutQuickTheory, 'sem teoria'),
+    statMarkup(stats.pendingReview, 'pendentes'),
+    statMarkup(stats.importErrors, 'erros fonte')
+  ].join('');
+  const rows = data.bySubject || [];
+  els.theoryCoverageTable.innerHTML = rows.length
+    ? rows.slice(0, 40).map((row) => theoryCoverageRowMarkup(row)).join('')
+    : '<p class="empty">Nenhuma lacuna de teoria encontrada.</p>';
+}
+
 async function loadNormativeReview() {
   els.normativeInfo.textContent = 'carregando';
   els.normativeTable.innerHTML = '<p class="empty">Carregando revisão normativa...</p>';
@@ -1233,6 +1288,7 @@ async function selectQuestion(questionId, options = {}) {
   if (question.error) {
     state.theoryUrl = '';
     els.openTheory.disabled = true;
+    if (els.openQuickTheory) els.openQuickTheory.disabled = true;
     els.statement.innerHTML = `<p class="empty">${escapeHtml(question.error)}</p>`;
     return;
   }
@@ -1321,7 +1377,13 @@ function renderQuestion(question, options = {}) {
   }
 
   state.theoryUrl = question.theory?.available ? question.theory.url : '';
+  const hasQuickTheory = hasQuickTheorySupport(question);
+  if (els.openQuickTheory) {
+    els.openQuickTheory.disabled = !hasQuickTheory || !canRevealExplanation(question);
+    els.openQuickTheory.textContent = hasQuickTheory ? 'Teoria rápida' : 'Teoria rápida indisponível';
+  }
   els.openTheory.disabled = !state.theoryUrl;
+  els.openTheory.textContent = 'PDF de teoria';
   els.openTheory.title = question.theory?.available
     ? `Abrir teoria: ${question.theory.title}`
     : 'PDF de teoria não encontrado para este assunto';
@@ -1329,6 +1391,7 @@ function renderQuestion(question, options = {}) {
     canRevealExplanation(question) && (
       question.comment.html
       || question.comment.text
+      || hasQuickTheory
       || question.normativeUpdate?.exists
       || (
         question.currentLawAnswer?.exists
@@ -1358,6 +1421,7 @@ function renderQuestion(question, options = {}) {
   els.similarQuestions.disabled = !hasCluster || isStatsOnlyCluster;
   els.similarQuestions.textContent = isStatsOnlyCluster ? 'Outras do assunto' : 'Ver semelhantes';
   syncNormativeSupportAvailability(question);
+  syncQuickTheoryAvailability(question);
 
   const answering = question.answering || {};
   const historicalAnswer = answering.historicalAnswer || question.comment.historicalAnswer || question.comment.extractedAnswer || '';
@@ -1384,6 +1448,7 @@ function renderQuestion(question, options = {}) {
   renderNormativeAlert(question);
   renderNormativeTeachingPanel(question);
   renderNormativePanel(question);
+  renderQuickTheoryPanel(question);
   renderTheoryPanel(question);
   renderHistoryPanel(question);
   renderSimilarPanelIntro(question);
@@ -1838,6 +1903,85 @@ function normativeTextBlock(title, text) {
   `;
 }
 
+function renderQuickTheoryPanel(question) {
+  const legalStudy = question?.legalStudy;
+  if (!legalStudy?.available || !legalStudy.primaryCard) {
+    if (els.quickTheoryInfo) els.quickTheoryInfo.textContent = 'indisponível';
+    if (els.supportQuickTheoryBody) {
+      els.supportQuickTheoryBody.innerHTML = '<p class="empty">Teoria rápida ainda não disponível para este ponto.</p>';
+    }
+    return;
+  }
+
+  const card = legalStudy.primaryCard;
+  const articles = legalStudy.officialText?.articles || [];
+  if (els.quickTheoryInfo) {
+    els.quickTheoryInfo.textContent = card.microtema || card.assunto || 'microteoria';
+  }
+  if (!els.supportQuickTheoryBody) return;
+
+  els.supportQuickTheoryBody.innerHTML = `
+    <div class="quick-theory-card">
+      <strong class="quick-theory-title">${escapeHtml(card.title || 'Teoria rápida')}</strong>
+      ${quickTheorySection('Regra que resolve esta questão', card.answerSummary || card.ruleSummary)}
+      ${quickTheorySection('Fundamento', quickTheoryFoundation(card, articles))}
+      ${quickTheoryBullets(card.bullets || [])}
+      ${quickTheorySection('Pegadinha de prova', card.professorNote || card.commonTraps)}
+      ${quickTheorySection('Como memorizar', card.memoryHook)}
+      ${quickTheoryOfficialText(articles)}
+      ${state.theoryUrl ? `
+        <p class="quick-theory-secondary">
+          <a class="button button-secondary" href="${escapeAttr(state.theoryUrl)}" target="_blank" rel="noopener">Abrir PDF completo</a>
+        </p>
+      ` : ''}
+    </div>
+  `;
+}
+
+function quickTheorySection(title, text) {
+  if (!text) return '';
+  return `
+    <section class="quick-theory-section">
+      <span>${escapeHtml(title)}</span>
+      <p>${escapeHtml(text)}</p>
+    </section>
+  `;
+}
+
+function quickTheoryFoundation(card, articles) {
+  const article = articles[0];
+  if (article?.label) return article.label;
+  const ref = card.sourceRefs?.[0];
+  return ref?.label || '';
+}
+
+function quickTheoryBullets(bullets) {
+  if (!Array.isArray(bullets) || !bullets.length) return '';
+  return `
+    <section class="quick-theory-section">
+      <span>Em resumo</span>
+      <ul>${bullets.slice(0, 5).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+    </section>
+  `;
+}
+
+function quickTheoryOfficialText(articles) {
+  if (!Array.isArray(articles) || !articles.length) return '';
+  return `
+    <details class="quick-theory-official">
+      <summary>Ver texto oficial</summary>
+      ${articles.map((article) => `
+        <article>
+          <strong>${escapeHtml(article.label || article.articleRef || 'Texto oficial')}</strong>
+          ${article.excerpt ? `<p>${escapeHtml(article.excerpt)}</p>` : ''}
+          ${article.text && article.text !== article.excerpt ? `<blockquote>${escapeHtml(article.text)}</blockquote>` : ''}
+          ${article.sourceUrl ? `<a href="${escapeAttr(article.sourceUrl)}" target="_blank" rel="noopener">Abrir fonte oficial</a>` : ''}
+        </article>
+      `).join('')}
+    </details>
+  `;
+}
+
 function renderTheoryPanel(question) {
   if (question.theory?.available) {
     const pageLabel = question.theory.pageStart
@@ -1918,7 +2062,7 @@ function canRevealExplanation(question = state.currentQuestion) {
 }
 
 function supportTabRequiresAnswer(tab) {
-  return ['comment', 'normative', 'teaching', 'history'].includes(tab);
+  return ['comment', 'normative', 'teaching', 'quickTheory', 'history'].includes(tab);
 }
 
 function updateAnswerActions() {
@@ -1929,6 +2073,7 @@ function updateAnswerActions() {
   const hasExplanation = Boolean(
     question?.comment?.html
     || question?.comment?.text
+    || question?.legalStudy?.available
     || question?.normativeUpdate?.exists
     || question?.currentLawAnswer?.exists
     || question?.normativeTeachingComment?.exists
@@ -2047,6 +2192,7 @@ function renderAnswerResult(result) {
   renderNormativeTeachingPanel(state.currentQuestion);
   els.toggleComment.disabled = !canRevealExplanation(state.currentQuestion);
   syncNormativeSupportAvailability(state.currentQuestion);
+  syncQuickTheoryAvailability(state.currentQuestion);
   const hasTeachingSupportAfterAnswer = Boolean(
     canRevealCurrentLawAnswer(state.currentQuestion) && (
       state.currentQuestion?.currentLawAnswer?.exists
@@ -2433,13 +2579,37 @@ function shouldShuffleAlternatives(question) {
   const expectedLetters = ['A', 'B', 'C', 'D', 'E'].slice(0, alternatives.length);
   if (letters.some((letter, index) => letter !== expectedLetters[index])) return false;
 
-  return !alternatives.some((alternative) => alternativeTextMentionsAlternativeLetter(alternative.text || ''));
+  return !alternatives.some((alternative) => alternativeTextMentionsAlternativeLetter(alternative.text || ''))
+    && !commentMentionsAlternativeLetters(question);
 }
 
 function alternativeTextMentionsAlternativeLetter(text) {
   const normalized = normalizeAnswerText(text);
   return /\b(?:alternativa|opcao|letra)\s+[a-e]\b/.test(normalized)
     || /\b[a-e]\s*\)/.test(normalized);
+}
+
+function commentMentionsAlternativeLetters(question) {
+  const text = normalizeAnswerText(stripHtmlText([
+    question?.comment?.text || '',
+    question?.comment?.html || ''
+  ].join(' ')));
+  if (!text) return false;
+
+  return /\b(?:gabarito|correta|incorreta)\s+(?:letra|alternativa)?\s*["']?[a-e]["']?\b/.test(text)
+    || /\b(?:alternativa|opcao|letra)\s*["']?[a-e]["']?\s*(?:correta|incorreta|certa|errada)?\b/.test(text)
+    || /\b[a-e]\s*[-–—]\s*(?:correta|incorreta|certa|errada)\b/.test(text);
+}
+
+function stripHtmlText(value) {
+  return String(value || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
 }
 
 function seededShuffle(items, seedText) {
@@ -2617,9 +2787,11 @@ function showCommentPanel() {
     ? 'teaching'
     : canRevealCurrentLaw && state.currentQuestion?.normativeTeachingComment?.exists
       ? 'teaching'
-      : state.currentQuestion?.normativeUpdate?.exists
-        ? 'normative'
-        : 'comment';
+      : hasQuickTheorySupport(state.currentQuestion)
+        ? 'quickTheory'
+        : state.currentQuestion?.normativeUpdate?.exists
+          ? 'normative'
+          : 'comment';
   openSupportPanel(preferredTab);
   state.sawComment = true;
   recordQuestionEvent('opened_comment');
@@ -2629,6 +2801,16 @@ function showTeachingPanel() {
   openSupportPanel('teaching');
   state.sawComment = true;
   recordQuestionEvent('opened_comment', 'teaching');
+}
+
+function showQuickTheoryPanel() {
+  if (!hasQuickTheorySupport(state.currentQuestion)) {
+    openSupportPanel('quickTheory');
+    return;
+  }
+  state.openedTheory = true;
+  openSupportPanel('quickTheory');
+  recordQuestionEvent('opened_theory', 'quick_theory');
 }
 
 function showTheoryPanel() {
@@ -2723,6 +2905,9 @@ function openSupportPanel(tab = 'comment', options = {}) {
   if (tab === 'normative' && !hasNormativeSupport(state.currentQuestion)) {
     tab = canRevealCurrentLawAnswer(state.currentQuestion) ? 'teaching' : 'comment';
   }
+  if (tab === 'quickTheory' && !hasQuickTheorySupport(state.currentQuestion)) {
+    tab = canRevealCurrentLawAnswer(state.currentQuestion) ? 'teaching' : 'comment';
+  }
   if (supportTabRequiresAnswer(tab) && !canRevealExplanation(state.currentQuestion)) {
     els.answerHint.textContent = 'Responda para liberar a explicação';
     return;
@@ -2765,6 +2950,27 @@ function hasNormativeSupport(question = state.currentQuestion) {
   return Boolean(question?.normativeUpdate?.exists);
 }
 
+function hasQuickTheorySupport(question = state.currentQuestion) {
+  return Boolean(question?.legalStudy?.available && question.legalStudy?.primaryCard);
+}
+
+function syncQuickTheoryAvailability(question = state.currentQuestion) {
+  const available = hasQuickTheorySupport(question);
+  const canReveal = canRevealExplanation(question);
+  if (els.openQuickTheory) {
+    els.openQuickTheory.hidden = !available;
+    els.openQuickTheory.disabled = !available || !canReveal;
+    els.openQuickTheory.textContent = available ? 'Teoria rápida' : 'Teoria rápida indisponível';
+  }
+  if (els.supportTabQuickTheory) {
+    els.supportTabQuickTheory.hidden = !available;
+    els.supportTabQuickTheory.disabled = !available || !canReveal;
+  }
+  if (!available && state.supportTab === 'quickTheory') {
+    state.supportTab = canRevealCurrentLawAnswer(question) ? 'teaching' : 'comment';
+  }
+}
+
 function syncNormativeSupportAvailability(question = state.currentQuestion) {
   const available = hasNormativeSupport(question);
   if (els.toggleNormativeSupport) {
@@ -2783,6 +2989,7 @@ function syncNormativeSupportAvailability(question = state.currentQuestion) {
 
 function renderSupportVisibility() {
   syncNormativeSupportAvailability(state.currentQuestion);
+  syncQuickTheoryAvailability(state.currentQuestion);
   if (state.supportTab === 'teaching'
     && !state.currentQuestion?.currentLawAnswer?.exists
     && !state.currentQuestion?.normativeTeachingComment?.exists
@@ -2801,6 +3008,7 @@ function renderSupportVisibility() {
     button.classList.toggle('is-active', button.dataset.supportTab === state.supportTab);
   });
   els.supportTeachingPanel.hidden = state.supportTab !== 'teaching';
+  els.supportQuickTheoryPanel.hidden = state.supportTab !== 'quickTheory';
   els.commentPanel.hidden = state.supportTab !== 'comment';
   els.supportNormativePanel.hidden = state.supportTab !== 'normative';
   els.supportTheoryPanel.hidden = state.supportTab !== 'theory';
@@ -2809,6 +3017,7 @@ function renderSupportVisibility() {
 
   const titles = {
     teaching: ['Comentário atualizado', 'Regra atual provável e orientação de estudo'],
+    quickTheory: ['Teoria rápida', 'Regra, artigo e pegadinha de prova'],
     comment: ['Explicação histórica', 'Comentário do professor e gabarito histórico'],
     normative: ['Atualização normativa', 'Análise auxiliar da desatualização'],
     theory: ['Teoria relacionada', 'Material em PDF da matéria/assunto'],
@@ -2835,6 +3044,12 @@ function renderSubjectsVisibility() {
 function renderCoverageVisibility() {
   els.coveragePanel.hidden = !state.coverageVisible;
   els.toggleCoverage.textContent = state.coverageVisible ? 'Ocultar base' : 'Base x Prova';
+}
+
+function renderTheoryCoverageVisibility() {
+  if (!els.theoryCoveragePanel || !els.toggleTheoryCoverage) return;
+  els.theoryCoveragePanel.hidden = !state.theoryCoverageVisible;
+  els.toggleTheoryCoverage.textContent = state.theoryCoverageVisible ? 'Ocultar cobertura de teoria' : 'Cobertura de teoria';
 }
 
 function renderNormativeVisibility() {
@@ -3012,6 +3227,28 @@ function coverageRowMarkup(row) {
       <span>${Number(row.valid_with_answer || 0).toLocaleString('pt-BR')}</span>
       <span>${Math.round(Number(row.mastery_score || 0) * 100)}%</span>
       <span>${Number(row.due_reviews || 0).toLocaleString('pt-BR')}</span>
+    </div>
+  `;
+}
+
+function theoryCoverageRowMarkup(row) {
+  const total = Number(row.total || 0);
+  const covered = Number(row.covered || 0);
+  const pct = total ? Math.round((covered / total) * 100) : 0;
+  const status = pct >= 70 ? 'ok' : pct >= 30 ? 'sub-representada' : 'sem_gabarito_suficiente';
+  return `
+    <div class="coverage-row theory-coverage-row status-${escapeAttr(status)}">
+      <span class="coverage-main">
+        <strong>${escapeHtml(row.assunto || 'Sem assunto')}</strong>
+        <small>${escapeHtml(row.materia || '')}</small>
+      </span>
+      <span>${covered.toLocaleString('pt-BR')}</span>
+      <span>${total.toLocaleString('pt-BR')}</span>
+      <span>${Math.max(0, total - covered).toLocaleString('pt-BR')}</span>
+      <span>${pct}%</span>
+      <span>${Number(row.wrongAttempts || 0).toLocaleString('pt-BR')}</span>
+      <span></span>
+      <span></span>
     </div>
   `;
 }
