@@ -2075,22 +2075,14 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
     filters.push('(qm.next_due_at <= CURRENT_TIMESTAMP OR cm.next_due_at <= CURRENT_TIMESTAMP)');
   }
   if (excludeQuestionId && resolvedPlan !== 'ver_todas') {
-    filters.push(`(
-      q.id_question != ${Number(excludeQuestionId)}
-      OR qm.next_due_at <= CURRENT_TIMESTAMP
-      OR cm.next_due_at <= CURRENT_TIMESTAMP
-    )`);
+    filters.push(`q.id_question != ${Number(excludeQuestionId)}`);
   }
   if (resolvedPlan !== 'ver_todas') {
-    filters.push(`(
-      NOT EXISTS (
-        SELECT 1
-        FROM study_answers sa_recent
-        WHERE sa_recent.question_id = q.id_question
-          AND sa_recent.answered_at >= datetime('now', '-${ADAPTIVE_ANSWER_COOLDOWN_MINUTES} minutes')
-      )
-      OR qm.next_due_at <= CURRENT_TIMESTAMP
-      OR cm.next_due_at <= CURRENT_TIMESTAMP
+    filters.push(`NOT EXISTS (
+      SELECT 1
+      FROM study_answers sa_recent
+      WHERE sa_recent.question_id = q.id_question
+        AND sa_recent.answered_at >= datetime('now', '-${ADAPTIVE_ANSWER_COOLDOWN_MINUTES} minutes')
     )`);
     filters.push(`NOT EXISTS (
       SELECT 1
@@ -2234,6 +2226,12 @@ function scoreAdaptiveQuestion(row, context) {
     || cMastery < 0.35
     || clusterDue);
   const clusterDominated = clusterCanSuppress && cMastery >= 0.85 && !clusterDue;
+  const answeredCorrectNotDue = !due
+    && !clusterDue
+    && !Number(row.never_answered)
+    && !Number(row.recent_wrong)
+    && Number(row.last_result) === 1
+    && qMastery >= 0.4;
   const reasons = [];
   let score = 0;
 
@@ -2302,6 +2300,10 @@ function scoreAdaptiveQuestion(row, context) {
   if (Number(row.desatualizada) && !currentLawVerified && !normativeRowSafe(row)) {
     score -= 100;
     reasons.push('desatualizada_sem_seguranca');
+  }
+  if (answeredCorrectNotDue) {
+    score -= 240;
+    reasons.push('revisao_futura');
   }
   if (!currentLawVerified) {
     if (normalizePlain(row.normative_recomendacao).includes('descartar')) {
@@ -2491,6 +2493,7 @@ function adaptiveReasonText(row, reasons) {
   }
   if (reasons.includes('revisao_vencida')) return 'Revisao vencida pelo plano de estudo.';
   if (reasons.includes('erro_recente')) return 'Você errou este tema recentemente.';
+  if (reasons.includes('revisao_futura')) return 'Já acertada; adiada até a próxima revisão.';
   if (reasons.includes('bloco_importante_prf') || reasons.includes('disciplina_importante_prf')) return 'Tema importante para a PRF.';
   return 'Selecionada pelo PRF Otimizado.';
 }

@@ -51,6 +51,14 @@ body {
   overflow-x: hidden;
 }
 
+body.is-support-scroll-locked {
+  position: fixed;
+  right: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
 button,
 input,
 select {
@@ -1306,6 +1314,7 @@ button:disabled {
   inset: 0;
   z-index: 900;
   background: rgba(15, 23, 42, 0.26);
+  touch-action: none;
 }
 
 .support-drawer {
@@ -1317,9 +1326,12 @@ button:disabled {
   grid-template-rows: auto auto minmax(0, 1fr);
   width: min(760px, 96vw);
   height: 100vh;
+  height: 100dvh;
   border-left: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 .support-head {
@@ -1367,6 +1379,8 @@ button:disabled {
 .support-tab-panel {
   min-height: 0;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 16px 18px 24px;
 }
 

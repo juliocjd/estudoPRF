@@ -2191,6 +2191,11 @@ function extractAnswerFromQuestionComment(question, alternatives, text) {
 
 function extractAnswerFromQuestionCommentV2(question, alternatives, text) {
   const candidates = [];
+  const itemStatus = extractExplicitItemStatusCandidate(question, text);
+  if (itemStatus) {
+    return itemStatus;
+  }
+
   const labeled = extractLabeledAlternativeStatuses(text);
   const targetStatus = commentLikelyAsksForWrongAnswer(question, text) ? 'ERRADA' : 'CORRETA';
   const labeledMatches = labeled.filter((item) => item.status === targetStatus);
@@ -2529,6 +2534,43 @@ function mapCorrectWrongStatus(value) {
 
 function extractLetterByAnswerCue(text) {
   return extractLetterByAnswerCueCandidate(text)?.answer || '';
+}
+
+function extractExplicitItemStatusCandidate(question, text) {
+  if (String(question?.type_question || '').toUpperCase() !== 'CERTO_ERRADO') {
+    return null;
+  }
+
+  const normalized = normalizeSearchText(text);
+  const matches = [];
+  const patterns = [
+    /\b(?:gabarito\s*[:\-]?\s*)?item\s+(certo|correto|errado|incorreto)\b/g,
+    /\bo\s+item\s+(?:esta|e)\s+(certo|correto|errado|incorreto)\b/g,
+    /\b(?:a\s+)?(?:assertiva|afirmativa|questao)\s+(?:esta|e)\s+(certa|correta|errada|incorreta)\b/g,
+    /\b(?:portanto|logo|assim),?\s+(certo|correto|errado|incorreto)\s+o\s+item\b/g
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of normalized.matchAll(pattern)) {
+      matches.push({
+        answer: mapCorrectWrongStatus(match[1]),
+        evidenceText: match[0]
+      });
+    }
+  }
+
+  const answers = new Set(matches.map((match) => match.answer));
+  if (answers.size !== 1) {
+    return null;
+  }
+
+  const match = matches[matches.length - 1];
+  return {
+    answer: match.answer,
+    confidence: 0.96,
+    evidenceText: trimPreview(match.evidenceText, 500),
+    method: 'item_status_explicito'
+  };
 }
 
 function extractLetterByAnswerCueCandidate(text) {

@@ -75,6 +75,13 @@ async function runChecks() {
   const q27884Wrong = await answer(27884, 'B');
   check('27884 B scores wrong historically', q27884Wrong.expectedAnswer === 'E' && q27884Wrong.isCorrect === 0 && q27884Wrong.answerSource === 'comment_extracted', JSON.stringify(q27884Wrong));
 
+  const q28090 = await api('/api/questions/28090');
+  check('28090 repairs certo/errado comment fallback', q28090.answering?.studyAnswer === 'CERTO' && q28090.answering?.studyAnswerSource === 'comment_extracted', JSON.stringify(q28090.answering));
+  const q28090Right = await answer(28090, 'A');
+  check('28090 A/Certo scores correct historically', q28090Right.expectedAnswer === 'CERTO' && q28090Right.isCorrect === 1 && q28090Right.answerSource === 'comment_extracted', JSON.stringify(q28090Right));
+  const q28090Wrong = await answer(28090, 'B');
+  check('28090 B/Errado scores wrong historically', q28090Wrong.expectedAnswer === 'CERTO' && q28090Wrong.isCorrect === 0 && q28090Wrong.answerSource === 'comment_extracted', JSON.stringify(q28090Wrong));
+
   const q42747 = await api('/api/questions/42747');
   check('42747 needs_audit has no current-law study answer', q42747.answering?.currentLawStatus === 'needs_audit' && !q42747.answering?.studyAnswer, JSON.stringify(q42747.answering));
   check('42747 keeps historical answer separated', Boolean(q42747.answering?.historicalAnswer), JSON.stringify(q42747.answering));

@@ -161,6 +161,7 @@ const els = {
 
 let searchTimer = null;
 const mobileLayoutQuery = window.matchMedia('(max-width: 760px)');
+let lockedBodyScrollY = 0;
 
 boot();
 
@@ -200,7 +201,7 @@ function bindEvents() {
 
   els.clearFilters.addEventListener('click', async () => {
     clearFilters();
-    await loadQuestions();
+    await loadCurrentModeTarget();
     if (state.subjectsVisible) await loadSubjectsRanking();
     if (state.coverageVisible) await loadExamCoverage();
     if (state.normativeVisible) await loadNormativeReview();
@@ -217,22 +218,22 @@ function bindEvents() {
     }, 250);
   });
 
-  els.matterSelect.addEventListener('change', () => {
+  els.matterSelect.addEventListener('change', async () => {
     state.filters.materia = els.matterSelect.value;
     state.filters.assunto = '';
     state.page = 1;
     renderSubjectOptions();
     updateAdvancedFiltersSummary();
-    loadQuestions();
-    if (state.normativeVisible) loadNormativeReview();
+    await loadCurrentModeTarget();
+    if (state.normativeVisible) await loadNormativeReview();
   });
 
-  els.subjectSelect.addEventListener('change', () => {
+  els.subjectSelect.addEventListener('change', async () => {
     state.filters.assunto = els.subjectSelect.value;
     state.page = 1;
     updateAdvancedFiltersSummary();
-    loadQuestions();
-    if (state.normativeVisible) loadNormativeReview();
+    await loadCurrentModeTarget();
+    if (state.normativeVisible) await loadNormativeReview();
   });
 
   els.profileSelect.addEventListener('change', async () => {
@@ -402,7 +403,7 @@ function bindEvents() {
     renderSubjectOptions();
     els.subjectSelect.value = state.filters.assunto;
     updateAdvancedFiltersSummary();
-    await loadQuestions();
+    await loadCurrentModeTarget();
   });
 
   els.answerStatus.addEventListener('click', () => {
@@ -887,6 +888,26 @@ async function loadQuestions(options = {}) {
   renderPager();
 }
 
+async function loadCurrentModeTarget() {
+  if (state.studyMode === 'review') {
+    await loadAdaptiveTarget('revisar_hoje');
+    return;
+  }
+
+  if (state.studyMode === 'repair') {
+    await loadRepairQueueTarget();
+    return;
+  }
+
+  if (['study', 'smart', 'adaptive'].includes(state.studyMode)) {
+    setStudyMode('adaptive');
+    await loadAdaptiveTarget('prf_otimizado');
+    return;
+  }
+
+  await loadQuestions();
+}
+
 function buildQuestionParams() {
   const params = new URLSearchParams({
     page: String(state.page),
@@ -1283,8 +1304,9 @@ function renderQuestion(question, options = {}) {
   els.statement.innerHTML = formatStatementHtml(question) || question.statementHtml || `<p>${escapeHtml(question.statementText || 'Sem enunciado')}</p>`;
   renderAnswerStatus(question);
 
-  els.alternatives.innerHTML = question.alternatives.map((alternative) => `
-    <label class="alternative" data-letter="${escapeAttr(alternative.letter)}">
+  const alternatives = getDisplayAlternatives(question);
+  els.alternatives.innerHTML = alternatives.map((alternative) => `
+    <label class="alternative" data-letter="${escapeAttr(alternative.letter)}" data-display-letter="${escapeAttr(alternative.displayLetter || alternative.letter)}">
       <input type="radio" name="answer" value="${escapeAttr(alternative.letter)}">
       ${renderAlternativeText(question, alternative)}
     </label>
@@ -2370,9 +2392,85 @@ function renderAlternativeText(question, alternative) {
   }
 
   return `
-    <span class="alternative-badge">${escapeHtml(alternative.letter)}</span>
+    <span class="alternative-badge">${escapeHtml(alternative.displayLetter || alternative.letter)}</span>
     <span class="alternative-text">${escapeHtml(text)}</span>
   `;
+}
+
+function getDisplayAlternatives(question) {
+  const alternatives = Array.isArray(question?.alternatives) ? question.alternatives : [];
+  if (!shouldShuffleAlternatives(question)) {
+    return alternatives.map((alternative) => ({
+      ...alternative,
+      displayLetter: alternative.letter
+    }));
+  }
+
+  const sourceLetters = alternatives.map((alternative) => alternative.letter);
+  const attemptNumber = Number(question.answerStats?.total || 0);
+  const shuffled = seededShuffle(
+    alternatives.map((alternative) => ({ ...alternative })),
+    `${question.id || question.questionId || ''}:${attemptNumber}`
+  );
+  const sameOrder = shuffled.every((alternative, index) => alternative.letter === alternatives[index]?.letter);
+  const ordered = sameOrder && shuffled.length > 1
+    ? rotateArray(shuffled, (attemptNumber % (shuffled.length - 1)) + 1)
+    : shuffled;
+
+  return ordered.map((alternative, index) => ({
+    ...alternative,
+    displayLetter: sourceLetters[index] || alternative.letter
+  }));
+}
+
+function shouldShuffleAlternatives(question) {
+  const alternatives = Array.isArray(question?.alternatives) ? question.alternatives : [];
+  if (String(question?.metadata?.tipo || '').toUpperCase() === 'CERTO_ERRADO') return false;
+  if (Number(question?.answerStats?.total || 0) < 1) return false;
+  if (alternatives.length < 3 || alternatives.length > 5) return false;
+
+  const letters = alternatives.map((alternative) => normalizeAnswer(alternative.letter));
+  const expectedLetters = ['A', 'B', 'C', 'D', 'E'].slice(0, alternatives.length);
+  if (letters.some((letter, index) => letter !== expectedLetters[index])) return false;
+
+  return !alternatives.some((alternative) => alternativeTextMentionsAlternativeLetter(alternative.text || ''));
+}
+
+function alternativeTextMentionsAlternativeLetter(text) {
+  const normalized = normalizeAnswerText(text);
+  return /\b(?:alternativa|opcao|letra)\s+[a-e]\b/.test(normalized)
+    || /\b[a-e]\s*\)/.test(normalized);
+}
+
+function seededShuffle(items, seedText) {
+  const shuffled = [...items];
+  let seed = hashSeed(seedText);
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    seed = nextSeed(seed);
+    const swapIndex = seed % (index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
+function rotateArray(items, offset) {
+  if (!items.length) return items;
+  const normalizedOffset = offset % items.length;
+  return [...items.slice(normalizedOffset), ...items.slice(0, normalizedOffset)];
+}
+
+function hashSeed(value) {
+  let hash = 2166136261;
+  const text = String(value || '');
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function nextSeed(seed) {
+  return (Math.imul(seed, 1664525) + 1013904223) >>> 0;
 }
 
 function cycleAlternative(label) {
@@ -2437,7 +2535,7 @@ function renderAnswerResultBox() {
     els.answerResult.className = 'answer-result is-wrong';
     els.answerResult.innerHTML = `
       <span class="answer-result-icon" aria-hidden="true">×</span>
-      <span><strong>Você errou!</strong> Gabarito: <strong>${escapeHtml(result.expectedAnswer || '')}</strong>. ${resolution}${normative}</span>
+      <span><strong>Você errou!</strong> Gabarito: <strong>${escapeHtml(displayAnswerForCurrentQuestion(result.expectedAnswer || ''))}</strong>. ${resolution}${normative}</span>
     `;
   } else {
     els.answerResult.className = 'answer-result';
@@ -2459,7 +2557,7 @@ function normativeAnswerWarning(result) {
         ? 'Questao fora da fila principal pela legislacao atual. Tentativa registrada sem pontuacao.'
         : reason === 'needs_audit'
           ? 'Questao pendente de auditoria. O gabarito historico nao foi usado para pontuar.'
-          : `Correcao feita pela legislacao atual. Gabarito atual: ${currentAnswerLabel(result.expectedAnswer || currentLaw?.currentAnswer || '')}.`;
+          : `Correcao feita pela legislacao atual. Gabarito atual: ${displayCurrentAnswerLabel(result.expectedAnswer || currentLaw?.currentAnswer || '')}.`;
     return `<span class="answer-result-note">${escapeHtml(text)}</span>`;
   }
 
@@ -2487,6 +2585,26 @@ function expectedAlternativeLetter(expectedAnswer) {
 
   const alternative = state.currentQuestion.alternatives.find((item) => normalizeAnswer(item.text) === expected);
   return alternative?.letter || '';
+}
+
+function displayAnswerForCurrentQuestion(answer) {
+  const normalized = normalizeAnswer(answer);
+  if (!normalized) return '';
+  if (normalized === 'CERTO' || normalized === 'ERRADO') return normalized;
+  const originalLetter = expectedAlternativeLetter(normalized);
+  if (originalLetter) {
+    const label = els.alternatives.querySelector(`.alternative[data-letter="${cssEscape(originalLetter)}"]`);
+    return label?.dataset.displayLetter || originalLetter;
+  }
+  return answer;
+}
+
+function displayCurrentAnswerLabel(answer) {
+  const normalized = normalizeAnswer(answer);
+  if (!normalized) return '';
+  if (normalized === 'CERTO' || normalized === 'ERRADO') return normalized;
+  const displayed = displayAnswerForCurrentQuestion(normalized);
+  return displayed ? `Alternativa ${displayed}` : currentAnswerLabel(answer);
 }
 
 function matchesCertoErradoAlias(answer, text) {
@@ -2622,6 +2740,21 @@ function closeSupportPanel() {
   }
 }
 
+function lockPageScroll() {
+  if (document.body.classList.contains('is-support-scroll-locked')) return;
+  lockedBodyScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  document.body.style.top = `-${lockedBodyScrollY}px`;
+  document.body.classList.add('is-support-scroll-locked');
+}
+
+function unlockPageScroll() {
+  if (!document.body.classList.contains('is-support-scroll-locked')) return;
+  document.body.classList.remove('is-support-scroll-locked');
+  document.body.style.top = '';
+  window.scrollTo(0, lockedBodyScrollY);
+  lockedBodyScrollY = 0;
+}
+
 function renderSupportVisibility() {
   if (state.supportTab === 'teaching'
     && !state.currentQuestion?.currentLawAnswer?.exists
@@ -2629,6 +2762,11 @@ function renderSupportVisibility() {
     && !state.currentQuestion?.normativeUpdate?.exists
     && !state.currentQuestion?.metadata?.desatualizada) {
     state.supportTab = 'comment';
+  }
+  if (state.supportOpen) {
+    lockPageScroll();
+  } else {
+    unlockPageScroll();
   }
   els.supportOverlay.hidden = !state.supportOpen;
   els.supportDrawer.hidden = !state.supportOpen;
