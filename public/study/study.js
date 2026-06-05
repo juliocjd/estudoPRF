@@ -118,6 +118,7 @@ const els = {
   supportTabs: document.querySelectorAll('[data-support-tab]'),
   supportTheoryPanel: document.querySelector('#supportTheoryPanel'),
   supportNormativePanel: document.querySelector('#supportNormativePanel'),
+  supportTabNormative: document.querySelector('#supportTabNormative'),
   supportHistoryPanel: document.querySelector('#supportHistoryPanel'),
   supportSimilarPanel: document.querySelector('#supportSimilarPanel'),
   normativeSupportInfo: document.querySelector('#normativeSupportInfo'),
@@ -1356,8 +1357,7 @@ function renderQuestion(question, options = {}) {
   els.showSimilar.textContent = isStatsOnlyCluster ? 'Outras do assunto' : 'Semelhantes';
   els.similarQuestions.disabled = !hasCluster || isStatsOnlyCluster;
   els.similarQuestions.textContent = isStatsOnlyCluster ? 'Outras do assunto' : 'Ver semelhantes';
-  els.toggleNormativeSupport.disabled = !canRevealExplanation(question) || !question.normativeUpdate?.exists;
-  els.toggleNormativeSupport.textContent = 'Atualização normativa';
+  syncNormativeSupportAvailability(question);
 
   const answering = question.answering || {};
   const historicalAnswer = answering.historicalAnswer || question.comment.historicalAnswer || question.comment.extractedAnswer || '';
@@ -2046,7 +2046,7 @@ function renderAnswerResult(result) {
   renderNormativeAlert(state.currentQuestion);
   renderNormativeTeachingPanel(state.currentQuestion);
   els.toggleComment.disabled = !canRevealExplanation(state.currentQuestion);
-  els.toggleNormativeSupport.disabled = !canRevealExplanation(state.currentQuestion) || !state.currentQuestion?.normativeUpdate?.exists;
+  syncNormativeSupportAvailability(state.currentQuestion);
   const hasTeachingSupportAfterAnswer = Boolean(
     canRevealCurrentLawAnswer(state.currentQuestion) && (
       state.currentQuestion?.currentLawAnswer?.exists
@@ -2642,6 +2642,9 @@ function showTheoryPanel() {
 }
 
 function showNormativePanel() {
+  if (!hasNormativeSupport(state.currentQuestion)) {
+    return;
+  }
   openSupportPanel('normative');
 }
 
@@ -2717,6 +2720,9 @@ function hideCommentPanel() {
 }
 
 function openSupportPanel(tab = 'comment', options = {}) {
+  if (tab === 'normative' && !hasNormativeSupport(state.currentQuestion)) {
+    tab = canRevealCurrentLawAnswer(state.currentQuestion) ? 'teaching' : 'comment';
+  }
   if (supportTabRequiresAnswer(tab) && !canRevealExplanation(state.currentQuestion)) {
     els.answerHint.textContent = 'Responda para liberar a explicação';
     return;
@@ -2755,7 +2761,28 @@ function unlockPageScroll() {
   lockedBodyScrollY = 0;
 }
 
+function hasNormativeSupport(question = state.currentQuestion) {
+  return Boolean(question?.normativeUpdate?.exists);
+}
+
+function syncNormativeSupportAvailability(question = state.currentQuestion) {
+  const available = hasNormativeSupport(question);
+  if (els.toggleNormativeSupport) {
+    els.toggleNormativeSupport.hidden = !available;
+    els.toggleNormativeSupport.disabled = !available || !canRevealExplanation(question);
+    els.toggleNormativeSupport.textContent = 'Atualização normativa';
+  }
+  if (els.supportTabNormative) {
+    els.supportTabNormative.hidden = !available;
+    els.supportTabNormative.disabled = !available;
+  }
+  if (!available && state.supportTab === 'normative') {
+    state.supportTab = canRevealCurrentLawAnswer(question) ? 'teaching' : 'comment';
+  }
+}
+
 function renderSupportVisibility() {
+  syncNormativeSupportAvailability(state.currentQuestion);
   if (state.supportTab === 'teaching'
     && !state.currentQuestion?.currentLawAnswer?.exists
     && !state.currentQuestion?.normativeTeachingComment?.exists
