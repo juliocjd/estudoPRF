@@ -293,6 +293,13 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const currentLawAnswerEditMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/current-law-answer$/);
+  if (currentLawAnswerEditMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, saveCurrentLawAnswerEdit(Number(currentLawAnswerEditMatch[1]), body));
+    return;
+  }
+
   if (url.pathname === '/api/exam-simulations/start' && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, startExamSimulation(body));
@@ -4379,6 +4386,135 @@ function saveNormativeTeachingStudentEdit(questionId, body) {
   );
 
   return { ok: true, normativeTeachingComment: getNormativeTeachingComment(questionId) };
+}
+
+function saveCurrentLawAnswerEdit(questionId, body) {
+  if (!hasCurrentLawAnswerTable()) {
+    return { error: 'Tabela question_current_law_answers ainda nao existe.' };
+  }
+
+  const question = db.prepare(`
+    SELECT q.id_question, q.type_question, q.desatualizada, q.anulada,
+      ${historicalAnswerSql('q', 'c')} AS historical_answer
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    WHERE q.id_question = ?
+    LIMIT 1
+  `).get(questionId);
+  if (!question) {
+    return { error: 'Questao nao encontrada.' };
+  }
+  if (!dbBoolean(question.desatualizada)) {
+    return { error: 'Resposta atual so deve ser editada para questoes desatualizadas.' };
+  }
+
+  const alternatives = db.prepare(`
+    SELECT letter, text
+    FROM alternatives
+    WHERE question_id = ?
+    ORDER BY position
+  `).all(questionId);
+  const previous = getCurrentLawAnswer(questionId);
+  const status = validChoice(body?.currentLawStatus || body?.status, [
+    'verified',
+    'needs_audit',
+    'no_valid_alternative',
+    'discard'
+  ], previous.status || 'needs_audit');
+  const canAutoScore = status === 'verified' && Boolean(body?.canAutoScore);
+  const normalizedAnswer = normalizeExpectedAnswerForScoring(question, alternatives, body?.currentAnswer || '');
+  if ((status === 'verified' || canAutoScore) && !normalizedAnswer.answer) {
+    return { error: 'Gabarito atual invalido para o tipo da questao.' };
+  }
+
+  const currentAnswer = status === 'verified' ? normalizedAnswer.answer : '';
+  const noValidAlternative = status === 'no_valid_alternative' || Boolean(body?.noValidAlternative);
+  const shouldDiscard = status === 'discard' || Boolean(body?.shouldDiscard);
+  const hideUntilVerified = status !== 'verified';
+  const historicalAnswer = String(body?.historicalAnswer || previous.historicalAnswer || question.historical_answer || '').trim();
+  const answerChanged = Boolean(currentAnswer && historicalAnswer && normalizeAnswer(currentAnswer) !== normalizeAnswer(historicalAnswer));
+
+  db.prepare(`
+    INSERT INTO question_current_law_answers (
+      question_id,
+      historical_answer,
+      current_answer,
+      current_law_status,
+      can_auto_score_current_law,
+      do_not_use_historical_answer_in_current_law_mode,
+      answer_changed,
+      no_valid_alternative,
+      should_discard_from_current_law_study,
+      hide_from_main_study_until_verified,
+      legal_basis,
+      article_reference,
+      article_excerpt,
+      teacher_explanation,
+      rule_summary,
+      professor_complement,
+      study_conclusion,
+      source_url,
+      verification_method,
+      source_version,
+      teaching_comment_md,
+      updated_at,
+      imported_at
+    )
+    VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(question_id) DO UPDATE SET
+      historical_answer = excluded.historical_answer,
+      current_answer = excluded.current_answer,
+      current_law_status = excluded.current_law_status,
+      can_auto_score_current_law = excluded.can_auto_score_current_law,
+      do_not_use_historical_answer_in_current_law_mode = excluded.do_not_use_historical_answer_in_current_law_mode,
+      answer_changed = excluded.answer_changed,
+      no_valid_alternative = excluded.no_valid_alternative,
+      should_discard_from_current_law_study = excluded.should_discard_from_current_law_study,
+      hide_from_main_study_until_verified = excluded.hide_from_main_study_until_verified,
+      legal_basis = excluded.legal_basis,
+      article_reference = excluded.article_reference,
+      article_excerpt = excluded.article_excerpt,
+      teacher_explanation = excluded.teacher_explanation,
+      rule_summary = excluded.rule_summary,
+      professor_complement = excluded.professor_complement,
+      study_conclusion = excluded.study_conclusion,
+      source_url = excluded.source_url,
+      verification_method = excluded.verification_method,
+      source_version = excluded.source_version,
+      teaching_comment_md = excluded.teaching_comment_md,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(
+    questionId,
+    historicalAnswer,
+    currentAnswer,
+    status,
+    canAutoScore ? 1 : 0,
+    answerChanged ? 1 : 0,
+    noValidAlternative ? 1 : 0,
+    shouldDiscard ? 1 : 0,
+    hideUntilVerified ? 1 : 0,
+    limitText(body?.legalBasis, 30000),
+    limitText(body?.articleReference, 12000),
+    limitText(body?.articleExcerpt, 30000),
+    limitText(body?.teacherExplanation, 30000),
+    limitText(body?.ruleSummary, 30000),
+    limitText(body?.professorComplement, 30000),
+    limitText(body?.studyConclusion, 30000),
+    limitText(body?.sourceUrl, 2000),
+    'operator_edit_current_law_answer',
+    'operator-edit-2026-06-06',
+    limitText(body?.teachingCommentMd, 60000)
+  );
+
+  return {
+    ok: true,
+    currentLawAnswer: getCurrentLawAnswer(questionId),
+    normativeTeachingComment: applyCurrentLawTeachingOverride(
+      getNormativeTeachingComment(questionId),
+      getCurrentLawAnswer(questionId),
+      true
+    )
+  };
 }
 
 function getQuestionStudyStatus(questionId) {

@@ -479,6 +479,30 @@ button:disabled {
   min-height: 300px;
 }
 
+.study-layout.is-outdated-question .question-card,
+.study-layout.is-outdated-question .answer-panel {
+  border-color: rgba(217, 119, 6, 0.3);
+  background: #fffbeb;
+}
+
+.study-layout.is-outdated-question .question-card-head,
+.study-layout.is-outdated-question .answer-head,
+.study-layout.is-outdated-question .statement {
+  background: #fff8df;
+}
+
+.study-layout.is-canceled-question .question-card,
+.study-layout.is-canceled-question .answer-panel {
+  border-color: rgba(220, 38, 38, 0.24);
+  background: #fff1f2;
+}
+
+.study-layout.is-canceled-question .question-card-head,
+.study-layout.is-canceled-question .answer-head,
+.study-layout.is-canceled-question .statement {
+  background: #fff5f6;
+}
+
 .question-card-head {
   display: flex;
   align-items: center;
@@ -1692,10 +1716,10 @@ button:disabled {
   font-weight: 900;
 }
 
-.teaching-edit-field textarea {
+.teaching-edit-field textarea,
+.teaching-edit-field input,
+.teaching-edit-field select {
   width: 100%;
-  min-height: 120px;
-  resize: vertical;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 10px;
@@ -1706,7 +1730,14 @@ button:disabled {
   line-height: 1.5;
 }
 
-.teaching-edit-field textarea:focus {
+.teaching-edit-field textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.teaching-edit-field textarea:focus,
+.teaching-edit-field input:focus,
+.teaching-edit-field select:focus {
   outline: 2px solid rgba(37, 99, 235, 0.2);
   border-color: var(--primary);
 }

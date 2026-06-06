@@ -41,13 +41,15 @@ const state = {
   coverageVisible: false,
   theoryCoverageVisible: false,
   normativeVisible: false,
-  teachingEditMode: false
+  teachingEditMode: false,
+  currentLawEditMode: false
 };
 
 const els = {
   stats: document.querySelector('#stats'),
   mobileFilterToggle: document.querySelector('#mobileFilterToggle'),
   filterBar: document.querySelector('#filterBar'),
+  studyLayout: document.querySelector('.study-layout'),
   advancedFilterToggle: document.querySelector('#advancedFilterToggle'),
   advancedFilters: document.querySelector('#advancedFilters'),
   activeFiltersLabel: document.querySelector('#activeFiltersLabel'),
@@ -524,6 +526,23 @@ function bindEvents() {
     const button = event.target.closest('[data-action]');
     if (!button) return;
     const action = button.dataset.action || '';
+    if (action.startsWith('current-law-')) {
+      event.preventDefault();
+      if (action === 'current-law-edit') {
+        state.currentLawEditMode = true;
+        renderNormativeTeachingPanel(state.currentQuestion);
+        return;
+      }
+      if (action === 'current-law-cancel-edit') {
+        state.currentLawEditMode = false;
+        renderNormativeTeachingPanel(state.currentQuestion);
+        return;
+      }
+      if (action === 'current-law-save-edit') {
+        await saveCurrentLawAnswerEdit();
+      }
+      return;
+    }
     if (!action.startsWith('teaching-')) return;
     event.preventDefault();
 
@@ -1289,6 +1308,7 @@ async function selectQuestion(questionId, options = {}) {
     state.theoryUrl = '';
     els.openTheory.disabled = true;
     if (els.openQuickTheory) els.openQuickTheory.disabled = true;
+    renderQuestionSituationTone(null);
     els.statement.innerHTML = `<p class="empty">${escapeHtml(question.error)}</p>`;
     return;
   }
@@ -1349,6 +1369,7 @@ function renderQuestion(question, options = {}) {
   const nextQuestionId = question.id || question.questionId || null;
   if (previousQuestionId !== nextQuestionId) {
     state.teachingEditMode = false;
+    state.currentLawEditMode = false;
   }
   state.currentQuestion = question;
   const adaptiveReason = options.adaptiveTarget?.reasonText || question.adaptive?.reasonText || '';
@@ -1358,6 +1379,7 @@ function renderQuestion(question, options = {}) {
   els.questionQuickStatus.textContent = adaptiveReason || questionQuickStatus(question);
   renderQuestionBadges(question);
   renderMastery(question.mastery);
+  renderQuestionSituationTone(question);
   els.statement.innerHTML = formatStatementHtml(question) || question.statementHtml || `<p>${escapeHtml(question.statementText || 'Sem enunciado')}</p>`;
   renderAnswerStatus(question);
 
@@ -1598,6 +1620,11 @@ function renderNormativeTeachingPanel(question) {
 
 function renderCurrentLawAnswerPanel(question) {
   const answer = question.currentLawAnswer || { exists: false, currentLawStatus: 'needs_audit' };
+  if (state.currentLawEditMode) {
+    els.teachingInfo.textContent = 'editando';
+    els.supportTeachingBody.innerHTML = currentLawEditFormMarkup(question, answer);
+    return;
+  }
   const status = answer.status || answer.currentLawStatus || 'needs_audit';
   const canAutoScore = answer.canAutoScore ?? answer.canAutoScoreCurrentLaw;
   const canScore = Boolean(canAutoScore && answer.currentAnswer && status === 'verified');
@@ -1623,6 +1650,15 @@ function renderCurrentLawAnswerPanel(question) {
   els.teachingInfo.textContent = canScore ? 'disponivel' : 'sem pontuacao';
   els.supportTeachingBody.innerHTML = `
     <div class="teaching-v3-card">
+      <div class="teaching-edit-toolbar">
+        <div>
+          <strong>Resposta atual</strong>
+          <span>${answer.updatedAt ? `atualizada em ${escapeHtml(formatFullDate(answer.updatedAt))}` : 'registro da legislação atual'}</span>
+        </div>
+        <div class="teaching-edit-actions">
+          <button class="button button-secondary" type="button" data-action="current-law-edit">Editar resposta atual</button>
+        </div>
+      </div>
       ${teachingV3Section('Gabarito pela legislacao atual', currentAnswer, { highlight: true })}
       ${teachingV3Section('Por que?', why)}
       ${teachingV3Section('Fundamento', foundation)}
@@ -1630,6 +1666,106 @@ function renderCurrentLawAnswerPanel(question) {
       ${teachingV3Section('Conclusao para estudo', conclusion)}
     </div>
   `;
+}
+
+function currentLawEditFormMarkup(question, answer) {
+  const status = answer.status || answer.currentLawStatus || 'needs_audit';
+  return `
+    <form class="teaching-edit-form" data-current-law-edit-form>
+      <div class="teaching-edit-toolbar">
+        <div>
+          <strong>Editar Resposta atual</strong>
+          <span>Altera a fonte canonica de estudo pela legislação atual.</span>
+        </div>
+        <div class="teaching-edit-actions">
+          <button class="button button-primary" type="button" data-action="current-law-save-edit">Salvar</button>
+          <button class="button button-secondary" type="button" data-action="current-law-cancel-edit">Cancelar</button>
+        </div>
+      </div>
+      <div class="normative-summary-grid">
+        <label class="teaching-edit-field">
+          <span>Status</span>
+          <select name="currentLawStatus">
+            ${currentLawStatusOption('verified', 'Verificada', status)}
+            ${currentLawStatusOption('needs_audit', 'Precisa auditoria', status)}
+            ${currentLawStatusOption('no_valid_alternative', 'Sem alternativa valida', status)}
+            ${currentLawStatusOption('discard', 'Descartar do estudo atual', status)}
+          </select>
+        </label>
+        <label class="teaching-edit-field">
+          <span>Gabarito atual</span>
+          <input name="currentAnswer" value="${escapeAttr(answer.currentAnswer || '')}" placeholder="${escapeAttr(question.metadata?.tipo === 'CERTO_ERRADO' ? 'CERTO ou ERRADO' : 'A, B, C, D ou E')}">
+        </label>
+      </div>
+      <label class="checkline">
+        <input name="canAutoScore" type="checkbox" ${answer.canAutoScore || answer.canAutoScoreCurrentLaw ? 'checked' : ''}>
+        <span>Pontuar automaticamente quando status for verificada</span>
+      </label>
+      ${teachingEditTextarea('Por que?', 'teacherExplanation', answer.teacherExplanation || '')}
+      ${teachingEditTextarea('Fundamento', 'legalBasis', answer.legalBasis || '')}
+      ${teachingEditTextarea('Referência do artigo/dispositivo', 'articleReference', answer.articleReference || '')}
+      ${teachingEditTextarea('Trecho oficial curto', 'articleExcerpt', answer.articleExcerpt || '')}
+      ${teachingEditTextarea('Regra em resumo', 'ruleSummary', answer.ruleSummary || '')}
+      ${teachingEditTextarea('Complementação de professor', 'professorComplement', answer.professorComplement || '')}
+      ${teachingEditTextarea('Conclusão para estudo', 'studyConclusion', answer.studyConclusion || '')}
+      <label class="teaching-edit-field">
+        <span>URL da fonte</span>
+        <input name="sourceUrl" value="${escapeAttr(answer.sourceUrl || '')}">
+      </label>
+    </form>
+  `;
+}
+
+function currentLawStatusOption(value, label, current) {
+  return `<option value="${escapeAttr(value)}" ${value === current ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+}
+
+async function saveCurrentLawAnswerEdit() {
+  if (!state.selectedId) return;
+  const form = els.supportTeachingBody.querySelector('[data-current-law-edit-form]');
+  if (!form) return;
+  const data = new FormData(form);
+  setCurrentLawEditButtonsDisabled(true);
+  try {
+    const result = await api(`/api/questions/${state.selectedId}/current-law-answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentLawStatus: data.get('currentLawStatus') || 'needs_audit',
+        currentAnswer: data.get('currentAnswer') || '',
+        canAutoScore: Boolean(data.get('canAutoScore')),
+        teacherExplanation: data.get('teacherExplanation') || '',
+        legalBasis: data.get('legalBasis') || '',
+        articleReference: data.get('articleReference') || '',
+        articleExcerpt: data.get('articleExcerpt') || '',
+        ruleSummary: data.get('ruleSummary') || '',
+        professorComplement: data.get('professorComplement') || '',
+        studyConclusion: data.get('studyConclusion') || '',
+        sourceUrl: data.get('sourceUrl') || ''
+      })
+    });
+    if (result.error) throw new Error(result.error);
+    state.currentQuestion.currentLawAnswer = result.currentLawAnswer;
+    if (result.normativeTeachingComment) {
+      state.currentQuestion.normativeTeachingComment = result.normativeTeachingComment;
+    }
+    state.currentLawEditMode = false;
+    renderNormativeAlert(state.currentQuestion);
+    renderNormativeTeachingPanel(state.currentQuestion);
+    renderQuestionBadges(state.currentQuestion);
+    updateAnswerActions();
+  } catch (error) {
+    els.teachingInfo.textContent = `erro ao salvar: ${error.message}`;
+    setCurrentLawEditButtonsDisabled(false);
+  }
+}
+
+function setCurrentLawEditButtonsDisabled(disabled) {
+  els.supportTeachingBody
+    .querySelectorAll('[data-action="current-law-save-edit"]')
+    .forEach((button) => {
+      button.disabled = disabled;
+    });
 }
 
 function currentLawStatusLabel(status) {
@@ -2327,6 +2463,15 @@ function renderQuestionBadges(question) {
   els.questionBadges.hidden = badges.length === 0;
 }
 
+function renderQuestionSituationTone(question) {
+  const isCanceled = Boolean(question?.metadata?.anulada);
+  const isOutdated = Boolean(question?.metadata?.desatualizada);
+  els.studyLayout?.classList.toggle('is-canceled-question', isCanceled);
+  els.studyLayout?.classList.toggle('is-outdated-question', !isCanceled && isOutdated);
+  document.body.classList.toggle('has-canceled-question', isCanceled);
+  document.body.classList.toggle('has-outdated-question', !isCanceled && isOutdated);
+}
+
 function renderStudyStatusControl(question) {
   if (!els.studyStatusControl) {
     return;
@@ -2783,15 +2928,18 @@ function matchesCertoErradoAlias(answer, text) {
 
 function showCommentPanel() {
   const canRevealCurrentLaw = canRevealCurrentLawAnswer(state.currentQuestion);
+  const hasHistoricalComment = Boolean(state.currentQuestion?.comment?.html || state.currentQuestion?.comment?.text);
   const preferredTab = canRevealCurrentLaw && (state.currentQuestion?.currentLawAnswer?.exists || state.currentQuestion?.metadata?.desatualizada)
     ? 'teaching'
     : canRevealCurrentLaw && state.currentQuestion?.normativeTeachingComment?.exists
       ? 'teaching'
-      : hasQuickTheorySupport(state.currentQuestion)
-        ? 'quickTheory'
+      : hasHistoricalComment
+        ? 'comment'
         : state.currentQuestion?.normativeUpdate?.exists
           ? 'normative'
-          : 'comment';
+          : hasQuickTheorySupport(state.currentQuestion)
+            ? 'quickTheory'
+            : 'comment';
   openSupportPanel(preferredTab);
   state.sawComment = true;
   recordQuestionEvent('opened_comment');

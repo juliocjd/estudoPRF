@@ -10,6 +10,7 @@ const { db, client } = openCliDatabase(args);
 
 try {
   db.prepare("DELETE FROM question_legal_links WHERE source = 'auto_legal_link_v1'").run();
+  const autoLink = Boolean(args.auto);
   const limit = Number(args.limit || 0);
   const questions = db.prepare(`
     SELECT id_question, materia, assunto, statement_text
@@ -36,23 +37,25 @@ try {
   console.log(`Questoes avaliadas: ${questions.length}`);
   console.log(`Cards disponiveis: ${cards.length}`);
 
-  for (const question of questions) {
-    const match = bestCardMatch(question, cards);
-    if (!match || match.score < 0.78) {
-      skippedLowConfidence += 1;
-      continue;
+  if (autoLink) {
+    for (const question of questions) {
+      const match = bestCardMatch(question, cards);
+      if (!match || match.score < 0.9) {
+        skippedLowConfidence += 1;
+        continue;
+      }
+      linkQuestionToLegalCard(db, {
+        questionId: question.id_question,
+        articleId: match.card.article_id || null,
+        cardId: match.card.card_id,
+        relationType: 'exact_or_strong_topic',
+        relevanceScore: match.score,
+        reason: match.reason,
+        source: 'auto_legal_link_v1'
+      });
+      linked += 1;
+      exact += 1;
     }
-    linkQuestionToLegalCard(db, {
-      questionId: question.id_question,
-      articleId: match.card.article_id || null,
-      cardId: match.card.card_id,
-      relationType: 'exact_or_strong_topic',
-      relevanceScore: match.score,
-      reason: match.reason,
-      source: 'auto_legal_link_v1'
-    });
-    linked += 1;
-    if (match.score >= 0.78) exact += 1;
   }
 
   ensurePriorityLinks();
@@ -68,6 +71,7 @@ try {
 
   console.log('');
   console.log(`# Resultado`);
+  console.log(`Modo automatico: ${autoLink ? 'sim' : 'nao'}`);
   console.log(`Vinculos automaticos criados/atualizados: ${linked}`);
   console.log(`Vinculos fortes: ${exact}`);
   console.log(`Pulados por baixa confianca: ${skippedLowConfidence}`);
