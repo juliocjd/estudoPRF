@@ -61,6 +61,7 @@ if (activeDbClient === 'sqlite') {
 initQuestionStudyStatusSchema(db);
 initTheoryPagesSchema(db);
 initNormativeTeachingStudentEditsSchema(db);
+initQuestionCurrentLawAnswersSchema(db, activeDbClient);
 initLegalKnowledgeSchema(db, activeDbClient);
 
 export async function handleStudyRequest(request, response) {
@@ -296,7 +297,8 @@ async function routeRequest(request, response) {
   const currentLawAnswerEditMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/current-law-answer$/);
   if (currentLawAnswerEditMatch && request.method === 'POST') {
     const body = await readJsonBody(request);
-    sendJson(response, 200, saveCurrentLawAnswerEdit(Number(currentLawAnswerEditMatch[1]), body));
+    const result = saveCurrentLawAnswerEdit(Number(currentLawAnswerEditMatch[1]), body);
+    sendJson(response, result?.error ? 400 : 200, result);
     return;
   }
 
@@ -779,7 +781,7 @@ function buildLegalBullets(row) {
     row.answer_summary || '',
     row.rule_summary || '',
     row.common_traps || ''
-  ].flatMap((text) => String(text || '').split(/;|\.\s+/));
+  ].flatMap((text) => String(text || '').split(/;|\.\s+(?=[A-ZÁÉÍÓÚÀÃÕÇ])/));
   const seen = new Set();
   return chunks
     .map((item) => item.replace(/\s+/g, ' ').trim())
@@ -4433,6 +4435,7 @@ function saveCurrentLawAnswerEdit(questionId, body) {
   const hideUntilVerified = status !== 'verified';
   const historicalAnswer = String(body?.historicalAnswer || previous.historicalAnswer || question.historical_answer || '').trim();
   const answerChanged = Boolean(currentAnswer && historicalAnswer && normalizeAnswer(currentAnswer) !== normalizeAnswer(historicalAnswer));
+  const bindBoolean = (value) => (activeDbClient === 'postgres' ? Boolean(value) : (value ? 1 : 0));
 
   db.prepare(`
     INSERT INTO question_current_law_answers (
@@ -4460,7 +4463,7 @@ function saveCurrentLawAnswerEdit(questionId, body) {
       updated_at,
       imported_at
     )
-    VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     ON CONFLICT(question_id) DO UPDATE SET
       historical_answer = excluded.historical_answer,
       current_answer = excluded.current_answer,
@@ -4488,11 +4491,11 @@ function saveCurrentLawAnswerEdit(questionId, body) {
     historicalAnswer,
     currentAnswer,
     status,
-    canAutoScore ? 1 : 0,
-    answerChanged ? 1 : 0,
-    noValidAlternative ? 1 : 0,
-    shouldDiscard ? 1 : 0,
-    hideUntilVerified ? 1 : 0,
+    bindBoolean(canAutoScore),
+    bindBoolean(answerChanged),
+    bindBoolean(noValidAlternative),
+    bindBoolean(shouldDiscard),
+    bindBoolean(hideUntilVerified),
     limitText(body?.legalBasis, 30000),
     limitText(body?.articleReference, 12000),
     limitText(body?.articleExcerpt, 30000),
@@ -5161,6 +5164,87 @@ function initNormativeTeachingStudentEditsSchema(database) {
 
     CREATE INDEX IF NOT EXISTS idx_qntc_student_edits_updated
       ON question_normative_teaching_student_edits(updated_at);
+  `);
+}
+
+function initQuestionCurrentLawAnswersSchema(database, client = 'sqlite') {
+  if (client === 'postgres') {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS question_current_law_answers (
+        question_id BIGINT PRIMARY KEY,
+        historical_answer TEXT,
+        current_answer TEXT,
+        current_law_status TEXT NOT NULL DEFAULT 'needs_audit',
+        can_auto_score_current_law BOOLEAN NOT NULL DEFAULT FALSE,
+        do_not_use_historical_answer_in_current_law_mode BOOLEAN NOT NULL DEFAULT TRUE,
+        answer_changed BOOLEAN,
+        no_valid_alternative BOOLEAN NOT NULL DEFAULT FALSE,
+        should_discard_from_current_law_study BOOLEAN NOT NULL DEFAULT FALSE,
+        hide_from_main_study_until_verified BOOLEAN NOT NULL DEFAULT TRUE,
+        legal_basis TEXT,
+        article_reference TEXT,
+        article_excerpt TEXT,
+        teacher_explanation TEXT,
+        rule_summary TEXT,
+        professor_complement TEXT,
+        study_conclusion TEXT,
+        source_url TEXT,
+        verification_method TEXT,
+        source_version TEXT,
+        teaching_comment_md TEXT,
+        raw_json JSONB,
+        imported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT qcla_status_check CHECK (
+          current_law_status IN ('verified', 'needs_audit', 'no_valid_alternative', 'discard')
+        ),
+        CONSTRAINT qcla_autoscore_requires_answer CHECK (
+          can_auto_score_current_law = FALSE OR current_answer IS NOT NULL
+        )
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_qcla_status ON question_current_law_answers(current_law_status);
+      CREATE INDEX IF NOT EXISTS idx_qcla_autoscore ON question_current_law_answers(can_auto_score_current_law);
+      CREATE INDEX IF NOT EXISTS idx_qcla_changed ON question_current_law_answers(answer_changed);
+      CREATE INDEX IF NOT EXISTS idx_qcla_hide ON question_current_law_answers(hide_from_main_study_until_verified);
+      CREATE INDEX IF NOT EXISTS idx_qcla_discard ON question_current_law_answers(should_discard_from_current_law_study);
+    `);
+    return;
+  }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS question_current_law_answers (
+      question_id INTEGER PRIMARY KEY,
+      historical_answer TEXT,
+      current_answer TEXT,
+      current_law_status TEXT NOT NULL DEFAULT 'needs_audit',
+      can_auto_score_current_law INTEGER NOT NULL DEFAULT 0,
+      do_not_use_historical_answer_in_current_law_mode INTEGER NOT NULL DEFAULT 1,
+      answer_changed INTEGER,
+      no_valid_alternative INTEGER NOT NULL DEFAULT 0,
+      should_discard_from_current_law_study INTEGER NOT NULL DEFAULT 0,
+      hide_from_main_study_until_verified INTEGER NOT NULL DEFAULT 1,
+      legal_basis TEXT,
+      article_reference TEXT,
+      article_excerpt TEXT,
+      teacher_explanation TEXT,
+      rule_summary TEXT,
+      professor_complement TEXT,
+      study_conclusion TEXT,
+      source_url TEXT,
+      verification_method TEXT,
+      source_version TEXT,
+      teaching_comment_md TEXT,
+      raw_json TEXT,
+      imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_qcla_status ON question_current_law_answers(current_law_status);
+    CREATE INDEX IF NOT EXISTS idx_qcla_autoscore ON question_current_law_answers(can_auto_score_current_law);
+    CREATE INDEX IF NOT EXISTS idx_qcla_changed ON question_current_law_answers(answer_changed);
+    CREATE INDEX IF NOT EXISTS idx_qcla_hide ON question_current_law_answers(hide_from_main_study_until_verified);
+    CREATE INDEX IF NOT EXISTS idx_qcla_discard ON question_current_law_answers(should_discard_from_current_law_study);
   `);
 }
 
