@@ -1,0 +1,496 @@
+{
+  "generatedAt": "2026-06-07T13:33:30.929Z",
+  "dbClient": "postgres",
+  "source": "chatgpt_traffic_v4",
+  "totalTrafficQuestions": 1976,
+  "counts": {
+    "specificPrimary": 1109,
+    "panoramaOnly": 295,
+    "ambiguousOrReview": 596,
+    "currentLawReferenceOnly": 383,
+    "anyLinked": 2000,
+    "withoutLink": 0,
+    "unsafePrimary": 0
+  },
+  "byDisplayMode": [
+    {
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 1232,
+      "links": 1232
+    },
+    {
+      "display_mode": "theory_reference_only__not_solution_current_law",
+      "questions": 383,
+      "links": 383
+    },
+    {
+      "display_mode": "general_orientation_only",
+      "questions": 295,
+      "links": 295
+    },
+    {
+      "display_mode": "suggested_card_needs_review",
+      "questions": 90,
+      "links": 90
+    }
+  ],
+  "topCards": [
+    {
+      "card_key": "contran_973_sinais_sonoros_gestos",
+      "title": "Sinais sonoros e gestos",
+      "assunto": "Sinais Sonoros (Antiga Res. CONTRAN 160/2004)",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 113
+    },
+    {
+      "card_key": "contran_973_sinalizacao_indicacao",
+      "title": "Sinalização vertical de indicação",
+      "assunto": "Volume III - Sinalização Vertical de Indicação (Anexo III da Res. CONTRAN nº 973/2022)",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 88
+    },
+    {
+      "card_key": "contran_882_peso_dimensoes_limites",
+      "title": "Peso e dimensões: limites e tolerâncias",
+      "assunto": "Resolução CONTRAN nº 882/2021 - Limites de Peso e Dimensões que Transitem por Vias Terrestres",
+      "display_mode": "theory_reference_only__not_solution_current_law",
+      "questions": 68
+    },
+    {
+      "card_key": "contran_973_sinalizacao_advertencia",
+      "title": "Sinalização vertical de advertência",
+      "assunto": "Volume II - Sinalização Vertical de Advertência (Anexo II da Res. CONTRAN nº 973/2022)",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 59
+    },
+    {
+      "card_key": "ctb_snt_competencias_municipio_estado_uniao",
+      "title": "Competências dos órgãos de trânsito",
+      "assunto": "Do Sistema Nacional de Trânsito (arts. 5º a 25 da Lei nº 9.503/1997)",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 59
+    },
+    {
+      "card_key": "contran_973_sinalizacao_regulamentacao",
+      "title": "Sinalização vertical de regulamentação",
+      "assunto": "Volume I - Sinalização Vertical de Regulamentação (Anexo I da Res. CONTRAN nº 973/2022)",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 58
+    },
+    {
+      "card_key": "contran_916_modificacoes_veiculares",
+      "title": "Modificações de veículos",
+      "assunto": "Resolução CONTRAN nº 916/2022 - Modificações de Veículos",
+      "display_mode": "theory_reference_only__not_solution_current_law",
+      "questions": 46
+    },
+    {
+      "card_key": "contran_973_sinalizacao_horizontal",
+      "title": "Sinalização horizontal",
+      "assunto": "Volume IV - Sinalização Horizontal (Anexo IV da Res. CONTRAN nº 973/2022)",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 41
+    },
+    {
+      "card_key": "subject_overview::das-infracoes-arts-161-a-255-da-lei-n-9-503-1997",
+      "title": "Panorama do assunto: Das Infrações (arts. 161 a 255 da Lei nº 9.503/1997)",
+      "assunto": "Das Infrações (arts. 161 a 255 da Lei nº 9.503/1997)",
+      "display_mode": "general_orientation_only",
+      "questions": 41
+    },
+    {
+      "card_key": "subject_overview::resolucao-contran-n-985-2022-manual-brasileiro-de-fiscalizacao-de-transito",
+      "title": "Panorama do assunto: Resolução CONTRAN nº 985/2022 - Manual Brasileiro de Fiscalização de Trânsito",
+      "assunto": "Resolução CONTRAN nº 985/2022 - Manual Brasileiro de Fiscalização de Trânsito",
+      "display_mode": "general_orientation_only",
+      "questions": 40
+    },
+    {
+      "card_key": "subject_overview::das-normas-gerais-de-circulacao-e-conduta-arts-26-a-67-da-lei-n-9-503-1997",
+      "title": "Panorama do assunto: Das Normas Gerais de Circulação e Conduta (arts. 26 a 67 da Lei nº 9.503/1997)",
+      "assunto": "Das Normas Gerais de Circulação e Conduta (arts. 26 a 67 da Lei nº 9.503/1997)",
+      "display_mode": "general_orientation_only",
+      "questions": 38
+    },
+    {
+      "card_key": "contran_960_transmitancia",
+      "title": "Transmitância luminosa de vidros e películas",
+      "assunto": "Resolução CONTRAN nº 960/2022 - Requisitos de Segurança de Vidros e Outros",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 37
+    },
+    {
+      "card_key": "contran_623_remocao_custodia_leilao",
+      "title": "Remoção, custódia e leilão",
+      "assunto": "Resolução CONTRAN nº 623/2016 - Remoção, Custódia e Leilão",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 36
+    },
+    {
+      "card_key": "ctb_infracoes_velocidade",
+      "title": "Infrações por excesso de velocidade",
+      "assunto": "Das Infrações (arts. 161 a 255 da Lei nº 9.503/1997)",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 34
+    },
+    {
+      "card_key": "subject_overview::disposicoes-finais-e-transitorias-do-ctb-arts-313-a-341-da-lei-n-9-503-1997",
+      "title": "Panorama do assunto: Disposições Finais e Transitórias do CTB (arts. 313 a 341 da Lei nº 9.503/1997)",
+      "assunto": "Disposições Finais e Transitórias do CTB (arts. 313 a 341 da Lei nº 9.503/1997)",
+      "display_mode": "general_orientation_only",
+      "questions": 33
+    },
+    {
+      "card_key": "contran_432_alcoolemia",
+      "title": "Procedimentos de alcoolemia",
+      "assunto": "Resolução CONTRAN nº 432/2013 - Consumo de Álcool ou de Outra Substância Psicoativa",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 32
+    },
+    {
+      "card_key": "ctb_processo_ait",
+      "title": "AIT e processo administrativo de multa",
+      "assunto": "Do Processo Administrativo (arts. 280 a 290 da Lei nº 9.503/1997)",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 30
+    },
+    {
+      "card_key": "subject_overview::resolucao-contran-n-985-2022-manual-brasileiro-de-fiscalizacao-de-transito",
+      "title": "Panorama do assunto: Resolução CONTRAN nº 985/2022 - Manual Brasileiro de Fiscalização de Trânsito",
+      "assunto": "Resolução CONTRAN nº 985/2022 - Manual Brasileiro de Fiscalização de Trânsito",
+      "display_mode": "theory_reference_only__not_solution_current_law",
+      "questions": 30
+    },
+    {
+      "card_key": "contran_916_modificacoes_veiculares",
+      "title": "Modificações de veículos",
+      "assunto": "Resolução CONTRAN nº 916/2022 - Modificações de Veículos",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 25
+    },
+    {
+      "card_key": "contran_24_968_identificacao_chassi_vin",
+      "title": "Identificação de veículos: chassi/VIN",
+      "assunto": "Resolução CONTRAN nº 24/1998 - Critério de Identificação de Veículos",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 25
+    },
+    {
+      "card_key": "contran_969_piv",
+      "title": "Placa de Identificação Veicular - PIV",
+      "assunto": "Resolução CONTRAN nº 969/2022 - PIV",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 25
+    },
+    {
+      "card_key": "contran_789_1020_formacao_condutores",
+      "title": "Processo de formação de condutores",
+      "assunto": "Resolução CONTRAN nº 789/2020 - Formação de Condutores de Veículos Automotores e Elétricos",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 24
+    },
+    {
+      "card_key": "contran_945_amarracao_carga",
+      "title": "Amarração de cargas em veículos de carga",
+      "assunto": "Demais Resoluções CONTRAN",
+      "display_mode": "theory_reference_only__not_solution_current_law",
+      "questions": 23
+    },
+    {
+      "card_key": "contran_957_veiculo_colecao",
+      "title": "Veículo de coleção",
+      "assunto": "Resolução CONTRAN nº 957/2022 - Veículo de Coleção",
+      "display_mode": "rule_that_solves_or_clarifies_question",
+      "questions": 22
+    },
+    {
+      "card_key": "contran_993_equipamentos_obrigatorios",
+      "title": "Equipamentos obrigatórios da frota",
+      "assunto": "Resolução CONTRAN nº 993/2023 - Equipamentos Obrigatórios",
+      "display_mode": "theory_reference_only__not_solution_current_law",
+      "questions": 21
+    }
+  ],
+  "weakSubjects": [
+    {
+      "assunto": "Resolução CONTRAN nº 882/2021 - Limites de Peso e Dimensões que Transitem por Vias Terrestres",
+      "total": 68,
+      "specific": 0,
+      "panorama": 0,
+      "linked": 68
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 965/2022 - Áreas de Segurança e de Estacionamento Específicos de Veículos",
+      "total": 19,
+      "specific": 0,
+      "panorama": 0,
+      "linked": 19
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 970/2022 - Sistemas de Sinalização, Iluminação e Uso de Lanternas Especiais",
+      "total": 16,
+      "specific": 0,
+      "panorama": 0,
+      "linked": 16
+    },
+    {
+      "assunto": "Disposições Preliminares (arts. 1º a 4º da Lei nº 9.503/1997)",
+      "total": 12,
+      "specific": 0,
+      "panorama": 11,
+      "linked": 12
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 911/2022 - Permissão para Trânsito de Veículos Novos e Usados Incompletos",
+      "total": 11,
+      "specific": 0,
+      "panorama": 0,
+      "linked": 11
+    },
+    {
+      "assunto": "Dos Veículos em Circulação Internacional (arts. 118 e 119 da Lei nº 9.503/1997)",
+      "total": 9,
+      "specific": 0,
+      "panorama": 9,
+      "linked": 9
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 909/2022 - Fiscalização de Trânsito por Intermédio de Videomonitoramento",
+      "total": 8,
+      "specific": 0,
+      "panorama": 0,
+      "linked": 8
+    },
+    {
+      "assunto": "Outros Temas da Legislação de Trânsito",
+      "total": 5,
+      "specific": 0,
+      "panorama": 5,
+      "linked": 5
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 1.017/2024 - Critérios para o Registro e Circulação em Vias Públicas de Tratores e Outros",
+      "total": 4,
+      "specific": 0,
+      "panorama": 0,
+      "linked": 4
+    },
+    {
+      "assunto": "Volume VII - Sinalização Temporária (Anexo VII da Res. CONTRAN nº 973/2022)",
+      "total": 2,
+      "specific": 0,
+      "panorama": 2,
+      "linked": 2
+    },
+    {
+      "assunto": "Lei nº 9.654/1998 - Carreira do Policial Rodoviário",
+      "total": 2,
+      "specific": 0,
+      "panorama": 1,
+      "linked": 2
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 973/2022 - Institui o Regulamento de Sinalização Viária",
+      "total": 1,
+      "specific": 0,
+      "panorama": 1,
+      "linked": 1
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 573/2015 - Quadriciclos",
+      "total": 1,
+      "specific": 0,
+      "panorama": 1,
+      "linked": 1
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 351/2010 - Procedimentos para Veiculação de Mensagens Educativas de Trânsito",
+      "total": 1,
+      "specific": 0,
+      "panorama": 0,
+      "linked": 1
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 993/2023 - Equipamentos Obrigatórios para a Frota de Veículos em Circulação",
+      "total": 37,
+      "specific": 1,
+      "panorama": 0,
+      "linked": 37
+    },
+    {
+      "assunto": "Tópicos Mesclados de Sinalização de Trânsito",
+      "total": 22,
+      "specific": 1,
+      "panorama": 20,
+      "linked": 22
+    },
+    {
+      "assunto": "Tópicos Mesclados do CTB (Lei nº 9.503/1997)",
+      "total": 11,
+      "specific": 1,
+      "panorama": 7,
+      "linked": 11
+    },
+    {
+      "assunto": "Engenharia de Tráfego, Operação, Fiscalização e Policiamento Ostensivo de Trânsito (arts. 91 a 95)",
+      "total": 11,
+      "specific": 1,
+      "panorama": 10,
+      "linked": 11
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 26/1998 - Transporte de carga em veículo de transporte de passageiros",
+      "total": 3,
+      "specific": 1,
+      "panorama": 2,
+      "linked": 3
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 985/2022 - Manual Brasileiro de Fiscalização de Trânsito",
+      "total": 73,
+      "specific": 2,
+      "panorama": 40,
+      "linked": 73
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 927/2022 - Exame de Aptidão, Avaliação Psicológica e Credenciamento",
+      "total": 20,
+      "specific": 2,
+      "panorama": 0,
+      "linked": 20
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 918/2022 - Procedimentos para Aplicação de Multas por Infrações",
+      "total": 10,
+      "specific": 2,
+      "panorama": 0,
+      "linked": 10
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 967/2022 - Critérios para a Baixa do Registro de Veículos",
+      "total": 16,
+      "specific": 3,
+      "panorama": 1,
+      "linked": 16
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 514/2014 - Política Nacional de Trânsito",
+      "total": 7,
+      "specific": 3,
+      "panorama": 0,
+      "linked": 7
+    },
+    {
+      "assunto": "Disposições Finais e Transitórias do CTB (arts. 313 a 341 da Lei nº 9.503/1997)",
+      "total": 41,
+      "specific": 4,
+      "panorama": 33,
+      "linked": 41
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 508/2014 - Requisitos de Segurança para a Circulação de Veículo de Carga",
+      "total": 23,
+      "specific": 4,
+      "panorama": 0,
+      "linked": 23
+    },
+    {
+      "assunto": "Do Licenciamento (arts. 130 e 135 da Lei nº 9.503/1997)",
+      "total": 16,
+      "specific": 4,
+      "panorama": 4,
+      "linked": 16
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 110/2000 - Renovação do Licenciamento Anual de Veículos",
+      "total": 6,
+      "specific": 6,
+      "panorama": 0,
+      "linked": 6
+    },
+    {
+      "assunto": "Do Cidadão e Educação para o Trânsito (arts 72 a 79 da Lei nº 9.503/1997)",
+      "total": 15,
+      "specific": 7,
+      "panorama": 5,
+      "linked": 15
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 809/2020 - CRLV-e e ATPV-e",
+      "total": 17,
+      "specific": 9,
+      "panorama": 0,
+      "linked": 17
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 525/2015 - Fiscalização do Tempo de Direção Profissional",
+      "total": 10,
+      "specific": 9,
+      "panorama": 0,
+      "linked": 10
+    },
+    {
+      "assunto": "Das Medidas Administrativas (arts. 269 a 279 da Lei nº 9.503/1997)",
+      "total": 30,
+      "specific": 10,
+      "panorama": 12,
+      "linked": 30
+    },
+    {
+      "assunto": "Da Sinalização de Trânsito (arts. 80 a 90 da Lei nº 9.503/1997)",
+      "total": 18,
+      "specific": 10,
+      "panorama": 6,
+      "linked": 18
+    },
+    {
+      "assunto": "Dos Pedestres e Veículos Não-Motorizados (arts. 68 a 71 da Lei nº 9.503/1997)",
+      "total": 11,
+      "specific": 10,
+      "panorama": 0,
+      "linked": 11
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 819/2021 - Transporte de Crianças em Veículos",
+      "total": 15,
+      "specific": 11,
+      "panorama": 0,
+      "linked": 15
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 36/1998 - Sinalização de Advertência para os veículos Estiverem Imobilizados",
+      "total": 12,
+      "specific": 11,
+      "panorama": 0,
+      "linked": 12
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 870/2021 - Plano Nacional de Redução de Mortes e Lesões no Trânsito (PNATRANS)",
+      "total": 11,
+      "specific": 11,
+      "panorama": 0,
+      "linked": 11
+    },
+    {
+      "assunto": "Volume VI - Dispositivos Auxiliares (Anexo VI da Res. CONTRAN nº 973/2022)",
+      "total": 21,
+      "specific": 12,
+      "panorama": 0,
+      "linked": 21
+    },
+    {
+      "assunto": "Resolução CONTRAN nº 798/2020 - Fiscalização de Velocidade",
+      "total": 19,
+      "specific": 12,
+      "panorama": 0,
+      "linked": 19
+    },
+    {
+      "assunto": "Dos Conceitos e Definições (Anexo I da Lei nº 9.503/1997)",
+      "total": 16,
+      "specific": 12,
+      "panorama": 0,
+      "linked": 16
+    }
+  ]
+}

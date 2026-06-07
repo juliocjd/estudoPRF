@@ -538,6 +538,18 @@ function getQuestionLegalStudy(questionId) {
       qll.relation_type,
       qll.relevance_score,
       qll.reason,
+      qll.source AS link_source,
+      qll.display_mode,
+      qll.auto_show_as_primary,
+      qll.needs_human_review,
+      qll.precision_level,
+      qll.matched_terms,
+      qll.matched_terms_in_statement,
+      qll.evidence,
+      qll.current_law_status,
+      qll.current_law_can_auto_score,
+      qll.current_law_answer,
+      qll.warning,
       c.id AS card_id,
       c.card_key,
       c.title AS card_title,
@@ -567,22 +579,40 @@ function getQuestionLegalStudy(questionId) {
     LEFT JOIN legal_articles a ON a.id = qll.legal_article_id
     LEFT JOIN legal_sources s ON s.id = a.source_id
     WHERE qll.question_id = ?
-    ORDER BY qll.relevance_score DESC, c.verified_status = 'reviewed' DESC, c.id
-    LIMIT 6
+      AND qll.source = 'chatgpt_traffic_v4'
+    ORDER BY
+      CASE
+        WHEN qll.display_mode = 'rule_that_solves_or_clarifies_question'
+          AND qll.auto_show_as_primary = TRUE
+          AND (qll.needs_human_review IS NULL OR qll.needs_human_review = FALSE) THEN 1
+        WHEN qll.display_mode = 'general_orientation_only'
+          AND (qll.needs_human_review IS NULL OR qll.needs_human_review = FALSE) THEN 2
+        ELSE 9
+      END,
+      qll.relevance_score DESC,
+      c.verified_status = 'reviewed' DESC,
+      c.id
+    LIMIT 8
   `).all(questionId);
 
-  const primaryRow = rows.find((row) => row.card_id) || rows[0];
+  const specificRow = rows.find((row) => isSpecificLegalTheoryLink(row));
+  const overviewRow = rows.find((row) => isPanoramaLegalTheoryLink(row));
+  const primaryRow = specificRow || overviewRow;
   if (!primaryRow?.card_id) {
     return { available: false, reason: 'Teoria rapida ainda nao disponivel para este ponto.' };
   }
 
   const primaryCard = legalCardPayload(primaryRow, rows);
   const relatedCards = rows
-    .filter((row) => row.card_id && row.card_id !== primaryCard.id)
+    .filter((row) => row.card_id && row.card_id !== primaryCard.id && (isSpecificLegalTheoryLink(row) || isPanoramaLegalTheoryLink(row)))
     .map((row) => legalCardPayload(row, [row]));
 
   return {
     available: true,
+    mode: primaryCard.displayMode === 'general_orientation_only' ? 'panorama' : 'specific',
+    warning: primaryCard.displayMode === 'general_orientation_only'
+      ? 'Este e um panorama geral. Ainda nao ha microcard especifico validado para esta questao.'
+      : '',
     primaryCard,
     relatedCards,
     officialText: {
@@ -590,6 +620,17 @@ function getQuestionLegalStudy(questionId) {
       articles: buildOfficialArticles(rows)
     }
   };
+}
+
+function isSpecificLegalTheoryLink(row) {
+  return row?.display_mode === 'rule_that_solves_or_clarifies_question'
+    && dbBoolean(row.auto_show_as_primary)
+    && !dbBoolean(row.needs_human_review);
+}
+
+function isPanoramaLegalTheoryLink(row) {
+  return row?.display_mode === 'general_orientation_only'
+    && !dbBoolean(row.needs_human_review);
 }
 
 function getLegalCard(cardId) {
@@ -686,20 +727,60 @@ function getLegalDashboard() {
   }
 
   const totalQuestions = db.prepare('SELECT COUNT(*) AS n FROM questions WHERE COALESCE(anulada, 0) = 0').get().n || 0;
+  const legalSource = 'chatgpt_traffic_v4';
   const withQuickTheory = db.prepare(`
     SELECT COUNT(DISTINCT qll.question_id) AS n
     FROM question_legal_links qll
     JOIN questions q ON q.id_question = qll.question_id
     WHERE COALESCE(q.anulada, 0) = 0
-  `).get().n || 0;
+      AND qll.source = ?
+      AND (
+        (
+          qll.display_mode = 'rule_that_solves_or_clarifies_question'
+          AND qll.auto_show_as_primary = TRUE
+          AND (qll.needs_human_review IS NULL OR qll.needs_human_review = FALSE)
+        )
+        OR (
+          qll.display_mode = 'general_orientation_only'
+          AND (qll.needs_human_review IS NULL OR qll.needs_human_review = FALSE)
+        )
+      )
+  `).get(legalSource).n || 0;
   const stats = {
     sources: db.prepare('SELECT COUNT(*) AS n FROM legal_sources').get().n || 0,
     articles: db.prepare('SELECT COUNT(*) AS n FROM legal_articles').get().n || 0,
     cards: db.prepare('SELECT COUNT(*) AS n FROM legal_topic_cards').get().n || 0,
-    links: db.prepare('SELECT COUNT(*) AS n FROM question_legal_links').get().n || 0,
+    links: db.prepare('SELECT COUNT(*) AS n FROM question_legal_links WHERE source = ?').get(legalSource).n || 0,
     totalQuestions,
     withQuickTheory,
     withoutQuickTheory: Math.max(0, totalQuestions - withQuickTheory),
+    specificQuickTheory: db.prepare(`
+      SELECT COUNT(DISTINCT question_id) AS n
+      FROM question_legal_links
+      WHERE source = ?
+        AND display_mode = 'rule_that_solves_or_clarifies_question'
+        AND auto_show_as_primary = TRUE
+        AND (needs_human_review IS NULL OR needs_human_review = FALSE)
+    `).get(legalSource).n || 0,
+    panoramaOnly: db.prepare(`
+      SELECT COUNT(DISTINCT question_id) AS n
+      FROM question_legal_links
+      WHERE source = ?
+        AND display_mode = 'general_orientation_only'
+        AND (needs_human_review IS NULL OR needs_human_review = FALSE)
+    `).get(legalSource).n || 0,
+    needsTheoryReview: db.prepare(`
+      SELECT COUNT(DISTINCT question_id) AS n
+      FROM question_legal_links
+      WHERE source = ?
+        AND (needs_human_review = TRUE OR display_mode = 'suggested_card_needs_review')
+    `).get(legalSource).n || 0,
+    currentLawReferenceOnly: db.prepare(`
+      SELECT COUNT(DISTINCT question_id) AS n
+      FROM question_legal_links
+      WHERE source = ?
+        AND display_mode = 'theory_reference_only__not_solution_current_law'
+    `).get(legalSource).n || 0,
     pendingReview: db.prepare(`
       SELECT COUNT(*) AS n
       FROM legal_topic_cards
@@ -721,12 +802,24 @@ function getLegalDashboard() {
       SUM(CASE WHEN sa.is_correct = 0 THEN 1 ELSE 0 END) AS wrong_attempts
     FROM questions q
     LEFT JOIN question_legal_links qll ON qll.question_id = q.id_question
+      AND qll.source = ?
+      AND (
+        (
+          qll.display_mode = 'rule_that_solves_or_clarifies_question'
+          AND qll.auto_show_as_primary = TRUE
+          AND (qll.needs_human_review IS NULL OR qll.needs_human_review = FALSE)
+        )
+        OR (
+          qll.display_mode = 'general_orientation_only'
+          AND (qll.needs_human_review IS NULL OR qll.needs_human_review = FALSE)
+        )
+      )
     LEFT JOIN study_answers sa ON sa.question_id = q.id_question
     WHERE COALESCE(q.anulada, 0) = 0
     GROUP BY q.materia, q.assunto
     ORDER BY (COUNT(*) - COUNT(DISTINCT qll.question_id)) DESC, wrong_attempts DESC
     LIMIT 40
-  `).all();
+  `).all(legalSource);
 
   const sourcesWithErrors = db.prepare(`
     SELECT source_key, title, import_error
@@ -756,6 +849,7 @@ function getLegalDashboard() {
 }
 
 function legalCardPayload(row, sourceRows = []) {
+  const displayMode = row.display_mode || '';
   return {
     id: row.card_id,
     cardKey: row.card_key || '',
@@ -772,7 +866,16 @@ function legalCardPayload(row, sourceRows = []) {
     exampleText: row.example_text || '',
     bullets: buildLegalBullets(row),
     sourceRefs: buildSourceRefs(row, sourceRows),
-    verifiedStatus: row.verified_status || ''
+    verifiedStatus: row.verified_status || '',
+    displayMode,
+    displayKind: displayMode === 'general_orientation_only' ? 'panorama' : 'specific',
+    autoShowAsPrimary: dbBoolean(row.auto_show_as_primary),
+    needsHumanReview: dbBoolean(row.needs_human_review),
+    precisionLevel: row.precision_level || '',
+    matchedTerms: safeJsonParse(row.matched_terms, []),
+    matchedTermsInStatement: safeJsonParse(row.matched_terms_in_statement, []),
+    linkReason: row.reason || '',
+    linkWarning: row.warning || ''
   };
 }
 
@@ -5317,13 +5420,43 @@ function initLegalKnowledgeSchema(database, client = 'sqlite') {
         question_id BIGINT NOT NULL,
         legal_article_id BIGINT REFERENCES legal_articles(id) ON DELETE SET NULL,
         legal_card_id BIGINT REFERENCES legal_topic_cards(id) ON DELETE SET NULL,
+        card_key TEXT,
         relation_type TEXT DEFAULT 'supports_answer',
         relevance_score NUMERIC DEFAULT 0,
         reason TEXT,
         source TEXT DEFAULT 'auto',
+        display_mode TEXT,
+        auto_show_as_primary BOOLEAN NOT NULL DEFAULT FALSE,
+        needs_human_review BOOLEAN NOT NULL DEFAULT FALSE,
+        precision_level TEXT,
+        matched_terms JSONB NOT NULL DEFAULT '[]'::jsonb,
+        matched_terms_in_statement JSONB NOT NULL DEFAULT '[]'::jsonb,
+        evidence JSONB NOT NULL DEFAULT '{}'::jsonb,
+        current_law_status TEXT,
+        current_law_can_auto_score BOOLEAN,
+        current_law_answer TEXT,
+        warning TEXT,
+        imported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(question_id, legal_article_id, legal_card_id, relation_type)
       );
+
+      ALTER TABLE question_legal_links
+        ADD COLUMN IF NOT EXISTS card_key TEXT,
+        ADD COLUMN IF NOT EXISTS display_mode TEXT,
+        ADD COLUMN IF NOT EXISTS auto_show_as_primary BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS needs_human_review BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS precision_level TEXT,
+        ADD COLUMN IF NOT EXISTS matched_terms JSONB NOT NULL DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS matched_terms_in_statement JSONB NOT NULL DEFAULT '[]'::jsonb,
+        ADD COLUMN IF NOT EXISTS evidence JSONB NOT NULL DEFAULT '{}'::jsonb,
+        ADD COLUMN IF NOT EXISTS current_law_status TEXT,
+        ADD COLUMN IF NOT EXISTS current_law_can_auto_score BOOLEAN,
+        ADD COLUMN IF NOT EXISTS current_law_answer TEXT,
+        ADD COLUMN IF NOT EXISTS warning TEXT,
+        ADD COLUMN IF NOT EXISTS imported_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
       CREATE TABLE IF NOT EXISTS legal_change_events (
         id BIGSERIAL PRIMARY KEY,
@@ -5361,6 +5494,12 @@ function initLegalKnowledgeSchema(database, client = 'sqlite') {
         ON question_legal_links(question_id);
       CREATE INDEX IF NOT EXISTS idx_question_legal_links_card
         ON question_legal_links(legal_card_id);
+      CREATE INDEX IF NOT EXISTS idx_question_legal_links_display_mode
+        ON question_legal_links(display_mode);
+      CREATE INDEX IF NOT EXISTS idx_question_legal_links_primary_safe
+        ON question_legal_links(question_id, auto_show_as_primary, needs_human_review, display_mode);
+      CREATE INDEX IF NOT EXISTS idx_question_legal_links_source
+        ON question_legal_links(source);
     `);
     return;
   }
@@ -5432,10 +5571,24 @@ function initLegalKnowledgeSchema(database, client = 'sqlite') {
       question_id INTEGER NOT NULL,
       legal_article_id INTEGER,
       legal_card_id INTEGER,
+      card_key TEXT,
       relation_type TEXT DEFAULT 'supports_answer',
       relevance_score REAL DEFAULT 0,
       reason TEXT,
       source TEXT DEFAULT 'auto',
+      display_mode TEXT,
+      auto_show_as_primary INTEGER NOT NULL DEFAULT 0,
+      needs_human_review INTEGER NOT NULL DEFAULT 0,
+      precision_level TEXT,
+      matched_terms TEXT DEFAULT '[]',
+      matched_terms_in_statement TEXT DEFAULT '[]',
+      evidence TEXT DEFAULT '{}',
+      current_law_status TEXT,
+      current_law_can_auto_score INTEGER,
+      current_law_answer TEXT,
+      warning TEXT,
+      imported_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(question_id, legal_article_id, legal_card_id, relation_type)
     );
@@ -5478,7 +5631,40 @@ function initLegalKnowledgeSchema(database, client = 'sqlite') {
       ON question_legal_links(question_id);
     CREATE INDEX IF NOT EXISTS idx_question_legal_links_card
       ON question_legal_links(legal_card_id);
+    CREATE INDEX IF NOT EXISTS idx_question_legal_links_display_mode
+      ON question_legal_links(display_mode);
+    CREATE INDEX IF NOT EXISTS idx_question_legal_links_primary_safe
+      ON question_legal_links(question_id, auto_show_as_primary, needs_human_review, display_mode);
+    CREATE INDEX IF NOT EXISTS idx_question_legal_links_source
+      ON question_legal_links(source);
   `);
+  ensureSqliteLegalLinkPrecisionSchema(database);
+}
+
+function ensureSqliteLegalLinkPrecisionSchema(database) {
+  const columns = [
+    ['card_key', 'TEXT'],
+    ['display_mode', 'TEXT'],
+    ['auto_show_as_primary', 'INTEGER NOT NULL DEFAULT 0'],
+    ['needs_human_review', 'INTEGER NOT NULL DEFAULT 0'],
+    ['precision_level', 'TEXT'],
+    ['matched_terms', "TEXT DEFAULT '[]'"],
+    ['matched_terms_in_statement', "TEXT DEFAULT '[]'"],
+    ['evidence', "TEXT DEFAULT '{}'"],
+    ['current_law_status', 'TEXT'],
+    ['current_law_can_auto_score', 'INTEGER'],
+    ['current_law_answer', 'TEXT'],
+    ['warning', 'TEXT'],
+    ['imported_at', 'TEXT'],
+    ['updated_at', 'TEXT']
+  ];
+  for (const [name, definition] of columns) {
+    try {
+      database.exec(`ALTER TABLE question_legal_links ADD COLUMN ${name} ${definition}`);
+    } catch (error) {
+      if (!String(error?.message || '').includes('duplicate column')) throw error;
+    }
+  }
 }
 
 function initStudySchema(database) {

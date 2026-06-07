@@ -1,0 +1,1688 @@
+{
+  "version": "legal_theory_traffic_v4_precision_first",
+  "rules": [
+    {
+      "card_key": "ctb_normas_circulacao_distancia_seguranca",
+      "subjects": [
+        "das normas gerais de circulacao e conduta"
+      ],
+      "any_terms": [
+        "distancia de seguranca",
+        "distancia lateral",
+        "distancia frontal",
+        "guardar distancia",
+        "seguindo",
+        "veiculo que segue"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_normas_circulacao_ultrapassagem_esquerda",
+      "subjects": [
+        "das normas gerais de circulacao e conduta",
+        "das infracoes"
+      ],
+      "any_terms": [
+        "ultrapassagem",
+        "ultrapassar",
+        "intencao de ultrapassar",
+        "entrar a esquerda",
+        "sentido contrario"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_normas_circulacao_emergencia",
+      "subjects": [
+        "das normas gerais de circulacao e conduta"
+      ],
+      "any_terms": [
+        "ambulancia",
+        "policia",
+        "bombeiros",
+        "servico de urgencia",
+        "livre circulacao",
+        "prioridade de transito",
+        "veiculo de emergencia"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_normas_circulacao_luzes_baixa",
+      "subjects": [
+        "das normas gerais de circulacao e conduta"
+      ],
+      "any_terms": [
+        "luz baixa",
+        "farol baixo",
+        "farois acesos",
+        "tuneis",
+        "chuva",
+        "neblina",
+        "cerracao",
+        "dia e noite"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_normas_circulacao_luz_alta",
+      "subjects": [
+        "das normas gerais de circulacao e conduta"
+      ],
+      "any_terms": [
+        "luz alta",
+        "farol alto",
+        "vias nao iluminadas",
+        "troca de luz baixa e alta"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_normas_circulacao_pisca_alerta",
+      "subjects": [
+        "das normas gerais de circulacao e conduta"
+      ],
+      "any_terms": [
+        "pisca alerta",
+        "imobilizacao",
+        "situacao de emergencia"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_normas_circulacao_buzina",
+      "subjects": [
+        "das normas gerais de circulacao e conduta"
+      ],
+      "any_terms": [
+        "buzina",
+        "toque breve",
+        "advertencias necessarias",
+        "proposito de ultrapassar"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_sinalizacao_ordem_prevalencia",
+      "subjects": [
+        "da sinalizacao de transito",
+        "topicos mesclados de sinalizacao"
+      ],
+      "any_terms": [
+        "ordens do agente",
+        "sinais luminosos",
+        "sinalizacao",
+        "prevalencia",
+        "gestos do agente"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 145,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_prf_competencias",
+      "subjects": [
+        "do sistema nacional de transito"
+      ],
+      "any_terms": [
+        "policia rodoviaria federal",
+        "prf",
+        "rodovias e estradas federais",
+        "patrulhamento ostensivo"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_snt_competencias_municipio_estado_uniao",
+      "subjects": [
+        "do sistema nacional de transito"
+      ],
+      "any_terms": [
+        "competencia",
+        "conselho",
+        "contran",
+        "senatran",
+        "orgao executivo",
+        "municipio",
+        "estado",
+        "distrito federal",
+        "jari",
+        "cetran"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 130,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_documentos_cnh_porte",
+      "subjects": [
+        "da habilitacao",
+        "demais resolucoes contran"
+      ],
+      "any_terms": [
+        "cnh",
+        "permissao para dirigir",
+        "porte do documento de habilitacao",
+        "renach",
+        "habilitado"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_habilitacao_categorias",
+      "subjects": [
+        "da habilitacao"
+      ],
+      "any_terms": [
+        "categoria a",
+        "categoria b",
+        "categoria c",
+        "categoria d",
+        "categoria e",
+        "categorias de habilitacao",
+        "combinacao de veiculos"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_habilitacao_permissao_pontos",
+      "subjects": [
+        "da habilitacao"
+      ],
+      "any_terms": [
+        "permissao para dirigir",
+        "ppd",
+        "cnh definitiva",
+        "primeira habilitacao",
+        "habilitar se"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_habilitacao_curso_reciclagem",
+      "subjects": [
+        "da habilitacao"
+      ],
+      "any_terms": [
+        "curso",
+        "reciclagem",
+        "curso especializado",
+        "exame",
+        "aptidao fisica",
+        "avaliacao psicologica"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 140,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_789_1020_formacao_condutores",
+      "subjects": [
+        "resolucao contran n 789 2020",
+        "da habilitacao"
+      ],
+      "any_terms": [
+        "formacao de condutores",
+        "processo de habilitacao",
+        "aulas",
+        "curso teorico",
+        "curso pratico",
+        "exame de direcao",
+        "candidato"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_927_exames_aptidao_psicologico",
+      "subjects": [
+        "resolucao contran n 927 2022",
+        "da habilitacao"
+      ],
+      "any_terms": [
+        "aptidao fisica",
+        "aptidao mental",
+        "avaliacao psicologica",
+        "credenciamento",
+        "perito examinador"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_1020_condutor_estrangeiro",
+      "subjects": [
+        "demais resolucoes contran"
+      ],
+      "any_terms": [
+        "estrangeiro",
+        "pais estrangeiro",
+        "habilitado no exterior",
+        "convencoes",
+        "reciprocidade",
+        "180 dias",
+        "missao diplomatica"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 155,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_documentos_crlv_porte",
+      "subjects": [
+        "do licenciamento",
+        "demais resolucoes contran"
+      ],
+      "any_terms": [
+        "crlv",
+        "cla",
+        "certificado de licenciamento",
+        "licenciamento anual",
+        "porte do certificado",
+        "renavam"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_licenciamento_crlv_digital",
+      "subjects": [
+        "do licenciamento",
+        "resolucao contran n 110 2000"
+      ],
+      "any_terms": [
+        "licenciamento",
+        "crlv e",
+        "crlve",
+        "licenciado",
+        "renavam",
+        "calendario"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 145,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_809_crlve_atpve",
+      "subjects": [
+        "resolucao contran n 809 2020"
+      ],
+      "any_terms": [
+        "crlv e",
+        "crlve",
+        "atpv e",
+        "atpve",
+        "documento digital",
+        "carteira digital de transito"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_110_licenciamento_anual",
+      "subjects": [
+        "resolucao contran n 110 2000",
+        "do licenciamento"
+      ],
+      "any_terms": [
+        "licenciamento anual",
+        "calendario",
+        "renovacao do licenciamento",
+        "final da placa"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_baixa_veiculo_irrecuperavel",
+      "subjects": [
+        "dos veiculos",
+        "resolucao contran n 967 2022"
+      ],
+      "any_terms": [
+        "baixa",
+        "irrecuperavel",
+        "definitivamente desmontado",
+        "perda total",
+        "laudo",
+        "desmontagem"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_967_baixa_sinistro",
+      "subjects": [
+        "resolucao contran n 967 2022",
+        "dos veiculos"
+      ],
+      "any_terms": [
+        "baixa do registro",
+        "irrecuperavel",
+        "perda total",
+        "sinistrado",
+        "laudo",
+        "30 dias"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 165,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_810_danos_sinistro",
+      "subjects": [
+        "resolucao contran n 810 2020"
+      ],
+      "any_terms": [
+        "dano de pequena monta",
+        "media monta",
+        "grande monta",
+        "classificacao de danos",
+        "sinistro",
+        "acidente"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_veiculos_classificacao_especie_categoria",
+      "subjects": [
+        "dos veiculos"
+      ],
+      "any_terms": [
+        "classificacao",
+        "tracao",
+        "especie",
+        "categoria",
+        "automotor",
+        "eletrico",
+        "passageiros",
+        "carga",
+        "misto"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 130,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_registro_transferencia_propriedade",
+      "subjects": [
+        "do registro de veiculos"
+      ],
+      "any_terms": [
+        "transferencia",
+        "registro",
+        "proprietario",
+        "crv",
+        "comunicacao de venda",
+        "alienacao",
+        "novo proprietario"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_24_968_identificacao_chassi_vin",
+      "subjects": [
+        "resolucao contran n 24 1998",
+        "dos veiculos"
+      ],
+      "any_terms": [
+        "chassi",
+        "vin",
+        "identificacao veicular",
+        "remarcacao",
+        "gravacao",
+        "numero de identificacao"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_969_piv",
+      "subjects": [
+        "resolucao contran n 969 2022"
+      ],
+      "any_terms": [
+        "placa",
+        "piv",
+        "mercosul",
+        "identificacao veicular",
+        "placas de identificacao"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_969_piv_antiga_nova",
+      "subjects": [
+        "resolucao contran n 969 2022"
+      ],
+      "any_terms": [
+        "placa antiga",
+        "placa mercosul",
+        "piv mercosul",
+        "substituicao da placa"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 165,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_957_veiculo_colecao",
+      "subjects": [
+        "resolucao contran n 957 2022"
+      ],
+      "any_terms": [
+        "veiculo de colecao",
+        "placa preta",
+        "colecao",
+        "originalidade"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_941_vistoria",
+      "subjects": [
+        "resolucao contran n 941 2022"
+      ],
+      "any_terms": [
+        "vistoria",
+        "vistoriador",
+        "laudo de vistoria",
+        "ecv",
+        "empresa credenciada"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_escolares",
+      "subjects": [
+        "da conducao de escolares e de moto frete"
+      ],
+      "any_terms": [
+        "escolares",
+        "transporte de escolares",
+        "conducao de escolares",
+        "categoria d",
+        "21 anos",
+        "curso especializado"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_motofrete_ctb",
+      "subjects": [
+        "da conducao de escolares e de moto frete"
+      ],
+      "any_terms": [
+        "motofrete",
+        "mototaxi",
+        "motocicleta",
+        "motoneta",
+        "transporte remunerado",
+        "139 a",
+        "139 b"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_943_motofrete_mototaxi_requisitos",
+      "subjects": [
+        "resolucao contran n 943 2022",
+        "da conducao de escolares e de moto frete"
+      ],
+      "any_terms": [
+        "motofrete",
+        "mototaxi",
+        "colete",
+        "mata cachorro",
+        "aparador de linha",
+        "categoria aluguel"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_955_carga_externa",
+      "subjects": [
+        "demais resolucoes contran"
+      ],
+      "any_terms": [
+        "carga externa",
+        "bicicleta",
+        "bagageiro",
+        "suporte",
+        "comprimento da carga",
+        "altura maxima",
+        "50 cm"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_945_amarracao_carga",
+      "subjects": [
+        "demais resolucoes contran",
+        "resolucao contran n 508 2014"
+      ],
+      "any_terms": [
+        "amarracao",
+        "amarracao",
+        "cintas",
+        "carga",
+        "ancoragem",
+        "transporte de carga"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_508_carga_indivisivel",
+      "subjects": [
+        "resolucao contran n 508 2014"
+      ],
+      "any_terms": [
+        "veiculo de carga",
+        "carga indivisivel",
+        "aet",
+        "autorizacao especial de transito",
+        "balanco traseiro"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_882_peso_dimensoes_limites",
+      "subjects": [
+        "resolucao contran n 882 2021"
+      ],
+      "any_terms": [
+        "peso",
+        "dimensao",
+        "dimensoes",
+        "pbt",
+        "pbct",
+        "eixo",
+        "limite de peso",
+        "balanca",
+        "tolerancia"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_902_peso_automatico",
+      "subjects": [
+        "demais resolucoes contran"
+      ],
+      "any_terms": [
+        "afericao automatizada",
+        "peso automatico",
+        "sistema automatico de pesagem",
+        "dimensao automatizada"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_735_ctv_ctvp",
+      "subjects": [
+        "resolucao contran n 735 2018"
+      ],
+      "any_terms": [
+        "ctv",
+        "ctvp",
+        "transporte de veiculos",
+        "cegonha",
+        "combinacao de transporte de veiculos"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_pontuacao_infracoes",
+      "subjects": [
+        "das infracoes"
+      ],
+      "any_terms": [
+        "gravissima",
+        "grave",
+        "media",
+        "leve",
+        "pontos",
+        "natureza da infracao",
+        "multa"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 120,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_infracoes_velocidade",
+      "subjects": [
+        "das infracoes",
+        "resolucao contran n 798 2020"
+      ],
+      "any_terms": [
+        "velocidade",
+        "limite de velocidade",
+        "excesso de velocidade",
+        "radar",
+        "20",
+        "50"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_798_velocidade",
+      "subjects": [
+        "resolucao contran n 798 2020"
+      ],
+      "any_terms": [
+        "medidor de velocidade",
+        "radar",
+        "fiscalizacao de velocidade",
+        "velocidade medida",
+        "velocidade considerada"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_alcool_recusa",
+      "subjects": [
+        "das infracoes"
+      ],
+      "any_terms": [
+        "alcool",
+        "embriaguez",
+        "etilometro",
+        "recusa",
+        "substancia psicoativa",
+        "bafometro",
+        "sinais de alteracao"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 165,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_432_alcoolemia",
+      "subjects": [
+        "resolucao contran n 432 2013"
+      ],
+      "any_terms": [
+        "alcool",
+        "etilometro",
+        "bafometro",
+        "recusa",
+        "teste de alcoolemia",
+        "sinais de alteracao"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_infracoes_capacete",
+      "subjects": [
+        "das infracoes"
+      ],
+      "any_terms": [
+        "capacete",
+        "viseira",
+        "oculos de protecao",
+        "motociclista",
+        "motoneta"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_940_capacete_viseira_oculos",
+      "subjects": [
+        "demais resolucoes contran"
+      ],
+      "any_terms": [
+        "capacete",
+        "viseira",
+        "oculos de protecao",
+        "oculos de seguranca do trabalho",
+        "epi"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_infracoes_luzes",
+      "subjects": [
+        "das infracoes"
+      ],
+      "any_terms": [
+        "farol",
+        "luz",
+        "lanterna",
+        "iluminacao",
+        "sinalizacao veicular"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 145,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_infracoes_estacionamento_parada",
+      "subjects": [
+        "das infracoes"
+      ],
+      "any_terms": [
+        "parar",
+        "estacionar",
+        "estacionamento",
+        "parada",
+        "calcada",
+        "acostamento",
+        "fila dupla"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 145,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_infracoes_ultrapassagem",
+      "subjects": [
+        "das infracoes"
+      ],
+      "any_terms": [
+        "ultrapassar",
+        "ultrapassagem",
+        "transpor bloqueio",
+        "forcar passagem"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 145,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_infracoes_documentos_licenciamento",
+      "subjects": [
+        "das infracoes"
+      ],
+      "any_terms": [
+        "sem portar",
+        "documento",
+        "crlv",
+        "cnh",
+        "licenciado",
+        "registro",
+        "licenciamento"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 145,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_infracoes_cinto_celular",
+      "subjects": [
+        "das infracoes"
+      ],
+      "any_terms": [
+        "cinto de seguranca",
+        "celular",
+        "telefone celular",
+        "fone de ouvido",
+        "passageiro",
+        "crianca"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 145,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_processo_ait",
+      "subjects": [
+        "do processo administrativo",
+        "resolucao contran n 918 2022"
+      ],
+      "any_terms": [
+        "auto de infracao",
+        "ait",
+        "notificacao",
+        "defesa previa",
+        "autuacao",
+        "infrator",
+        "penalidade de multa"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_processo_recurso_jari_cetran",
+      "subjects": [
+        "do processo administrativo",
+        "resolucao contran n 918 2022"
+      ],
+      "any_terms": [
+        "recurso",
+        "jari",
+        "cetran",
+        "contraditorio",
+        "defesa",
+        "notificacao da penalidade"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_918_notificacao_defesa",
+      "subjects": [
+        "resolucao contran n 918 2022"
+      ],
+      "any_terms": [
+        "notificacao",
+        "auto de infracao",
+        "ait",
+        "defesa previa",
+        "aplicacao de multas",
+        "recurso"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_penalidades_suspensao_cassacao",
+      "subjects": [
+        "das penalidades",
+        "resolucao contran n 723 2018"
+      ],
+      "any_terms": [
+        "suspensao",
+        "cassacao",
+        "direito de dirigir",
+        "reincidencia",
+        "curso de reciclagem"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_723_suspensao_cassacao_proc",
+      "subjects": [
+        "resolucao contran n 723 2018"
+      ],
+      "any_terms": [
+        "suspensao",
+        "cassacao",
+        "processo administrativo",
+        "direito de dirigir",
+        "penalidade"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_penalidades_reincidencia",
+      "subjects": [
+        "das penalidades"
+      ],
+      "any_terms": [
+        "multa",
+        "penalidade",
+        "reincidencia",
+        "advertencia por escrito",
+        "frequencia obrigatoria"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 130,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_penalidades_medidas",
+      "subjects": [
+        "das medidas administrativas",
+        "das penalidades"
+      ],
+      "any_terms": [
+        "medida administrativa",
+        "penalidade",
+        "retencao",
+        "remocao",
+        "recolhimento"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_medidas_retencao_remocao_recolhimento",
+      "subjects": [
+        "das medidas administrativas"
+      ],
+      "any_terms": [
+        "retencao",
+        "remocao",
+        "recolhimento",
+        "documento",
+        "veiculo",
+        "cnh",
+        "crlv"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_623_remocao_custodia_leilao",
+      "subjects": [
+        "resolucao contran n 623 2016"
+      ],
+      "any_terms": [
+        "remocao",
+        "custodia",
+        "leilao",
+        "patio",
+        "veiculo removido",
+        "recolhido"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_973_sinalizacao_regulamentacao",
+      "subjects": [
+        "volume i sinalizacao vertical de regulamentacao"
+      ],
+      "any_terms": [
+        "placa",
+        "sinalizacao vertical",
+        "regulamentacao",
+        "r"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 140,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_973_sinalizacao_advertencia",
+      "subjects": [
+        "volume ii sinalizacao vertical de advertencia"
+      ],
+      "any_terms": [
+        "advertencia",
+        "sinalizacao vertical",
+        "placa",
+        "a"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 140,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_973_sinalizacao_indicacao",
+      "subjects": [
+        "volume iii sinalizacao vertical de indicacao"
+      ],
+      "any_terms": [
+        "indicacao",
+        "orientacao",
+        "localizacao",
+        "placa",
+        "sinalizacao vertical"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 140,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_973_sinalizacao_horizontal",
+      "subjects": [
+        "volume iv sinalizacao horizontal"
+      ],
+      "any_terms": [
+        "sinalizacao horizontal",
+        "linha",
+        "marcas viarias",
+        "faixa",
+        "pintura",
+        "inscricoes no pavimento"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_973_semaforica",
+      "subjects": [
+        "volume v sinalizacao semaforica"
+      ],
+      "any_terms": [
+        "semaforo",
+        "semaforica",
+        "foco",
+        "vermelho",
+        "amarelo",
+        "verde"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_973_auxiliares",
+      "subjects": [
+        "volume vi dispositivos auxiliares"
+      ],
+      "any_terms": [
+        "dispositivos auxiliares",
+        "tachao",
+        "tacha",
+        "balizador",
+        "defensa",
+        "cone",
+        "cilindro"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_973_sinais_sonoros_gestos",
+      "subjects": [
+        "sinais sonoros",
+        "gestos"
+      ],
+      "any_terms": [
+        "gesto",
+        "sinal sonoro",
+        "apito",
+        "braco",
+        "agente de transito",
+        "silvo"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_993_equipamentos_obrigatorios",
+      "subjects": [
+        "resolucao contran n 993 2023"
+      ],
+      "any_terms": [
+        "equipamento obrigatorio",
+        "triangulo",
+        "extintor",
+        "cinto",
+        "encosto",
+        "tacografo",
+        "registrador instantaneo",
+        "velocidade e tempo"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_916_modificacoes_veiculares",
+      "subjects": [
+        "demais resolucoes contran"
+      ],
+      "any_terms": [
+        "modificacao",
+        "alteracao de caracteristica",
+        "xenon",
+        "rebaixamento",
+        "rodas",
+        "adesivamento",
+        "cor",
+        "4 eixo",
+        "descarga de gas"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 165,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_970_luzes_veiculares",
+      "subjects": [
+        "resolucao contran n 970 2022"
+      ],
+      "any_terms": [
+        "sinalizacao e iluminacao",
+        "iluminacao",
+        "lanterna",
+        "farol",
+        "luzes especiais",
+        "sinalizador"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_960_pelicula_refletiva",
+      "subjects": [
+        "resolucao contran n 960 2022"
+      ],
+      "any_terms": [
+        "pelicula refletiva",
+        "refletiva",
+        "areas envidracadas"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 180,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_960_transmitancia",
+      "subjects": [
+        "resolucao contran n 960 2022"
+      ],
+      "any_terms": [
+        "transmitancia",
+        "vidro",
+        "pelicula",
+        "70",
+        "28",
+        "para brisa",
+        "areas envidracadas"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_819_criancas_dispositivos",
+      "subjects": [
+        "resolucao contran n 819 2021"
+      ],
+      "any_terms": [
+        "crianca",
+        "bebe conforto",
+        "bebe conforto",
+        "cadeirinha",
+        "assento de elevacao",
+        "dispositivo de retencao",
+        "idade",
+        "altura"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_819_criancas",
+      "subjects": [
+        "resolucao contran n 819 2021"
+      ],
+      "any_terms": [
+        "crianca",
+        "transporte de criancas",
+        "cadeirinha",
+        "assento"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 155,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_909_videomonitoramento_fiscalizacao",
+      "subjects": [
+        "resolucao contran n 909 2022"
+      ],
+      "any_terms": [
+        "videomonitoramento",
+        "camera",
+        "monitoramento"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 165,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_870_pnatrans_metas",
+      "subjects": [
+        "resolucao contran n 870 2021"
+      ],
+      "any_terms": [
+        "pnatrans",
+        "plano nacional de reducao",
+        "mortes e lesoes"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 165,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_514_politica_nacional_transito",
+      "subjects": [
+        "resolucao contran n 514 2014"
+      ],
+      "any_terms": [
+        "politica nacional de transito",
+        "pnt",
+        "diretrizes"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_crimes_transito_alcool_homicidio_lesao",
+      "subjects": [
+        "dos crimes de transito"
+      ],
+      "any_terms": [
+        "crime de transito",
+        "homicidio culposo",
+        "lesao corporal",
+        "embriaguez",
+        "suspensao ou proibicao",
+        "detencao"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_motorista_profissional_descanso",
+      "subjects": [
+        "da conducao de veiculos por motoristas profissionais",
+        "resolucao contran n 525 2015"
+      ],
+      "any_terms": [
+        "tempo de direcao",
+        "descanso",
+        "motorista profissional",
+        "jornada",
+        "registrador instantaneo",
+        "disco diagrama"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_525_tempo_direcao",
+      "subjects": [
+        "resolucao contran n 525 2015"
+      ],
+      "any_terms": [
+        "tempo de direcao",
+        "descanso",
+        "motorista profissional",
+        "fiscalizacao do tempo"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_anexo_i_conceitos_basicos",
+      "subjects": [
+        "dos conceitos e definicoes"
+      ],
+      "any_terms": [
+        "conceito",
+        "definicao",
+        "anexo i",
+        "via",
+        "transito",
+        "acostamento",
+        "parada",
+        "estacionamento"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 145,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_conceitos_anexo_i",
+      "subjects": [
+        "dos conceitos e definicoes"
+      ],
+      "any_terms": [
+        "anexo i",
+        "conceito",
+        "definicao",
+        "via",
+        "veiculo",
+        "transito"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 140,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_pedestre_ciclista_passagem",
+      "subjects": [
+        "dos pedestres e veiculos nao motorizados"
+      ],
+      "any_terms": [
+        "pedestre",
+        "ciclista",
+        "faixa de pedestre",
+        "veiculo nao motorizado",
+        "bicicleta"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 160,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "ctb_pedestres_prioridade",
+      "subjects": [
+        "dos pedestres e veiculos nao motorizados"
+      ],
+      "any_terms": [
+        "pedestre",
+        "faixa",
+        "prioridade",
+        "travessia"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 150,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_36_triangulo_imobilizado",
+      "subjects": [
+        "resolucao contran n 36 1998"
+      ],
+      "any_terms": [
+        "triangulo",
+        "veiculo imobilizado",
+        "sinalizacao de advertencia",
+        "pista"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_965_estacionamento_especifico",
+      "subjects": [
+        "resolucao contran n 965 2022"
+      ],
+      "any_terms": [
+        "estacionamento especifico",
+        "vaga",
+        "idoso",
+        "deficiente",
+        "pessoa com deficiencia",
+        "area de seguranca"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_911_transito_veiculos_incompletos",
+      "subjects": [
+        "resolucao contran n 911 2022"
+      ],
+      "any_terms": [
+        "veiculo novo",
+        "veiculo incompleto",
+        "permissao para transito",
+        "sem registro",
+        "chassi inacabado"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    },
+    {
+      "card_key": "contran_300_exames_crime_transito",
+      "subjects": [
+        "resolucao contran n 300 2008"
+      ],
+      "any_terms": [
+        "pos condenacao",
+        "crime de transito",
+        "exames",
+        "reciclagem",
+        "condutor condenado"
+      ],
+      "all_terms": [],
+      "negative_terms": [],
+      "priority": 170,
+      "min_any": 1,
+      "source": "manual_v4"
+    }
+  ]
+}

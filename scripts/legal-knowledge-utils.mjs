@@ -36,6 +36,8 @@ export function initLegalKnowledgeSchema(db, client = 'sqlite') {
   if (client === 'postgres') {
     const migrationPath = path.join(ROOT_DIR, 'migrations', '20260605_legal_knowledge_layer.postgres.sql');
     db.exec(fs.readFileSync(migrationPath, 'utf8'));
+    const precisionMigrationPath = path.join(ROOT_DIR, 'migrations', '20260607_legal_theory_v4_precision_links.postgres.sql');
+    db.exec(fs.readFileSync(precisionMigrationPath, 'utf8'));
     return;
   }
 
@@ -106,10 +108,24 @@ export function initLegalKnowledgeSchema(db, client = 'sqlite') {
       question_id INTEGER NOT NULL,
       legal_article_id INTEGER,
       legal_card_id INTEGER,
+      card_key TEXT,
       relation_type TEXT DEFAULT 'supports_answer',
       relevance_score REAL DEFAULT 0,
       reason TEXT,
       source TEXT DEFAULT 'auto',
+      display_mode TEXT,
+      auto_show_as_primary INTEGER NOT NULL DEFAULT 0,
+      needs_human_review INTEGER NOT NULL DEFAULT 0,
+      precision_level TEXT,
+      matched_terms TEXT DEFAULT '[]',
+      matched_terms_in_statement TEXT DEFAULT '[]',
+      evidence TEXT DEFAULT '{}',
+      current_law_status TEXT,
+      current_law_can_auto_score INTEGER,
+      current_law_answer TEXT,
+      warning TEXT,
+      imported_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(question_id, legal_article_id, legal_card_id, relation_type)
     );
@@ -152,6 +168,41 @@ export function initLegalKnowledgeSchema(db, client = 'sqlite') {
       ON question_legal_links(question_id);
     CREATE INDEX IF NOT EXISTS idx_question_legal_links_card
       ON question_legal_links(legal_card_id);
+  `);
+  ensureSqliteLegalLinkPrecisionSchema(db);
+}
+
+function ensureSqliteLegalLinkPrecisionSchema(db) {
+  const columns = [
+    ['card_key', 'TEXT'],
+    ['display_mode', 'TEXT'],
+    ['auto_show_as_primary', 'INTEGER NOT NULL DEFAULT 0'],
+    ['needs_human_review', 'INTEGER NOT NULL DEFAULT 0'],
+    ['precision_level', 'TEXT'],
+    ['matched_terms', "TEXT DEFAULT '[]'"],
+    ['matched_terms_in_statement', "TEXT DEFAULT '[]'"],
+    ['evidence', "TEXT DEFAULT '{}'"],
+    ['current_law_status', 'TEXT'],
+    ['current_law_can_auto_score', 'INTEGER'],
+    ['current_law_answer', 'TEXT'],
+    ['warning', 'TEXT'],
+    ['imported_at', 'TEXT'],
+    ['updated_at', 'TEXT']
+  ];
+  for (const [name, definition] of columns) {
+    try {
+      db.exec(`ALTER TABLE question_legal_links ADD COLUMN ${name} ${definition}`);
+    } catch (error) {
+      if (!String(error?.message || '').includes('duplicate column')) throw error;
+    }
+  }
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_question_legal_links_display_mode
+      ON question_legal_links(display_mode);
+    CREATE INDEX IF NOT EXISTS idx_question_legal_links_primary_safe
+      ON question_legal_links(question_id, auto_show_as_primary, needs_human_review, display_mode);
+    CREATE INDEX IF NOT EXISTS idx_question_legal_links_source
+      ON question_legal_links(source);
   `);
 }
 
@@ -315,24 +366,78 @@ export function upsertLegalCard(db, card = {}) {
   return db.prepare('SELECT * FROM legal_topic_cards WHERE card_key = ?').get(key);
 }
 
-export function linkQuestionToLegalCard(db, { questionId, articleId, cardId, relationType = 'supports_answer', relevanceScore = 1, reason = '', source = 'manual' }) {
+export function linkQuestionToLegalCard(db, {
+  questionId,
+  articleId,
+  cardId,
+  cardKey = '',
+  relationType = 'supports_answer',
+  relevanceScore = 1,
+  reason = '',
+  source = 'manual',
+  displayMode = '',
+  autoShowAsPrimary = false,
+  needsHumanReview = false,
+  precisionLevel = '',
+  matchedTerms = [],
+  matchedTermsInStatement = [],
+  evidence = {},
+  currentLawStatus = '',
+  currentLawCanAutoScore = null,
+  currentLawAnswer = '',
+  warning = ''
+}) {
   if (!questionId || (!articleId && !cardId)) return;
+  const isPostgres = Boolean(db.databaseUrl);
+  const bindBoolean = (value) => (isPostgres ? Boolean(value) : (value ? 1 : 0));
+  const bindNullableBoolean = (value) => {
+    if (value === null || value === undefined) return null;
+    return isPostgres ? Boolean(value) : (value ? 1 : 0);
+  };
   db.prepare(`
     INSERT INTO question_legal_links (
-      question_id, legal_article_id, legal_card_id, relation_type, relevance_score, reason, source
+      question_id, legal_article_id, legal_card_id, card_key, relation_type, relevance_score,
+      reason, source, display_mode, auto_show_as_primary, needs_human_review, precision_level,
+      matched_terms, matched_terms_in_statement, evidence, current_law_status,
+      current_law_can_auto_score, current_law_answer, warning, updated_at, imported_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     ON CONFLICT(question_id, legal_article_id, legal_card_id, relation_type) DO UPDATE SET
+      card_key = excluded.card_key,
       relevance_score = excluded.relevance_score,
       reason = excluded.reason,
-      source = excluded.source
+      source = excluded.source,
+      display_mode = excluded.display_mode,
+      auto_show_as_primary = excluded.auto_show_as_primary,
+      needs_human_review = excluded.needs_human_review,
+      precision_level = excluded.precision_level,
+      matched_terms = excluded.matched_terms,
+      matched_terms_in_statement = excluded.matched_terms_in_statement,
+      evidence = excluded.evidence,
+      current_law_status = excluded.current_law_status,
+      current_law_can_auto_score = excluded.current_law_can_auto_score,
+      current_law_answer = excluded.current_law_answer,
+      warning = excluded.warning,
+      updated_at = CURRENT_TIMESTAMP
   `).run(
     Number(questionId),
     articleId ? Number(articleId) : null,
     cardId ? Number(cardId) : null,
+    cardKey,
     relationType,
     Number(relevanceScore || 0),
     reason,
-    source
+    source,
+    displayMode,
+    bindBoolean(autoShowAsPrimary),
+    bindBoolean(needsHumanReview),
+    precisionLevel,
+    JSON.stringify(matchedTerms || []),
+    JSON.stringify(matchedTermsInStatement || []),
+    JSON.stringify(evidence || {}),
+    currentLawStatus || null,
+    bindNullableBoolean(currentLawCanAutoScore),
+    currentLawAnswer || null,
+    warning || ''
   );
 }

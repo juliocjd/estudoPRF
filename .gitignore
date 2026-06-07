@@ -15,6 +15,10 @@ data/
 !data/
 data/*
 !data/traffic_legal_sources_seed_v1.json
+!data/legal_theory_v4_1/
+!data/legal_theory_v4_1/**
+!data/diagnostico_teoria_rapida_v4.md
+!data/diagnostico_teoria_rapida_v4.json
 exports/
 postgres-export/
 tmp-*.sqlite

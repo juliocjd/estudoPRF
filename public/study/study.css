@@ -1427,6 +1427,37 @@ button:disabled {
   gap: 14px;
 }
 
+.quick-theory-warning {
+  margin: 0;
+  border: 1px solid var(--warning-border, #fde68a);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--warning-soft, #fffbeb);
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.quick-theory-details {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.quick-theory-details summary {
+  cursor: pointer;
+  padding: 12px;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.quick-theory-details > div {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  padding: 12px;
+  background: var(--surface);
+}
+
 .quick-theory-title {
   font-size: 18px;
   line-height: 1.25;

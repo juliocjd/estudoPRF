@@ -1219,15 +1219,17 @@ async function loadTheoryCoverage() {
     return;
   }
   const stats = data.stats || {};
-  els.theoryCoverageInfo.textContent = `${Number(stats.withQuickTheory || 0).toLocaleString('pt-BR')} com teoria rapida`;
+  els.theoryCoverageInfo.textContent = `${Number(stats.specificQuickTheory || 0).toLocaleString('pt-BR')} teorias especificas seguras`;
   els.theoryCoverageStats.innerHTML = [
     statMarkup(stats.sources, 'fontes'),
     statMarkup(stats.articles, 'artigos'),
     statMarkup(stats.cards, 'microcards'),
     statMarkup(stats.links, 'vinculos'),
-    statMarkup(stats.withQuickTheory, 'com teoria'),
-    statMarkup(stats.withoutQuickTheory, 'sem teoria'),
-    statMarkup(stats.pendingReview, 'pendentes'),
+    statMarkup(stats.specificQuickTheory, 'especificas'),
+    statMarkup(stats.panoramaOnly, 'panoramas'),
+    statMarkup(stats.needsTheoryReview, 'revisao'),
+    statMarkup(stats.currentLawReferenceOnly, 'refs atuais'),
+    statMarkup(stats.withoutQuickTheory, 'sem apoio'),
     statMarkup(stats.importErrors, 'erros fonte')
   ].join('');
   const rows = data.bySubject || [];
@@ -2051,10 +2053,34 @@ function renderQuickTheoryPanel(question) {
 
   const card = legalStudy.primaryCard;
   const articles = legalStudy.officialText?.articles || [];
+  const isPanorama = legalStudy.mode === 'panorama'
+    || card.displayKind === 'panorama'
+    || card.displayMode === 'general_orientation_only';
   if (els.quickTheoryInfo) {
-    els.quickTheoryInfo.textContent = card.microtema || card.assunto || 'microteoria';
+    els.quickTheoryInfo.textContent = isPanorama ? 'panorama do assunto' : (card.microtema || card.assunto || 'microteoria');
   }
   if (!els.supportQuickTheoryBody) return;
+
+  if (isPanorama) {
+    els.supportQuickTheoryBody.innerHTML = `
+      <div class="quick-theory-card is-panorama">
+        <strong class="quick-theory-title">Panorama do assunto</strong>
+        <p class="quick-theory-warning">${escapeHtml(legalStudy.warning || 'Este e um panorama geral. Ainda nao ha microcard especifico validado para esta questao.')}</p>
+        <details class="quick-theory-details">
+          <summary>Ver panorama</summary>
+          <div>
+            <strong class="quick-theory-title">${escapeHtml(card.title || 'Panorama')}</strong>
+            ${quickTheorySection('Orientacao geral', card.answerSummary || card.ruleSummary)}
+            ${quickTheorySection('Fundamento', quickTheoryFoundation(card, articles))}
+            ${quickTheoryBullets(card.bullets || [])}
+            ${quickTheorySection('Pontos de atencao', card.professorNote || card.commonTraps)}
+            ${quickTheoryOfficialText(articles)}
+          </div>
+        </details>
+      </div>
+    `;
+    return;
+  }
 
   els.supportQuickTheoryBody.innerHTML = `
     <div class="quick-theory-card">
@@ -3066,9 +3092,29 @@ function openSupportPanel(tab = 'comment', options = {}) {
     state.lastSupportTrigger = document.activeElement;
   }
   renderSupportVisibility();
+  resetSupportPanelScroll();
   if (!options.keepFocus) {
     requestAnimationFrame(() => els.closeSupport.focus());
   }
+}
+
+function resetSupportPanelScroll() {
+  requestAnimationFrame(() => {
+    if (els.supportDrawer) els.supportDrawer.scrollTop = 0;
+    const tabsNav = els.supportTabs?.[0]?.parentElement;
+    if (tabsNav) tabsNav.scrollLeft = 0;
+    [
+      els.supportTeachingPanel,
+      els.supportQuickTheoryPanel,
+      els.commentPanel,
+      els.supportNormativePanel,
+      els.supportTheoryPanel,
+      els.supportHistoryPanel,
+      els.supportSimilarPanel
+    ].forEach((panel) => {
+      if (panel) panel.scrollTop = 0;
+    });
+  });
 }
 
 function closeSupportPanel() {

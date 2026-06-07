@@ -1,0 +1,1423 @@
+[
+  {
+    "question_id": 28106,
+    "top_card": "ctb_documentos_cnh_porte",
+    "second_card": "contran_789_1020_formacao_condutores",
+    "top_score": 174,
+    "second_score": 174
+  },
+  {
+    "question_id": 28107,
+    "top_card": "ctb_documentos_cnh_porte",
+    "second_card": "ctb_habilitacao_permissao_pontos",
+    "top_score": 194,
+    "second_score": 194
+  },
+  {
+    "question_id": 28109,
+    "top_card": "ctb_documentos_cnh_porte",
+    "second_card": "ctb_habilitacao_categorias",
+    "top_score": 172,
+    "second_score": 162
+  },
+  {
+    "question_id": 28212,
+    "top_card": "ctb_documentos_cnh_porte",
+    "second_card": "contran_789_1020_formacao_condutores",
+    "top_score": 172,
+    "second_score": 162
+  },
+  {
+    "question_id": 28215,
+    "top_card": "ctb_documentos_cnh_porte",
+    "second_card": "contran_789_1020_formacao_condutores",
+    "top_score": 184,
+    "second_score": 184
+  },
+  {
+    "question_id": 303964,
+    "top_card": "ctb_habilitacao_categorias",
+    "second_card": "ctb_documentos_cnh_porte",
+    "top_score": 174,
+    "second_score": 172
+  },
+  {
+    "question_id": 363330,
+    "top_card": "ctb_habilitacao_categorias",
+    "second_card": "ctb_documentos_cnh_porte",
+    "top_score": 194,
+    "second_score": 184
+  },
+  {
+    "question_id": 1326075,
+    "top_card": "contran_789_1020_formacao_condutores",
+    "second_card": "ctb_habilitacao_curso_reciclagem",
+    "top_score": 172,
+    "second_score": 162
+  },
+  {
+    "question_id": 1490474,
+    "top_card": "ctb_habilitacao_categorias",
+    "second_card": "ctb_documentos_cnh_porte",
+    "top_score": 196,
+    "second_score": 194
+  },
+  {
+    "question_id": 1490477,
+    "top_card": "ctb_habilitacao_categorias",
+    "second_card": "ctb_habilitacao_permissao_pontos",
+    "top_score": 172,
+    "second_score": 172
+  },
+  {
+    "question_id": 1521269,
+    "top_card": "ctb_habilitacao_curso_reciclagem",
+    "second_card": "contran_927_exames_aptidao_psicologico",
+    "top_score": 184,
+    "second_score": 184
+  },
+  {
+    "question_id": 1521272,
+    "top_card": "ctb_habilitacao_categorias",
+    "second_card": "ctb_habilitacao_curso_reciclagem",
+    "top_score": 162,
+    "second_score": 162
+  },
+  {
+    "question_id": 1572193,
+    "top_card": "ctb_sinalizacao_ordem_prevalencia",
+    "second_card": "contran_973_sinais_sonoros_gestos",
+    "top_score": 211,
+    "second_score": 204
+  },
+  {
+    "question_id": 1743707,
+    "top_card": "contran_973_sinais_sonoros_gestos",
+    "second_card": "ctb_sinalizacao_ordem_prevalencia",
+    "top_score": 184,
+    "second_score": 181
+  },
+  {
+    "question_id": 27898,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_pontuacao_infracoes",
+    "top_score": 184,
+    "second_score": 178
+  },
+  {
+    "question_id": 28037,
+    "top_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 206,
+    "second_score": 196
+  },
+  {
+    "question_id": 28052,
+    "top_card": "ctb_pontuacao_infracoes",
+    "second_card": "ctb_normas_circulacao_ultrapassagem_esquerda",
+    "top_score": 176,
+    "second_score": 172
+  },
+  {
+    "question_id": 28060,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_pontuacao_infracoes",
+    "top_score": 172,
+    "second_score": 164
+  },
+  {
+    "question_id": 28061,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_pontuacao_infracoes",
+    "top_score": 172,
+    "second_score": 164
+  },
+  {
+    "question_id": 28062,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_infracoes_cinto_celular",
+    "top_score": 172,
+    "second_score": 169
+  },
+  {
+    "question_id": 28067,
+    "top_card": "ctb_infracoes_estacionamento_parada",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 179,
+    "second_score": 172
+  },
+  {
+    "question_id": 28105,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_infracoes_documentos_licenciamento",
+    "top_score": 184,
+    "second_score": 179
+  },
+  {
+    "question_id": 590555,
+    "top_card": "ctb_infracoes_cinto_celular",
+    "second_card": "ctb_pontuacao_infracoes",
+    "top_score": 189,
+    "second_score": 188
+  },
+  {
+    "question_id": 778164,
+    "top_card": "ctb_infracoes_estacionamento_parada",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 179,
+    "second_score": 172
+  },
+  {
+    "question_id": 778167,
+    "top_card": "ctb_licenciamento_crlv_digital",
+    "second_card": "ctb_infracoes_documentos_licenciamento",
+    "top_score": 189,
+    "second_score": 189
+  },
+  {
+    "question_id": 933737,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_pontuacao_infracoes",
+    "top_score": 238,
+    "second_score": 230
+  },
+  {
+    "question_id": 1144068,
+    "top_card": "ctb_pontuacao_infracoes",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 176,
+    "second_score": 172
+  },
+  {
+    "question_id": 1402630,
+    "top_card": "ctb_infracoes_documentos_licenciamento",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 179,
+    "second_score": 172
+  },
+  {
+    "question_id": 1402637,
+    "top_card": "ctb_infracoes_documentos_licenciamento",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 179,
+    "second_score": 172
+  },
+  {
+    "question_id": 1403542,
+    "top_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "second_card": "ctb_infracoes_estacionamento_parada",
+    "top_score": 204,
+    "second_score": 203
+  },
+  {
+    "question_id": 1490471,
+    "top_card": "ctb_alcool_recusa",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 189,
+    "second_score": 184
+  },
+  {
+    "question_id": 1492683,
+    "top_card": "ctb_infracoes_documentos_licenciamento",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 189,
+    "second_score": 184
+  },
+  {
+    "question_id": 1492697,
+    "top_card": "ctb_alcool_recusa",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 187,
+    "second_score": 184
+  },
+  {
+    "question_id": 1492790,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_pontuacao_infracoes",
+    "top_score": 184,
+    "second_score": 176
+  },
+  {
+    "question_id": 1492804,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_infracoes_documentos_licenciamento",
+    "top_score": 172,
+    "second_score": 167
+  },
+  {
+    "question_id": 1492815,
+    "top_card": "ctb_pontuacao_infracoes",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 176,
+    "second_score": 172
+  },
+  {
+    "question_id": 1492836,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_pontuacao_infracoes",
+    "top_score": 172,
+    "second_score": 166
+  },
+  {
+    "question_id": 1492845,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_pontuacao_infracoes",
+    "top_score": 172,
+    "second_score": 166
+  },
+  {
+    "question_id": 1521291,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_infracoes_capacete",
+    "top_score": 204,
+    "second_score": 194
+  },
+  {
+    "question_id": 1574050,
+    "top_card": "ctb_infracoes_cinto_celular",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 189,
+    "second_score": 182
+  },
+  {
+    "question_id": 1611236,
+    "top_card": "ctb_pontuacao_infracoes",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 178,
+    "second_score": 172
+  },
+  {
+    "question_id": 1865795,
+    "top_card": "ctb_pontuacao_infracoes",
+    "second_card": "ctb_infracoes_cinto_celular",
+    "top_score": 190,
+    "second_score": 189
+  },
+  {
+    "question_id": 2018313,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_alcool_recusa",
+    "top_score": 204,
+    "second_score": 199
+  },
+  {
+    "question_id": 820236,
+    "top_card": "ctb_penalidades_medidas",
+    "second_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "top_score": 208,
+    "second_score": 208
+  },
+  {
+    "question_id": 1402658,
+    "top_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 216,
+    "second_score": 206
+  },
+  {
+    "question_id": 1403540,
+    "top_card": "ctb_penalidades_medidas",
+    "second_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "top_score": 220,
+    "second_score": 220
+  },
+  {
+    "question_id": 1576561,
+    "top_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 204,
+    "second_score": 196
+  },
+  {
+    "question_id": 1576567,
+    "top_card": "ctb_penalidades_medidas",
+    "second_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "top_score": 218,
+    "second_score": 216
+  },
+  {
+    "question_id": 1577047,
+    "top_card": "ctb_penalidades_medidas",
+    "second_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "top_score": 172,
+    "second_score": 172
+  },
+  {
+    "question_id": 1577060,
+    "top_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1577621,
+    "top_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 204,
+    "second_score": 196
+  },
+  {
+    "question_id": 1577628,
+    "top_card": "ctb_penalidades_medidas",
+    "second_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "top_score": 206,
+    "second_score": 204
+  },
+  {
+    "question_id": 1969419,
+    "top_card": "ctb_penalidades_medidas",
+    "second_card": "ctb_medidas_retencao_remocao_recolhimento",
+    "top_score": 206,
+    "second_score": 204
+  },
+  {
+    "question_id": 1024879,
+    "top_card": "ctb_normas_circulacao_emergencia",
+    "second_card": "ctb_normas_circulacao_distancia_seguranca",
+    "top_score": 194,
+    "second_score": 184
+  },
+  {
+    "question_id": 778163,
+    "top_card": "ctb_penalidades_reincidencia",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 164,
+    "second_score": 162
+  },
+  {
+    "question_id": 1402666,
+    "top_card": "ctb_penalidades_suspensao_cassacao",
+    "second_card": "ctb_penalidades_reincidencia",
+    "top_score": 208,
+    "second_score": 198
+  },
+  {
+    "question_id": 1403460,
+    "top_card": "ctb_penalidades_reincidencia",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 164,
+    "second_score": 162
+  },
+  {
+    "question_id": 1521305,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_penalidades_suspensao_cassacao",
+    "top_score": 204,
+    "second_score": 204
+  },
+  {
+    "question_id": 1525677,
+    "top_card": "ctb_penalidades_suspensao_cassacao",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 172,
+    "second_score": 162
+  },
+  {
+    "question_id": 1525679,
+    "top_card": "ctb_penalidades_suspensao_cassacao",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 172,
+    "second_score": 162
+  },
+  {
+    "question_id": 1577043,
+    "top_card": "ctb_penalidades_reincidencia",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 176,
+    "second_score": 174
+  },
+  {
+    "question_id": 1944607,
+    "top_card": "ctb_penalidades_medidas",
+    "second_card": "ctb_penalidades_reincidencia",
+    "top_score": 162,
+    "second_score": 154
+  },
+  {
+    "question_id": 27870,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 27877,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 27886,
+    "top_card": "ctb_licenciamento_crlv_digital",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 189,
+    "second_score": 187
+  },
+  {
+    "question_id": 27890,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 187,
+    "second_score": 186
+  },
+  {
+    "question_id": 28220,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "ctb_snt_competencias_municipio_estado_uniao",
+    "top_score": 177,
+    "second_score": 176
+  },
+  {
+    "question_id": 624737,
+    "top_card": "contran_940_capacete_viseira_oculos",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 624802,
+    "top_card": "ctb_documentos_cnh_porte",
+    "second_card": "ctb_documentos_crlv_porte",
+    "top_score": 194,
+    "second_score": 194
+  },
+  {
+    "question_id": 778177,
+    "top_card": "contran_955_carga_externa",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 778188,
+    "top_card": "contran_943_motofrete_mototaxi_requisitos",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 182,
+    "second_score": 177
+  },
+  {
+    "question_id": 805508,
+    "top_card": "ctb_documentos_cnh_porte",
+    "second_card": "ctb_documentos_crlv_porte",
+    "top_score": 194,
+    "second_score": 194
+  },
+  {
+    "question_id": 920559,
+    "top_card": "ctb_documentos_cnh_porte",
+    "second_card": "ctb_documentos_crlv_porte",
+    "top_score": 172,
+    "second_score": 172
+  },
+  {
+    "question_id": 986274,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "ctb_documentos_cnh_porte",
+    "top_score": 187,
+    "second_score": 184
+  },
+  {
+    "question_id": 1119572,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_943_motofrete_mototaxi_requisitos",
+    "top_score": 194,
+    "second_score": 192
+  },
+  {
+    "question_id": 1295470,
+    "top_card": "contran_970_luzes_veiculares",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508607,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_955_carga_externa",
+    "top_score": 194,
+    "second_score": 192
+  },
+  {
+    "question_id": 1508608,
+    "top_card": "contran_955_carga_externa",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508610,
+    "top_card": "contran_955_carga_externa",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508615,
+    "top_card": "contran_955_carga_externa",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508616,
+    "top_card": "contran_955_carga_externa",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508618,
+    "top_card": "contran_955_carga_externa",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508622,
+    "top_card": "contran_955_carga_externa",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508625,
+    "top_card": "contran_955_carga_externa",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508628,
+    "top_card": "ctb_veiculos_classificacao_especie_categoria",
+    "second_card": "contran_955_carga_externa",
+    "top_score": 198,
+    "second_score": 192
+  },
+  {
+    "question_id": 1508629,
+    "top_card": "contran_955_carga_externa",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 192,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508665,
+    "top_card": "contran_1020_condutor_estrangeiro",
+    "second_card": "ctb_habilitacao_curso_reciclagem",
+    "top_score": 213,
+    "second_score": 206
+  },
+  {
+    "question_id": 1508666,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "contran_1020_condutor_estrangeiro",
+    "top_score": 187,
+    "second_score": 177
+  },
+  {
+    "question_id": 1508670,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "contran_1020_condutor_estrangeiro",
+    "top_score": 187,
+    "second_score": 177
+  },
+  {
+    "question_id": 1508677,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "contran_1020_condutor_estrangeiro",
+    "top_score": 187,
+    "second_score": 177
+  },
+  {
+    "question_id": 1508679,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "contran_1020_condutor_estrangeiro",
+    "top_score": 187,
+    "second_score": 177
+  },
+  {
+    "question_id": 1508790,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508791,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508793,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508796,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508799,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508801,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1508806,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1515880,
+    "top_card": "contran_970_luzes_veiculares",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1515882,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "contran_970_luzes_veiculares",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 1515883,
+    "top_card": "contran_970_luzes_veiculares",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1515886,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "contran_970_luzes_veiculares",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 1515889,
+    "top_card": "contran_970_luzes_veiculares",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1576695,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "ctb_documentos_cnh_porte",
+    "top_score": 177,
+    "second_score": 172
+  },
+  {
+    "question_id": 1577976,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "contran_943_motofrete_mototaxi_requisitos",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 1611252,
+    "top_card": "contran_916_modificacoes_veiculares",
+    "second_card": "contran_24_968_identificacao_chassi_vin",
+    "top_score": 177,
+    "second_score": 172
+  },
+  {
+    "question_id": 1611263,
+    "top_card": "ctb_snt_competencias_municipio_estado_uniao",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 142,
+    "second_score": 142
+  },
+  {
+    "question_id": 1611264,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 172,
+    "second_score": 164
+  },
+  {
+    "question_id": 2017207,
+    "top_card": "ctb_documentos_cnh_porte",
+    "second_card": "contran_916_modificacoes_veiculares",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1400755,
+    "top_card": "ctb_anexo_i_conceitos_basicos",
+    "second_card": "ctb_conceitos_anexo_i",
+    "top_score": 249,
+    "second_score": 242
+  },
+  {
+    "question_id": 112173,
+    "top_card": "ctb_licenciamento_crlv_digital",
+    "second_card": "ctb_documentos_crlv_porte",
+    "top_score": 179,
+    "second_score": 172
+  },
+  {
+    "question_id": 344874,
+    "top_card": "ctb_documentos_crlv_porte",
+    "second_card": "ctb_licenciamento_crlv_digital",
+    "top_score": 194,
+    "second_score": 189
+  },
+  {
+    "question_id": 823012,
+    "top_card": "ctb_documentos_crlv_porte",
+    "second_card": "ctb_licenciamento_crlv_digital",
+    "top_score": 172,
+    "second_score": 167
+  },
+  {
+    "question_id": 2017200,
+    "top_card": "ctb_documentos_crlv_porte",
+    "second_card": "ctb_licenciamento_crlv_digital",
+    "top_score": 194,
+    "second_score": 189
+  },
+  {
+    "question_id": 2074210,
+    "top_card": "ctb_documentos_crlv_porte",
+    "second_card": "ctb_licenciamento_crlv_digital",
+    "top_score": 196,
+    "second_score": 189
+  },
+  {
+    "question_id": 28039,
+    "top_card": "ctb_processo_recurso_jari_cetran",
+    "second_card": "ctb_processo_ait",
+    "top_score": 238,
+    "second_score": 228
+  },
+  {
+    "question_id": 1402654,
+    "top_card": "ctb_processo_ait",
+    "second_card": "ctb_processo_recurso_jari_cetran",
+    "top_score": 194,
+    "second_score": 194
+  },
+  {
+    "question_id": 1403519,
+    "top_card": "ctb_processo_ait",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1576554,
+    "top_card": "ctb_processo_ait",
+    "second_card": "ctb_processo_recurso_jari_cetran",
+    "top_score": 230,
+    "second_score": 226
+  },
+  {
+    "question_id": 1577411,
+    "top_card": "ctb_processo_recurso_jari_cetran",
+    "second_card": "ctb_processo_ait",
+    "top_score": 226,
+    "second_score": 218
+  },
+  {
+    "question_id": 1577413,
+    "top_card": "ctb_processo_ait",
+    "second_card": "ctb_processo_recurso_jari_cetran",
+    "top_score": 194,
+    "second_score": 194
+  },
+  {
+    "question_id": 517837,
+    "top_card": "ctb_registro_transferencia_propriedade",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 174,
+    "second_score": 166
+  },
+  {
+    "question_id": 1144064,
+    "top_card": "ctb_licenciamento_crlv_digital",
+    "second_card": "ctb_documentos_crlv_porte",
+    "top_score": 191,
+    "second_score": 184
+  },
+  {
+    "question_id": 1521211,
+    "top_card": "ctb_penalidades_reincidencia",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 174,
+    "second_score": 172
+  },
+  {
+    "question_id": 1521216,
+    "top_card": "ctb_penalidades_medidas",
+    "second_card": "ctb_penalidades_reincidencia",
+    "top_score": 162,
+    "second_score": 154
+  },
+  {
+    "question_id": 1521220,
+    "top_card": "ctb_penalidades_medidas",
+    "second_card": "ctb_penalidades_reincidencia",
+    "top_score": 162,
+    "second_score": 154
+  },
+  {
+    "question_id": 1609842,
+    "top_card": "ctb_prf_competencias",
+    "second_card": "ctb_snt_competencias_municipio_estado_uniao",
+    "top_score": 218,
+    "second_score": 218
+  },
+  {
+    "question_id": 1619515,
+    "top_card": "ctb_snt_competencias_municipio_estado_uniao",
+    "second_card": "ctb_penalidades_suspensao_cassacao",
+    "top_score": 188,
+    "second_score": 184
+  },
+  {
+    "question_id": 1295473,
+    "top_card": "ctb_conceitos_anexo_i",
+    "second_card": "ctb_anexo_i_conceitos_basicos",
+    "top_score": 198,
+    "second_score": 191
+  },
+  {
+    "question_id": 1400753,
+    "top_card": "ctb_anexo_i_conceitos_basicos",
+    "second_card": "ctb_conceitos_anexo_i",
+    "top_score": 247,
+    "second_score": 242
+  },
+  {
+    "question_id": 1577111,
+    "top_card": "ctb_conceitos_anexo_i",
+    "second_card": "ctb_anexo_i_conceitos_basicos",
+    "top_score": 220,
+    "second_score": 213
+  },
+  {
+    "question_id": 1724633,
+    "top_card": "ctb_conceitos_anexo_i",
+    "second_card": "ctb_anexo_i_conceitos_basicos",
+    "top_score": 230,
+    "second_score": 225
+  },
+  {
+    "question_id": 2063998,
+    "top_card": "ctb_pedestres_prioridade",
+    "second_card": "ctb_pedestre_ciclista_passagem",
+    "top_score": 228,
+    "second_score": 226
+  },
+  {
+    "question_id": 28069,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 28219,
+    "top_card": "ctb_veiculos_classificacao_especie_categoria",
+    "second_card": "ctb_snt_competencias_municipio_estado_uniao",
+    "top_score": 152,
+    "second_score": 142
+  },
+  {
+    "question_id": 254766,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 172,
+    "second_score": 162
+  },
+  {
+    "question_id": 624731,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 626008,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510575,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510576,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510577,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510579,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510580,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510581,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510582,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510583,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510584,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510585,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510587,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510589,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1510594,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 182,
+    "second_score": 172
+  },
+  {
+    "question_id": 1577995,
+    "top_card": "contran_508_carga_indivisivel",
+    "second_card": "contran_945_amarracao_carga",
+    "top_score": 172,
+    "second_score": 162
+  },
+  {
+    "question_id": 1611248,
+    "top_card": "contran_945_amarracao_carga",
+    "second_card": "contran_508_carga_indivisivel",
+    "top_score": 172,
+    "second_score": 172
+  },
+  {
+    "question_id": 480658,
+    "top_card": "contran_514_politica_nacional_transito",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 204,
+    "second_score": 196
+  },
+  {
+    "question_id": 1611262,
+    "top_card": "contran_525_tempo_direcao",
+    "second_card": "ctb_motorista_profissional_descanso",
+    "top_score": 258,
+    "second_score": 248
+  },
+  {
+    "question_id": 1501056,
+    "top_card": "ctb_penalidades_suspensao_cassacao",
+    "second_card": "contran_723_suspensao_cassacao_proc",
+    "top_score": 228,
+    "second_score": 226
+  },
+  {
+    "question_id": 2179857,
+    "top_card": "contran_723_suspensao_cassacao_proc",
+    "second_card": "ctb_penalidades_suspensao_cassacao",
+    "top_score": 206,
+    "second_score": 196
+  },
+  {
+    "question_id": 2179867,
+    "top_card": "contran_723_suspensao_cassacao_proc",
+    "second_card": "ctb_penalidades_suspensao_cassacao",
+    "top_score": 206,
+    "second_score": 196
+  },
+  {
+    "question_id": 2179875,
+    "top_card": "contran_723_suspensao_cassacao_proc",
+    "second_card": "ctb_penalidades_suspensao_cassacao",
+    "top_score": 216,
+    "second_score": 206
+  },
+  {
+    "question_id": 2179877,
+    "top_card": "contran_723_suspensao_cassacao_proc",
+    "second_card": "ctb_penalidades_suspensao_cassacao",
+    "top_score": 206,
+    "second_score": 196
+  },
+  {
+    "question_id": 174559,
+    "top_card": "contran_798_velocidade",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 226,
+    "second_score": 216
+  },
+  {
+    "question_id": 1515928,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "contran_798_velocidade",
+    "top_score": 206,
+    "second_score": 204
+  },
+  {
+    "question_id": 1515929,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "contran_798_velocidade",
+    "top_score": 194,
+    "second_score": 194
+  },
+  {
+    "question_id": 1515932,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "contran_798_velocidade",
+    "top_score": 194,
+    "second_score": 194
+  },
+  {
+    "question_id": 1515934,
+    "top_card": "contran_798_velocidade",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 226,
+    "second_score": 216
+  },
+  {
+    "question_id": 1515935,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "contran_798_velocidade",
+    "top_score": 206,
+    "second_score": 204
+  },
+  {
+    "question_id": 1611243,
+    "top_card": "contran_798_velocidade",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 216,
+    "second_score": 206
+  },
+  {
+    "question_id": 1515977,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 209,
+    "second_score": 204
+  },
+  {
+    "question_id": 778179,
+    "top_card": "contran_882_peso_dimensoes_limites",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 184,
+    "second_score": 176
+  },
+  {
+    "question_id": 1504281,
+    "top_card": "contran_882_peso_dimensoes_limites",
+    "second_card": "contran_967_baixa_sinistro",
+    "top_score": 184,
+    "second_score": 177
+  },
+  {
+    "question_id": 1508597,
+    "top_card": "contran_882_peso_dimensoes_limites",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 206,
+    "second_score": 196
+  },
+  {
+    "question_id": 1508598,
+    "top_card": "contran_882_peso_dimensoes_limites",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 206,
+    "second_score": 196
+  },
+  {
+    "question_id": 1515940,
+    "top_card": "contran_882_peso_dimensoes_limites",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 194,
+    "second_score": 186
+  },
+  {
+    "question_id": 1503655,
+    "top_card": "ctb_veiculos_classificacao_especie_categoria",
+    "second_card": "contran_24_968_identificacao_chassi_vin",
+    "top_score": 186,
+    "second_score": 182
+  },
+  {
+    "question_id": 27881,
+    "top_card": "ctb_processo_ait",
+    "second_card": "contran_918_notificacao_defesa",
+    "top_score": 226,
+    "second_score": 226
+  },
+  {
+    "question_id": 778191,
+    "top_card": "ctb_processo_ait",
+    "second_card": "contran_918_notificacao_defesa",
+    "top_score": 226,
+    "second_score": 226
+  },
+  {
+    "question_id": 1402647,
+    "top_card": "ctb_processo_ait",
+    "second_card": "contran_918_notificacao_defesa",
+    "top_score": 230,
+    "second_score": 230
+  },
+  {
+    "question_id": 1402652,
+    "top_card": "ctb_processo_ait",
+    "second_card": "contran_918_notificacao_defesa",
+    "top_score": 204,
+    "second_score": 204
+  },
+  {
+    "question_id": 1700071,
+    "top_card": "ctb_habilitacao_curso_reciclagem",
+    "second_card": "contran_927_exames_aptidao_psicologico",
+    "top_score": 174,
+    "second_score": 174
+  },
+  {
+    "question_id": 1829631,
+    "top_card": "contran_24_968_identificacao_chassi_vin",
+    "second_card": "contran_941_vistoria",
+    "top_score": 182,
+    "second_score": 182
+  },
+  {
+    "question_id": 2178263,
+    "top_card": "contran_941_vistoria",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 182,
+    "second_score": 182
+  },
+  {
+    "question_id": 2179913,
+    "top_card": "contran_24_968_identificacao_chassi_vin",
+    "second_card": "contran_941_vistoria",
+    "top_score": 182,
+    "second_score": 182
+  },
+  {
+    "question_id": 28260,
+    "top_card": "contran_960_transmitancia",
+    "second_card": "contran_960_pelicula_refletiva",
+    "top_score": 250,
+    "second_score": 246
+  },
+  {
+    "question_id": 28259,
+    "top_card": "ctb_baixa_veiculo_irrecuperavel",
+    "second_card": "contran_967_baixa_sinistro",
+    "top_score": 250,
+    "second_score": 245
+  },
+  {
+    "question_id": 300166,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 275,
+    "second_score": 270
+  },
+  {
+    "question_id": 876890,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 2002325,
+    "top_card": "ctb_baixa_veiculo_irrecuperavel",
+    "second_card": "contran_967_baixa_sinistro",
+    "top_score": 230,
+    "second_score": 225
+  },
+  {
+    "question_id": 2074094,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 2178115,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 275,
+    "second_score": 270
+  },
+  {
+    "question_id": 2178133,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 2178134,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 2178135,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 2178137,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 2178138,
+    "top_card": "contran_967_baixa_sinistro",
+    "second_card": "ctb_baixa_veiculo_irrecuperavel",
+    "top_score": 187,
+    "second_score": 182
+  },
+  {
+    "question_id": 2178139,
+    "top_card": "ctb_registro_transferencia_propriedade",
+    "second_card": "contran_967_baixa_sinistro",
+    "top_score": 194,
+    "second_score": 187
+  },
+  {
+    "question_id": 1122245,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "ctb_snt_competencias_municipio_estado_uniao",
+    "top_score": 172,
+    "second_score": 164
+  },
+  {
+    "question_id": 1290658,
+    "top_card": "ctb_penalidades_reincidencia",
+    "second_card": "ctb_penalidades_medidas",
+    "top_score": 164,
+    "second_score": 162
+  },
+  {
+    "question_id": 1476315,
+    "top_card": "ctb_penalidades_reincidencia",
+    "second_card": "ctb_infracoes_velocidade",
+    "top_score": 174,
+    "second_score": 172
+  },
+  {
+    "question_id": 1402684,
+    "top_card": "contran_993_equipamentos_obrigatorios",
+    "second_card": "ctb_veiculos_classificacao_especie_categoria",
+    "top_score": 206,
+    "second_score": 200
+  },
+  {
+    "question_id": 1213371,
+    "top_card": "ctb_sinalizacao_ordem_prevalencia",
+    "second_card": "contran_973_sinais_sonoros_gestos",
+    "top_score": 179,
+    "second_score": 172
+  },
+  {
+    "question_id": 1895737,
+    "top_card": "ctb_infracoes_velocidade",
+    "second_card": "contran_973_sinalizacao_regulamentacao",
+    "top_score": 216,
+    "second_score": 208
+  },
+  {
+    "question_id": 1142091,
+    "top_card": "contran_973_sinalizacao_regulamentacao",
+    "second_card": "contran_973_sinalizacao_advertencia",
+    "top_score": 206,
+    "second_score": 206
+  },
+  {
+    "question_id": 2004448,
+    "top_card": "ctb_anexo_i_conceitos_basicos",
+    "second_card": "ctb_conceitos_anexo_i",
+    "top_score": 213,
+    "second_score": 208
+  }
+]

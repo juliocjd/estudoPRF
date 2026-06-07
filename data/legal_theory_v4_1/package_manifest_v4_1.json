@@ -1,0 +1,24 @@
+{
+  "version": "legal_theory_traffic_v4_1_precision_safe",
+  "total_questions": 2000,
+  "total_cards": 171,
+  "counts": {
+    "specific_high_precision": 1645,
+    "auto_show_as_primary": 1365,
+    "needs_human_review": 287,
+    "subject_overview_fallback": 348,
+    "specific_medium_precision": 7
+  },
+  "auto_show_specific_links": 1365,
+  "not_auto_show_links": 635,
+  "downgraded_weak_evidence": 133,
+  "comment_or_subject_only_marked_review": 186,
+  "generated_at": "2026-06-07T12:22:50.938830+00:00",
+  "safe_display_mode_counts": {
+    "rule_that_solves_or_clarifies_question": 1232,
+    "suggested_card_needs_review": 90,
+    "general_orientation_only": 295,
+    "theory_reference_only__not_solution_current_law": 383
+  },
+  "preferred_links_file": "traffic_question_card_links_transito_v4_precision_safe.jsonl"
+}
