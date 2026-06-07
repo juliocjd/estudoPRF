@@ -545,13 +545,18 @@ function getQuestionAppliedTheoryCard(questionId) {
   if (!row) {
     return { available: false, reason: 'Teoria aplicada individual ainda nao disponivel para esta questao.' };
   }
+  if (!isExactAppliedTheoryRow(row)) {
+    return { available: false, reason: 'Ainda nao ha teoria aplicada validada com dispositivo exato para esta questao.' };
+  }
   return {
     available: true,
     questionId: row.question_id,
     cardStatus: row.card_status || '',
+    publishStatus: row.publish_status || '',
     sourceMode: row.source_mode || '',
     historicalAnswer: row.historical_answer || '',
     currentAnswer: row.current_answer || '',
+    answerForStudy: row.answer_for_study || '',
     answerChanged: row.answer_changed === null || row.answer_changed === undefined ? null : dbBoolean(row.answer_changed),
     noValidAlternative: dbBoolean(row.no_valid_alternative),
     title: row.title || '',
@@ -559,6 +564,13 @@ function getQuestionAppliedTheoryCard(questionId) {
     ruleThatSolvesThisQuestion: row.rule_that_solves_this_question || '',
     legalBasis: row.legal_basis || '',
     articleExcerpt: row.article_excerpt || '',
+    legalAnchorQuality: row.legal_anchor_quality || '',
+    primaryLegalLocator: row.primary_legal_locator || '',
+    primaryExactExcerpt: row.primary_exact_excerpt || '',
+    exactExcerptSourceUrl: row.exact_excerpt_source_url || '',
+    exactAnchorVerified: dbBoolean(row.exact_anchor_verified),
+    exactAnchorReviewStatus: row.exact_anchor_review_status || '',
+    issueMapping: safeJsonParse(row.issue_mapping_json, []),
     appliedExplanation: row.applied_explanation || '',
     ruleSummaryBullets: safeJsonParse(row.rule_summary_bullets, []),
     professorTip: row.professor_tip || '',
@@ -572,6 +584,23 @@ function getQuestionAppliedTheoryCard(questionId) {
     generatedBy: row.generated_by || '',
     verifiedStatus: row.verified_status || ''
   };
+}
+
+function isExactAppliedTheoryRow(row = {}) {
+  const status = row.publish_status || row.card_status || '';
+  if (status !== 'published') return false;
+  if (!dbBoolean(row.should_show_as_applied_theory) && !dbBoolean(row.exact_anchor_verified)) return false;
+  if (!hasSpecificAppliedTheoryLocator(row.primary_legal_locator || row.legal_basis)) return false;
+  if (!String(row.primary_exact_excerpt || row.article_excerpt || '').trim()) return false;
+  return true;
+}
+
+function hasSpecificAppliedTheoryLocator(locator) {
+  const value = String(locator || '').trim();
+  if (!value) return false;
+  if (/^(Resolução|Resolucao)\s+CONTRAN\s+n[ºo.]?\s*\d+\/\d{4}\.?$/i.test(value)) return false;
+  if (/^(CTB|Código de Trânsito Brasileiro)$/i.test(value)) return false;
+  return /\b(art\.|artigo|anexo|inciso|al[ií]nea|item|ficha|§)\b/i.test(value);
 }
 
 function getQuestionLegalStudy(questionId) {
@@ -5769,6 +5798,7 @@ function initQuestionAppliedTheorySchema(database, client = 'sqlite') {
       CREATE INDEX IF NOT EXISTS idx_qat_jobs_status_priority ON question_applied_theory_generation_jobs(status, priority);
       CREATE INDEX IF NOT EXISTS idx_qat_jobs_question ON question_applied_theory_generation_jobs(question_id);
     `);
+    ensureQuestionAppliedTheoryExactAnchorSchema(database, client);
     return;
   }
 
@@ -5822,6 +5852,157 @@ function initQuestionAppliedTheorySchema(database, client = 'sqlite') {
     );
     CREATE INDEX IF NOT EXISTS idx_qat_jobs_status_priority ON question_applied_theory_generation_jobs(status, priority);
     CREATE INDEX IF NOT EXISTS idx_qat_jobs_question ON question_applied_theory_generation_jobs(question_id);
+  `);
+  ensureQuestionAppliedTheoryExactAnchorSchema(database, client);
+}
+
+function ensureQuestionAppliedTheoryExactAnchorSchema(database, client = 'sqlite') {
+  if (client === 'postgres') {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS legal_article_segments (
+        id BIGSERIAL PRIMARY KEY,
+        source_key TEXT NOT NULL,
+        source_title TEXT,
+        source_url TEXT,
+        source_version TEXT,
+        segment_ref TEXT NOT NULL,
+        parent_ref TEXT,
+        segment_type TEXT,
+        segment_text TEXT NOT NULL,
+        normalized_text TEXT,
+        page_start INTEGER,
+        page_end INTEGER,
+        is_current BOOLEAN DEFAULT TRUE,
+        extraction_method TEXT,
+        excerpt_hash TEXT,
+        raw_context TEXT,
+        extracted_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(source_key, segment_ref, excerpt_hash)
+      );
+      CREATE INDEX IF NOT EXISTS idx_legal_segments_source_ref ON legal_article_segments(source_key, segment_ref);
+      CREATE INDEX IF NOT EXISTS idx_legal_segments_type ON legal_article_segments(segment_type);
+
+      CREATE TABLE IF NOT EXISTS question_applied_theory_legal_anchors (
+        id BIGSERIAL PRIMARY KEY,
+        question_id BIGINT NOT NULL,
+        card_id BIGINT,
+        anchor_role TEXT DEFAULT 'primary',
+        source_key TEXT NOT NULL,
+        source_title TEXT,
+        source_url TEXT,
+        legal_locator TEXT NOT NULL,
+        exact_excerpt TEXT NOT NULL,
+        segment_id BIGINT REFERENCES legal_article_segments(id),
+        applies_to_question_json JSONB,
+        applies_to_alternatives_json JSONB,
+        anchor_status TEXT DEFAULT 'verified',
+        verification_method TEXT,
+        verified_by TEXT,
+        verified_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_qatla_question ON question_applied_theory_legal_anchors(question_id);
+      CREATE INDEX IF NOT EXISTS idx_qatla_card ON question_applied_theory_legal_anchors(card_id);
+      CREATE INDEX IF NOT EXISTS idx_qatla_status ON question_applied_theory_legal_anchors(anchor_status);
+
+      ALTER TABLE question_applied_theory_cards
+        ADD COLUMN IF NOT EXISTS publish_status TEXT DEFAULT 'draft',
+        ADD COLUMN IF NOT EXISTS answer_for_study TEXT,
+        ADD COLUMN IF NOT EXISTS legal_anchor_quality TEXT DEFAULT 'missing',
+        ADD COLUMN IF NOT EXISTS primary_legal_locator TEXT,
+        ADD COLUMN IF NOT EXISTS primary_exact_excerpt TEXT,
+        ADD COLUMN IF NOT EXISTS exact_excerpt_source_url TEXT,
+        ADD COLUMN IF NOT EXISTS exact_anchor_verified BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS exact_anchor_review_status TEXT DEFAULT 'missing',
+        ADD COLUMN IF NOT EXISTS issue_mapping_json JSONB,
+        ADD COLUMN IF NOT EXISTS why_correct_json JSONB,
+        ADD COLUMN IF NOT EXISTS why_wrong_json JSONB,
+        ADD COLUMN IF NOT EXISTS should_show_as_applied_theory BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS validation_errors_json JSONB,
+        ADD COLUMN IF NOT EXISTS validated_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS raw_json JSONB;
+      CREATE INDEX IF NOT EXISTS idx_qatc_publish_status ON question_applied_theory_cards(publish_status);
+      CREATE INDEX IF NOT EXISTS idx_qatc_anchor_quality ON question_applied_theory_cards(legal_anchor_quality);
+      CREATE INDEX IF NOT EXISTS idx_qatc_show_applied ON question_applied_theory_cards(should_show_as_applied_theory);
+    `);
+    return;
+  }
+
+  const columns = [
+    ['publish_status', "TEXT DEFAULT 'draft'"],
+    ['answer_for_study', 'TEXT'],
+    ['legal_anchor_quality', "TEXT DEFAULT 'missing'"],
+    ['primary_legal_locator', 'TEXT'],
+    ['primary_exact_excerpt', 'TEXT'],
+    ['exact_excerpt_source_url', 'TEXT'],
+    ['exact_anchor_verified', 'INTEGER DEFAULT 0'],
+    ['exact_anchor_review_status', "TEXT DEFAULT 'missing'"],
+    ['issue_mapping_json', "TEXT DEFAULT '[]'"],
+    ['why_correct_json', "TEXT DEFAULT '[]'"],
+    ['why_wrong_json', "TEXT DEFAULT '[]'"],
+    ['should_show_as_applied_theory', 'INTEGER DEFAULT 0'],
+    ['validation_errors_json', "TEXT DEFAULT '[]'"],
+    ['validated_at', 'TEXT'],
+    ['raw_json', "TEXT DEFAULT '{}'"]
+  ];
+  for (const [name, definition] of columns) {
+    try {
+      database.exec(`ALTER TABLE question_applied_theory_cards ADD COLUMN ${name} ${definition}`);
+    } catch (error) {
+      if (!String(error?.message || '').includes('duplicate column')) throw error;
+    }
+  }
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS legal_article_segments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_key TEXT NOT NULL,
+      source_title TEXT,
+      source_url TEXT,
+      source_version TEXT,
+      segment_ref TEXT NOT NULL,
+      parent_ref TEXT,
+      segment_type TEXT,
+      segment_text TEXT NOT NULL,
+      normalized_text TEXT,
+      page_start INTEGER,
+      page_end INTEGER,
+      is_current INTEGER DEFAULT 1,
+      extraction_method TEXT,
+      excerpt_hash TEXT,
+      raw_context TEXT,
+      extracted_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(source_key, segment_ref, excerpt_hash)
+    );
+    CREATE INDEX IF NOT EXISTS idx_legal_segments_source_ref ON legal_article_segments(source_key, segment_ref);
+    CREATE INDEX IF NOT EXISTS idx_legal_segments_type ON legal_article_segments(segment_type);
+
+    CREATE TABLE IF NOT EXISTS question_applied_theory_legal_anchors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id INTEGER NOT NULL,
+      card_id INTEGER,
+      anchor_role TEXT DEFAULT 'primary',
+      source_key TEXT NOT NULL,
+      source_title TEXT,
+      source_url TEXT,
+      legal_locator TEXT NOT NULL,
+      exact_excerpt TEXT NOT NULL,
+      segment_id INTEGER,
+      applies_to_question_json TEXT DEFAULT '[]',
+      applies_to_alternatives_json TEXT DEFAULT '[]',
+      anchor_status TEXT DEFAULT 'verified',
+      verification_method TEXT,
+      verified_by TEXT,
+      verified_at TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_qatla_question ON question_applied_theory_legal_anchors(question_id);
+    CREATE INDEX IF NOT EXISTS idx_qatla_card ON question_applied_theory_legal_anchors(card_id);
+    CREATE INDEX IF NOT EXISTS idx_qatla_status ON question_applied_theory_legal_anchors(anchor_status);
+    CREATE INDEX IF NOT EXISTS idx_qatc_publish_status ON question_applied_theory_cards(publish_status);
+    CREATE INDEX IF NOT EXISTS idx_qatc_anchor_quality ON question_applied_theory_cards(legal_anchor_quality);
+    CREATE INDEX IF NOT EXISTS idx_qatc_show_applied ON question_applied_theory_cards(should_show_as_applied_theory);
   `);
 }
 

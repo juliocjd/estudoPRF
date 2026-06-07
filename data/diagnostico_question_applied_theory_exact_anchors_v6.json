@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-06-07T17:16:14.644Z",
+  "database": "postgres",
+  "by_status": [
+    {
+      "publish_status": "published",
+      "legal_anchor_quality": "exact",
+      "total": 1
+    },
+    {
+      "publish_status": "review_only",
+      "legal_anchor_quality": "missing",
+      "total": 5
+    }
+  ],
+  "invalid_published": [],
+  "traffic_coverage": {
+    "com_card_publicado": 1,
+    "sem_card_publicado": 1999,
+    "total": 2000
+  },
+  "cadeirinha_example": [
+    {
+      "id_question": 1388741,
+      "title": "Criança de 1 a 4 anos: uso de cadeirinha",
+      "primary_legal_locator": "Resolução CONTRAN nº 819/2021, art. 2º, Anexo I, inciso II, alíneas a e b",
+      "primary_exact_excerpt": "II - “cadeirinha” (Figura 2), para as seguintes condições: a) crianças com idade superior a um ano e inferior ou igual a quatro anos; ou b) crianças com peso entre 9 a 18 kg, conforme limite máximo definido pelo fabricante do dispositivo."
+    }
+  ]
+}

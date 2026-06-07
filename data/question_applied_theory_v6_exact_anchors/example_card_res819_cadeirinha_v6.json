@@ -1,0 +1,77 @@
+{
+  "version": "example-card-v6",
+  "question_match": {
+    "materia": "Legislação de Trânsito e Transportes",
+    "statement_contains": [
+      "Crianças na faixa etária de 1 a 4 anos",
+      "dispositivo de segurança"
+    ],
+    "alternatives_contains": ["cadeirinha", "bebê conforto", "assento de elevação", "cinto de segurança"]
+  },
+  "card": {
+    "card_status": "ready",
+    "publish_status": "published",
+    "source_mode": "current_law",
+    "title": "Criança de 1 a 4 anos: uso de cadeirinha",
+    "question_focus": "Identificar qual dispositivo de retenção deve ser usado por criança com idade superior a 1 ano e inferior ou igual a 4 anos.",
+    "answer_for_study": "alternativa A — cadeirinha",
+    "primary_legal_anchor": {
+      "source_key": "contran_819_2021",
+      "source_title": "Resolução CONTRAN nº 819/2021",
+      "source_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao8192021.pdf",
+      "legal_locator": "Resolução CONTRAN nº 819/2021, Anexo I, inciso II, alíneas a e b",
+      "exact_excerpt": "II - “cadeirinha” (Figura 2), para as seguintes condições: a) crianças com idade superior a um ano e inferior ou igual a quatro anos; ou b) crianças com peso entre 9 a 18 kg, conforme limite máximo definido pelo fabricante do dispositivo.",
+      "excerpt_role": "rule_that_solves"
+    },
+    "secondary_legal_anchors": [
+      {
+        "source_key": "contran_819_2021",
+        "source_title": "Resolução CONTRAN nº 819/2021",
+        "legal_locator": "Art. 2º",
+        "exact_excerpt": "Para transitar em veículos automotores, as crianças com idade inferior a dez anos que não tenham atingido 1,45 m de altura devem ser transportados nos bancos traseiros usando individualmente cinto de segurança ou dispositivo de retenção equivalente, na forma prevista no Anexo desta Resolução.",
+        "excerpt_role": "supporting"
+      },
+      {
+        "source_key": "ctb_compilado_planalto",
+        "source_title": "Código de Trânsito Brasileiro",
+        "legal_locator": "CTB, art. 168",
+        "exact_excerpt": "Transportar crianças em veículo automotor sem observância das normas de segurança especiais estabelecidas neste Código: Infração - gravíssima; Penalidade - multa; Medida administrativa - retenção do veículo até que a irregularidade seja sanada.",
+        "excerpt_role": "sanction"
+      }
+    ],
+    "issue_mapping": [
+      {
+        "question_phrase": "crianças na faixa etária de 1 a 4 anos",
+        "legal_phrase": "crianças com idade superior a um ano e inferior ou igual a quatro anos",
+        "result": "correct",
+        "explanation": "Essa faixa etária corresponde ao dispositivo 'cadeirinha' no Anexo I, inciso II."
+      },
+      {
+        "question_phrase": "bebê conforto",
+        "legal_phrase": "crianças com até um ano de idade ou peso de até 13 kg",
+        "result": "wrong",
+        "explanation": "Bebê conforto é para crianças até 1 ano ou até 13 kg, não para a faixa superior a 1 ano até 4 anos."
+      },
+      {
+        "question_phrase": "assento de elevação",
+        "legal_phrase": "crianças com idade superior a quatro anos e inferior ou igual a sete anos e meio",
+        "result": "wrong",
+        "explanation": "Assento de elevação é para faixa posterior."
+      }
+    ],
+    "applied_explanation": "O enunciado traz a faixa etária de 1 a 4 anos. A Resolução CONTRAN nº 819/2021, no Anexo I, inciso II, indica expressamente a 'cadeirinha' para crianças com idade superior a 1 ano e inferior ou igual a 4 anos. Por isso, a alternativa correta é a A.",
+    "rule_summary_bullets": [
+      "Até 1 ano ou até 13 kg: bebê conforto ou conversível.",
+      "Mais de 1 ano até 4 anos, ou 9 a 18 kg: cadeirinha.",
+      "Mais de 4 anos até 7 anos e meio, ou até 1,45 m e 15 a 36 kg: assento de elevação.",
+      "Mais de 7 anos e meio até 10 anos, ou altura superior a 1,45 m: cinto do veículo."
+    ],
+    "professor_tip": "Decore a sequência por crescimento da criança: bebê conforto → cadeirinha → assento de elevação → cinto.",
+    "common_traps": [
+      "Confundir 1 a 4 anos com bebê conforto.",
+      "Confundir 4 a 7 anos e meio com cadeirinha.",
+      "Esquecer que peso e limite do fabricante também importam."
+    ],
+    "study_conclusion": "Estude esta questão como alternativa A, porque a faixa de 1 a 4 anos corresponde à cadeirinha."
+  }
+}

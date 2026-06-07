@@ -23,6 +23,10 @@ data/*
 !data/question_applied_theory_v5/**
 !data/diagnostico_question_applied_theory_v5.md
 !data/diagnostico_question_applied_theory_v5.json
+!data/question_applied_theory_v6_exact_anchors/
+!data/question_applied_theory_v6_exact_anchors/**
+!data/diagnostico_question_applied_theory_exact_anchors_v6.md
+!data/diagnostico_question_applied_theory_exact_anchors_v6.json
 exports/
 postgres-export/
 tmp-*.sqlite

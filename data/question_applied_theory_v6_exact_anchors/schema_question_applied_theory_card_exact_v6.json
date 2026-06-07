@@ -1,0 +1,59 @@
+{
+  "version": "question-applied-theory-exact-anchor-v6",
+  "required_for_publication": [
+    "question_id",
+    "title",
+    "question_focus",
+    "answer_for_study",
+    "primary_legal_anchor",
+    "primary_legal_anchor.source_title",
+    "primary_legal_anchor.legal_locator",
+    "primary_legal_anchor.exact_excerpt",
+    "applied_explanation",
+    "rule_summary_bullets",
+    "study_conclusion"
+  ],
+  "fields": {
+    "question_id": "number",
+    "card_status": "ready | needs_exact_anchor | needs_current_law_audit | no_valid_alternative | discard | draft",
+    "publish_status": "published | review_only | blocked | draft",
+    "source_mode": "historical_law | current_law | current_law_verified | general_panorama_only",
+    "title": "string",
+    "question_focus": "O que a questão cobra, em uma frase.",
+    "answer_for_study": "A/B/C/D/E/CERTO/ERRADO ou sem alternativa compatível.",
+    "primary_legal_anchor": {
+      "source_key": "string",
+      "source_title": "string",
+      "source_url": "string",
+      "legal_locator": "Ex.: Resolução CONTRAN nº 819/2021, Anexo I, inciso II, alíneas a e b",
+      "exact_excerpt": "Trecho normativo objetivo que resolve a questão.",
+      "excerpt_role": "rule_that_solves | sanction | exception | definition"
+    },
+    "secondary_legal_anchors": [
+      {
+        "source_title": "string",
+        "legal_locator": "string",
+        "exact_excerpt": "string",
+        "excerpt_role": "supporting | sanction | exception | definition"
+      }
+    ],
+    "issue_mapping": [
+      {
+        "question_phrase": "trecho do enunciado ou alternativa",
+        "legal_phrase": "trecho da norma",
+        "result": "correct | wrong | partially_correct | outdated | not_applicable",
+        "explanation": "por que a norma resolve esse ponto"
+      }
+    ],
+    "applied_explanation": "Explicação de professor conectando a norma ao enunciado.",
+    "rule_summary_bullets": ["bullet 1", "bullet 2", "bullet 3"],
+    "professor_tip": "Dica didática, curta.",
+    "common_traps": ["pegadinha 1", "pegadinha 2"],
+    "study_conclusion": "Como estudar/qual resposta considerar.",
+    "validation": {
+      "exact_anchor_verified": "boolean",
+      "exact_anchor_review_status": "verified | missing | weak | needs_human_review",
+      "validation_errors": ["string"]
+    }
+  }
+}

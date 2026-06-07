@@ -1,0 +1,62 @@
+{
+  "version": "exact-anchor-quality-rules-v6",
+  "hard_fail_rules": [
+    {
+      "id": "NO_PRECISE_LOCATOR",
+      "description": "O fundamento cita apenas a norma, sem artigo/anexo/inciso/alínea/item/ficha.",
+      "action": "block_publication"
+    },
+    {
+      "id": "NO_EXACT_EXCERPT",
+      "description": "Não há transcrição objetiva do trecho normativo que resolve a questão.",
+      "action": "block_publication"
+    },
+    {
+      "id": "GENERIC_SUBJECT_CARD",
+      "description": "O card fala do assunto, mas não responde ao enunciado específico.",
+      "action": "downgrade_to_panorama"
+    },
+    {
+      "id": "OUTDATED_WITHOUT_CURRENT_LAW",
+      "description": "Questão desatualizada sem usar question_current_law_answers ou norma vigente.",
+      "action": "block_publication"
+    },
+    {
+      "id": "ANSWER_NOT_EXPLAINED",
+      "description": "O card não explica por que a alternativa/gabarito é correto pela norma indicada.",
+      "action": "block_publication"
+    }
+  ],
+  "required_checks": [
+    "has_question_focus",
+    "has_answer_for_study",
+    "has_primary_legal_anchor",
+    "has_legal_locator_with_specific_ref",
+    "has_exact_excerpt",
+    "has_issue_mapping",
+    "has_applied_explanation",
+    "has_rule_summary_bullets",
+    "has_study_conclusion"
+  ],
+  "specific_locator_examples": [
+    "CTB, art. 64",
+    "CTB, art. 168",
+    "Resolução CONTRAN nº 819/2021, art. 2º",
+    "Resolução CONTRAN nº 819/2021, Anexo I, inciso II, alíneas a e b",
+    "Resolução CONTRAN nº 967/2022, art. 5º",
+    "Resolução CONTRAN nº 960/2022, art. 10, inciso I",
+    "MBFT, ficha 519-30"
+  ],
+  "bad_locator_examples": [
+    "Resolução CONTRAN nº 819/2021",
+    "CTB no tema transporte de crianças",
+    "Resolução sobre cadeirinha",
+    "legislação vigente",
+    "norma do CONTRAN"
+  ],
+  "publication_policy": {
+    "published": "Somente se todas as hard_fail_rules passarem.",
+    "review_only": "Pode aparecer como panorama recolhido, nunca como regra que resolve.",
+    "blocked": "Não exibir ao aluno no modo Estudar agora."
+  }
+}

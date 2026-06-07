@@ -1,0 +1,41 @@
+{
+  "version": "legal-segment-extraction-patterns-v6",
+  "segment_types": [
+    "article",
+    "paragraph",
+    "inciso",
+    "alinea",
+    "item",
+    "anexo",
+    "anexo_inciso",
+    "anexo_alinea",
+    "mbft_ficha"
+  ],
+  "patterns": {
+    "article": "(?m)^Art\\.\\s*\\d+[ºo]?[-A-Z]*\\.?.*?(?=^Art\\.|^ANEXO|\\z)",
+    "paragraph": "(?m)^§\\s*\\d+[ºo]?.*?(?=^§|^[IVXLCDM]+\\s*-|^[a-z]\\)|^Art\\.|\\z)",
+    "inciso": "(?m)^[IVXLCDM]+\\s*-\\s+.*?(?=^[IVXLCDM]+\\s*-|^[a-z]\\)|^§|^Art\\.|\\z)",
+    "alinea": "(?m)^[a-z]\\)\\s+.*?(?=^[a-z]\\)|^[IVXLCDM]+\\s*-|^Art\\.|\\z)",
+    "anexo_header": "(?m)^ANEXO.*$",
+    "mbft_ficha": "(?mi)(FICHA DE FISCALIZAÇÃO|Código de Enquadramento|Amparo Legal).*?(?=FICHA DE FISCALIZAÇÃO|\\z)"
+  },
+  "normalization": {
+    "collapse_whitespace": true,
+    "preserve_accents": true,
+    "remove_page_headers": true,
+    "join_hyphenated_lines": true,
+    "sanitize_null_bytes": true
+  },
+  "special_cases": [
+    {
+      "source_key": "contran_819_2021",
+      "description": "O anexo contém os dispositivos de retenção e deve ser segmentado por inciso I, II, III e IV, com alíneas.",
+      "expected_segments": [
+        "Anexo I, inciso I",
+        "Anexo I, inciso II",
+        "Anexo I, inciso III",
+        "Anexo I, inciso IV"
+      ]
+    }
+  ]
+}

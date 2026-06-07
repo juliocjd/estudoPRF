@@ -2096,20 +2096,20 @@ function renderAppliedTheoryPanel(question) {
     <div class="quick-theory-card applied-theory-card">
       <strong class="quick-theory-title">${escapeHtml(card.title || 'Teoria aplicada a questao')}</strong>
       ${card.showWarning ? `<p class="quick-theory-warning">${escapeHtml(card.showWarning)}</p>` : ''}
-      ${answerTitle ? quickTheorySection('Resposta de estudo', answerTitle) : ''}
       ${quickTheorySection('O que a questao cobra', card.questionFocus)}
-      ${quickTheorySection('Regra que resolve esta questao', card.ruleThatSolvesThisQuestion)}
-      ${quickTheorySection('Fundamento', card.legalBasis)}
+      ${answerTitle ? quickTheorySection('Gabarito pela regra de estudo', answerTitle) : ''}
+      ${quickTheorySection('Dispositivo que resolve', card.primaryLegalLocator || card.legalBasis)}
+      ${quickTheoryNormExcerpt(card.primaryExactExcerpt || card.articleExcerpt)}
       ${quickTheorySection('Aplicacao ao enunciado', card.appliedExplanation)}
-      ${quickTheoryBullets(card.ruleSummaryBullets || [])}
+      ${quickTheoryBullets(card.ruleSummaryBullets || [], 'Resumo para memorizar')}
       ${quickTheorySection('Pegadinha de prova', card.professorTip)}
       ${quickTheoryBullets(card.commonTraps || [], 'Armadilhas comuns')}
       ${quickTheorySection('Conclusao para estudo', card.studyConclusion)}
-      ${card.articleExcerpt ? quickTheoryOfficialText([{
-        label: card.legalBasis,
-        excerpt: card.articleExcerpt,
-        text: card.articleExcerpt,
-        sourceUrl: card.sourceUrls?.[0] || ''
+      ${(card.primaryExactExcerpt || card.articleExcerpt) ? quickTheoryOfficialText([{
+        label: card.primaryLegalLocator || card.legalBasis,
+        excerpt: card.primaryExactExcerpt || card.articleExcerpt,
+        text: card.primaryExactExcerpt || card.articleExcerpt,
+        sourceUrl: card.exactExcerptSourceUrl || card.sourceUrls?.[0] || ''
       }]) : ''}
     </div>
   `;
@@ -2216,6 +2216,16 @@ function quickTheoryBullets(bullets, title = 'Em resumo') {
     <section class="quick-theory-section">
       <span>${escapeHtml(title)}</span>
       <ul>${bullets.slice(0, 5).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+    </section>
+  `;
+}
+
+function quickTheoryNormExcerpt(text) {
+  if (!text) return '';
+  return `
+    <section class="quick-theory-section normative-text-block">
+      <strong>Trecho da norma</strong>
+      <p>${escapeHtml(text)}</p>
     </section>
   `;
 }
