@@ -122,6 +122,10 @@ const els = {
   closeSupport: document.querySelector('#closeSupport'),
   supportTabs: document.querySelectorAll('[data-support-tab]'),
   supportTheoryPanel: document.querySelector('#supportTheoryPanel'),
+  supportAppliedTheoryPanel: document.querySelector('#supportAppliedTheoryPanel'),
+  supportTabAppliedTheory: document.querySelector('#supportTabAppliedTheory'),
+  appliedTheoryInfo: document.querySelector('#appliedTheoryInfo'),
+  supportAppliedTheoryBody: document.querySelector('#supportAppliedTheoryBody'),
   supportQuickTheoryPanel: document.querySelector('#supportQuickTheoryPanel'),
   supportTabQuickTheory: document.querySelector('#supportTabQuickTheory'),
   supportNormativePanel: document.querySelector('#supportNormativePanel'),
@@ -1008,6 +1012,9 @@ function renderEmptyQuestion() {
   els.teachingInfo.textContent = '';
   els.supportTeachingBody.innerHTML = '<p class="empty">Nenhum comentário atualizado carregado.</p>';
   if (els.supportTabTeaching) els.supportTabTeaching.disabled = true;
+  if (els.appliedTheoryInfo) els.appliedTheoryInfo.textContent = '';
+  if (els.supportAppliedTheoryBody) els.supportAppliedTheoryBody.innerHTML = '<p class="empty">Nenhuma teoria aplicada carregada.</p>';
+  if (els.supportTabAppliedTheory) els.supportTabAppliedTheory.disabled = true;
   els.commentInfo.textContent = '';
   els.commentBody.innerHTML = '<p class="empty">Nenhuma explicação carregada.</p>';
   els.supportTheoryBody.innerHTML = '<p class="empty">Nenhuma teoria carregada.</p>';
@@ -1472,6 +1479,7 @@ function renderQuestion(question, options = {}) {
   renderNormativeAlert(question);
   renderNormativeTeachingPanel(question);
   renderNormativePanel(question);
+  renderAppliedTheoryPanel(question);
   renderQuickTheoryPanel(question);
   renderTheoryPanel(question);
   renderHistoryPanel(question);
@@ -2041,6 +2049,91 @@ function normativeTextBlock(title, text) {
   `;
 }
 
+function renderAppliedTheoryPanel(question) {
+  const card = question?.appliedTheoryCard;
+  if (!els.supportAppliedTheoryBody) return;
+  if (!card?.available) {
+    if (els.appliedTheoryInfo) els.appliedTheoryInfo.textContent = 'indisponivel';
+    els.supportAppliedTheoryBody.innerHTML = '<p class="empty">Teoria aplicada individual ainda nao disponivel para esta questao.</p>';
+    return;
+  }
+
+  const canReveal = canRevealAppliedTheory(question);
+  const statusLabel = appliedTheoryStatusLabel(card.cardStatus);
+  if (els.appliedTheoryInfo) els.appliedTheoryInfo.textContent = statusLabel;
+
+  if (!canReveal) {
+    els.supportAppliedTheoryBody.innerHTML = `
+      <div class="quick-theory-card">
+        <strong class="quick-theory-title">Teoria aplicada a questao</strong>
+        <p class="empty">Responda para liberar a regra aplicada, fundamento e conclusao desta questao.</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (card.cardStatus === 'needs_current_law_audit') {
+    els.supportAppliedTheoryBody.innerHTML = `
+      <div class="quick-theory-card">
+        <strong class="quick-theory-title">Auditoria normativa pendente</strong>
+        <p class="quick-theory-warning">${escapeHtml(card.showWarning || 'Esta questao precisa de auditoria normativa antes de receber teoria aplicada segura.')}</p>
+        ${quickTheorySection('Ponto da questao', card.questionFocus)}
+        ${quickTheorySection('Orientacao de estudo', card.studyConclusion)}
+      </div>
+    `;
+    return;
+  }
+
+  const answerTitle = card.noValidAlternative
+    ? 'Sem alternativa compativel pela legislacao vigente'
+    : card.currentAnswer
+      ? `Gabarito atual: ${currentAnswerLabel(card.currentAnswer)}`
+      : card.historicalAnswer
+        ? `Gabarito historico: ${currentAnswerLabel(card.historicalAnswer)}`
+        : '';
+
+  els.supportAppliedTheoryBody.innerHTML = `
+    <div class="quick-theory-card applied-theory-card">
+      <strong class="quick-theory-title">${escapeHtml(card.title || 'Teoria aplicada a questao')}</strong>
+      ${card.showWarning ? `<p class="quick-theory-warning">${escapeHtml(card.showWarning)}</p>` : ''}
+      ${answerTitle ? quickTheorySection('Resposta de estudo', answerTitle) : ''}
+      ${quickTheorySection('O que a questao cobra', card.questionFocus)}
+      ${quickTheorySection('Regra que resolve esta questao', card.ruleThatSolvesThisQuestion)}
+      ${quickTheorySection('Fundamento', card.legalBasis)}
+      ${quickTheorySection('Aplicacao ao enunciado', card.appliedExplanation)}
+      ${quickTheoryBullets(card.ruleSummaryBullets || [])}
+      ${quickTheorySection('Pegadinha de prova', card.professorTip)}
+      ${quickTheoryBullets(card.commonTraps || [], 'Armadilhas comuns')}
+      ${quickTheorySection('Conclusao para estudo', card.studyConclusion)}
+      ${card.articleExcerpt ? quickTheoryOfficialText([{
+        label: card.legalBasis,
+        excerpt: card.articleExcerpt,
+        text: card.articleExcerpt,
+        sourceUrl: card.sourceUrls?.[0] || ''
+      }]) : ''}
+    </div>
+  `;
+}
+
+function canRevealAppliedTheory(question = state.currentQuestion) {
+  const card = question?.appliedTheoryCard;
+  if (!card?.available) return false;
+  if (card.showBeforeAnswer) return true;
+  return canRevealExplanation(question);
+}
+
+function appliedTheoryStatusLabel(status) {
+  const labels = {
+    published: 'aplicada',
+    no_valid_alternative: 'sem alternativa',
+    needs_current_law_audit: 'auditoria pendente',
+    draft_needs_review: 'revisao',
+    discarded: 'descartada',
+    blocked: 'bloqueada'
+  };
+  return labels[status] || 'disponivel';
+}
+
 function renderQuickTheoryPanel(question) {
   const legalStudy = question?.legalStudy;
   if (!legalStudy?.available || !legalStudy.primaryCard) {
@@ -2117,11 +2210,11 @@ function quickTheoryFoundation(card, articles) {
   return ref?.label || '';
 }
 
-function quickTheoryBullets(bullets) {
+function quickTheoryBullets(bullets, title = 'Em resumo') {
   if (!Array.isArray(bullets) || !bullets.length) return '';
   return `
     <section class="quick-theory-section">
-      <span>Em resumo</span>
+      <span>${escapeHtml(title)}</span>
       <ul>${bullets.slice(0, 5).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
     </section>
   `;
@@ -2224,7 +2317,7 @@ function canRevealExplanation(question = state.currentQuestion) {
 }
 
 function supportTabRequiresAnswer(tab) {
-  return ['comment', 'normative', 'teaching', 'quickTheory', 'history'].includes(tab);
+  return ['comment', 'normative', 'teaching', 'appliedTheory', 'quickTheory', 'history'].includes(tab);
 }
 
 function updateAnswerActions() {
@@ -2235,6 +2328,7 @@ function updateAnswerActions() {
   const hasExplanation = Boolean(
     question?.comment?.html
     || question?.comment?.text
+    || question?.appliedTheoryCard?.available
     || question?.legalStudy?.available
     || question?.normativeUpdate?.exists
     || question?.currentLawAnswer?.exists
@@ -2955,17 +3049,19 @@ function matchesCertoErradoAlias(answer, text) {
 function showCommentPanel() {
   const canRevealCurrentLaw = canRevealCurrentLawAnswer(state.currentQuestion);
   const hasHistoricalComment = Boolean(state.currentQuestion?.comment?.html || state.currentQuestion?.comment?.text);
-  const preferredTab = canRevealCurrentLaw && (state.currentQuestion?.currentLawAnswer?.exists || state.currentQuestion?.metadata?.desatualizada)
-    ? 'teaching'
-    : canRevealCurrentLaw && state.currentQuestion?.normativeTeachingComment?.exists
+  const preferredTab = hasAppliedTheorySupport(state.currentQuestion) && canRevealAppliedTheory(state.currentQuestion)
+    ? 'appliedTheory'
+    : canRevealCurrentLaw && (state.currentQuestion?.currentLawAnswer?.exists || state.currentQuestion?.metadata?.desatualizada)
       ? 'teaching'
-      : hasHistoricalComment
-        ? 'comment'
-        : state.currentQuestion?.normativeUpdate?.exists
-          ? 'normative'
-          : hasQuickTheorySupport(state.currentQuestion)
-            ? 'quickTheory'
-            : 'comment';
+      : canRevealCurrentLaw && state.currentQuestion?.normativeTeachingComment?.exists
+        ? 'teaching'
+        : hasHistoricalComment
+          ? 'comment'
+          : state.currentQuestion?.normativeUpdate?.exists
+            ? 'normative'
+            : hasQuickTheorySupport(state.currentQuestion)
+              ? 'quickTheory'
+              : 'comment';
   openSupportPanel(preferredTab);
   state.sawComment = true;
   recordQuestionEvent('opened_comment');
@@ -3082,7 +3178,13 @@ function openSupportPanel(tab = 'comment', options = {}) {
   if (tab === 'quickTheory' && !hasQuickTheorySupport(state.currentQuestion)) {
     tab = canRevealCurrentLawAnswer(state.currentQuestion) ? 'teaching' : 'comment';
   }
-  if (supportTabRequiresAnswer(tab) && !canRevealExplanation(state.currentQuestion)) {
+  if (tab === 'appliedTheory' && !hasAppliedTheorySupport(state.currentQuestion)) {
+    tab = hasQuickTheorySupport(state.currentQuestion) ? 'quickTheory' : 'comment';
+  }
+  const tabCanReveal = tab === 'appliedTheory'
+    ? canRevealAppliedTheory(state.currentQuestion)
+    : canRevealExplanation(state.currentQuestion);
+  if (supportTabRequiresAnswer(tab) && !tabCanReveal) {
     els.answerHint.textContent = 'Responda para liberar a explicação';
     return;
   }
@@ -3105,6 +3207,7 @@ function resetSupportPanelScroll() {
     if (tabsNav) tabsNav.scrollLeft = 0;
     [
       els.supportTeachingPanel,
+      els.supportAppliedTheoryPanel,
       els.supportQuickTheoryPanel,
       els.commentPanel,
       els.supportNormativePanel,
@@ -3148,6 +3251,22 @@ function hasQuickTheorySupport(question = state.currentQuestion) {
   return Boolean(question?.legalStudy?.available && question.legalStudy?.primaryCard);
 }
 
+function hasAppliedTheorySupport(question = state.currentQuestion) {
+  return Boolean(question?.appliedTheoryCard?.available);
+}
+
+function syncAppliedTheoryAvailability(question = state.currentQuestion) {
+  const available = hasAppliedTheorySupport(question);
+  const canReveal = canRevealAppliedTheory(question);
+  if (els.supportTabAppliedTheory) {
+    els.supportTabAppliedTheory.hidden = !available;
+    els.supportTabAppliedTheory.disabled = !available || !canReveal;
+  }
+  if (!available && state.supportTab === 'appliedTheory') {
+    state.supportTab = hasQuickTheorySupport(question) ? 'quickTheory' : 'comment';
+  }
+}
+
 function syncQuickTheoryAvailability(question = state.currentQuestion) {
   const available = hasQuickTheorySupport(question);
   const canReveal = canRevealExplanation(question);
@@ -3183,6 +3302,7 @@ function syncNormativeSupportAvailability(question = state.currentQuestion) {
 
 function renderSupportVisibility() {
   syncNormativeSupportAvailability(state.currentQuestion);
+  syncAppliedTheoryAvailability(state.currentQuestion);
   syncQuickTheoryAvailability(state.currentQuestion);
   if (state.supportTab === 'teaching'
     && !state.currentQuestion?.currentLawAnswer?.exists
@@ -3202,6 +3322,7 @@ function renderSupportVisibility() {
     button.classList.toggle('is-active', button.dataset.supportTab === state.supportTab);
   });
   els.supportTeachingPanel.hidden = state.supportTab !== 'teaching';
+  if (els.supportAppliedTheoryPanel) els.supportAppliedTheoryPanel.hidden = state.supportTab !== 'appliedTheory';
   els.supportQuickTheoryPanel.hidden = state.supportTab !== 'quickTheory';
   els.commentPanel.hidden = state.supportTab !== 'comment';
   els.supportNormativePanel.hidden = state.supportTab !== 'normative';
@@ -3224,6 +3345,9 @@ function renderSupportVisibility() {
   if (state.supportTab === 'teaching') {
     els.supportTitle.textContent = 'Resposta pela legislacao atual';
     els.supportSubtitle.textContent = 'Gabarito atual, fundamento e conclusao de estudo';
+  } else if (state.supportTab === 'appliedTheory') {
+    els.supportTitle.textContent = 'Teoria aplicada';
+    els.supportSubtitle.textContent = 'Regra que resolve esta questao';
   } else if (state.supportTab === 'similar' && state.currentQuestion?.adaptive?.clusterPolicy === 'stats_only') {
     els.supportTitle.textContent = 'Outras do assunto';
     els.supportSubtitle.textContent = 'Agrupamento amplo para consulta, sem supressao de variacoes';

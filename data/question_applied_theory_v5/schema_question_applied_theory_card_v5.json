@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QuestionAppliedTheoryCardV5",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "question_id",
+    "card_status",
+    "source_mode",
+    "title",
+    "question_focus",
+    "rule_that_solves_this_question",
+    "legal_basis",
+    "applied_explanation",
+    "rule_summary_bullets",
+    "professor_tip",
+    "study_conclusion",
+    "show_before_answer",
+    "show_after_answer"
+  ],
+  "properties": {
+    "question_id": {
+      "type": "integer"
+    },
+    "card_status": {
+      "enum": [
+        "published",
+        "draft_needs_review",
+        "needs_current_law_audit",
+        "no_valid_alternative",
+        "discarded",
+        "blocked"
+      ]
+    },
+    "source_mode": {
+      "enum": [
+        "historical_law",
+        "current_law_verified",
+        "current_law_no_valid_alternative",
+        "current_law_needs_audit",
+        "current_law_discard"
+      ]
+    },
+    "historical_answer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "current_answer": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "answer_changed": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "no_valid_alternative": {
+      "type": "boolean"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 8
+    },
+    "question_focus": {
+      "type": "string",
+      "minLength": 20
+    },
+    "rule_that_solves_this_question": {
+      "type": "string",
+      "minLength": 20
+    },
+    "legal_basis": {
+      "type": "string",
+      "minLength": 8
+    },
+    "article_excerpt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "applied_explanation": {
+      "type": "string",
+      "minLength": 50
+    },
+    "rule_summary_bullets": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string"
+      }
+    },
+    "professor_tip": {
+      "type": "string",
+      "minLength": 20
+    },
+    "common_traps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "study_conclusion": {
+      "type": "string",
+      "minLength": 20
+    },
+    "show_warning": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "show_before_answer": {
+      "type": "boolean"
+    },
+    "show_after_answer": {
+      "type": "boolean"
+    },
+    "teaching_card_md": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

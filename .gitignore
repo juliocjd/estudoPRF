@@ -19,6 +19,10 @@ data/*
 !data/legal_theory_v4_1/**
 !data/diagnostico_teoria_rapida_v4.md
 !data/diagnostico_teoria_rapida_v4.json
+!data/question_applied_theory_v5/
+!data/question_applied_theory_v5/**
+!data/diagnostico_question_applied_theory_v5.md
+!data/diagnostico_question_applied_theory_v5.json
 exports/
 postgres-export/
 tmp-*.sqlite

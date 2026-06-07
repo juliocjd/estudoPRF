@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-06-07T15:27:18.117Z",
+  "dbClient": "postgres",
+  "trafficTotal": 2000,
+  "trafficPublished": 5,
+  "byStatus": [
+    {
+      "card_status": "no_valid_alternative",
+      "source_mode": "current_law_no_valid_alternative",
+      "n": 1
+    },
+    {
+      "card_status": "published",
+      "source_mode": "current_law_verified",
+      "n": 3
+    },
+    {
+      "card_status": "published",
+      "source_mode": "historical_law",
+      "n": 1
+    }
+  ],
+  "jobs": [
+    {
+      "status": "pending",
+      "n": 441
+    }
+  ],
+  "requiredCases": [
+    {
+      "id_question": 28104,
+      "desatualizada": 0,
+      "card_status": "published",
+      "source_mode": "historical_law",
+      "current_answer": "ERRADO",
+      "no_valid_alternative": false,
+      "title": "Condução de escolares: quando há transporte escolar regular"
+    },
+    {
+      "id_question": 28259,
+      "desatualizada": 1,
+      "card_status": "published",
+      "source_mode": "current_law_verified",
+      "current_answer": "ERRADO",
+      "no_valid_alternative": false,
+      "title": "Baixa de veículo irrecuperável: prazo atual de 30 dias"
+    },
+    {
+      "id_question": 28260,
+      "desatualizada": 1,
+      "card_status": "published",
+      "source_mode": "current_law_verified",
+      "current_answer": "CERTO",
+      "no_valid_alternative": false,
+      "title": "Película refletiva nas áreas envidraçadas"
+    },
+    {
+      "id_question": 1028008,
+      "desatualizada": 1,
+      "card_status": "no_valid_alternative",
+      "source_mode": "current_law_no_valid_alternative",
+      "current_answer": null,
+      "no_valid_alternative": true,
+      "title": "Questão antiga de transmitância sem alternativa compatível"
+    },
+    {
+      "id_question": 2002422,
+      "desatualizada": 1,
+      "card_status": "published",
+      "source_mode": "current_law_verified",
+      "current_answer": "D",
+      "no_valid_alternative": false,
+      "title": "Transmitância luminosa do para-brisa: 70%"
+    }
+  ],
+  "unsafeOutdated": 0
+}

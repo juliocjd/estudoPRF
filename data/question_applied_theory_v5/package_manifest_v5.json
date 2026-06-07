@@ -1,0 +1,20 @@
+{
+  "version": "question_applied_theory_v5",
+  "generated_at": "2026-06-07T14:28:46.412448Z",
+  "traffic_questions": 2000,
+  "outdated_priority_jobs": 441,
+  "golden_cards": 5,
+  "files": [
+    "question_applied_theory_generation_jobs_transito_v5.jsonl",
+    "question_applied_theory_generation_jobs_desatualizadas_priority_v5.jsonl",
+    "question_applied_theory_jobs_manifest_v5.csv",
+    "question_applied_theory_cards_golden_seed_v5.json",
+    "schema_question_applied_theory_card_v5.json",
+    "migration_question_applied_theory_cards_postgres_v5.sql",
+    "quality_rules_question_applied_theory_v5.json",
+    "import-question-applied-theory-cards-v5.mjs",
+    "diagnostico_sql_question_applied_theory_v5.sql",
+    "prompt_codex_question_applied_theory_cards_v5.md",
+    "README_question_applied_theory_v5.md"
+  ]
+}

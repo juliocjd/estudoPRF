@@ -63,6 +63,7 @@ initTheoryPagesSchema(db);
 initNormativeTeachingStudentEditsSchema(db);
 initQuestionCurrentLawAnswersSchema(db, activeDbClient);
 initLegalKnowledgeSchema(db, activeDbClient);
+initQuestionAppliedTheorySchema(db, activeDbClient);
 
 export async function handleStudyRequest(request, response) {
   try {
@@ -525,6 +526,52 @@ function hasTheoryPagesTable() {
 function hasLegalKnowledgeTables() {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'legal_topic_cards'").get())
     && Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_legal_links'").get());
+}
+
+function hasQuestionAppliedTheoryTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_applied_theory_cards'").get());
+}
+
+function getQuestionAppliedTheoryCard(questionId) {
+  if (!hasQuestionAppliedTheoryTable()) {
+    return { available: false, reason: 'Camada de teoria aplicada ainda nao criada.' };
+  }
+  const row = db.prepare(`
+    SELECT *
+    FROM question_applied_theory_cards
+    WHERE question_id = ?
+    LIMIT 1
+  `).get(questionId);
+  if (!row) {
+    return { available: false, reason: 'Teoria aplicada individual ainda nao disponivel para esta questao.' };
+  }
+  return {
+    available: true,
+    questionId: row.question_id,
+    cardStatus: row.card_status || '',
+    sourceMode: row.source_mode || '',
+    historicalAnswer: row.historical_answer || '',
+    currentAnswer: row.current_answer || '',
+    answerChanged: row.answer_changed === null || row.answer_changed === undefined ? null : dbBoolean(row.answer_changed),
+    noValidAlternative: dbBoolean(row.no_valid_alternative),
+    title: row.title || '',
+    questionFocus: row.question_focus || '',
+    ruleThatSolvesThisQuestion: row.rule_that_solves_this_question || '',
+    legalBasis: row.legal_basis || '',
+    articleExcerpt: row.article_excerpt || '',
+    appliedExplanation: row.applied_explanation || '',
+    ruleSummaryBullets: safeJsonParse(row.rule_summary_bullets, []),
+    professorTip: row.professor_tip || '',
+    commonTraps: safeJsonParse(row.common_traps, []),
+    studyConclusion: row.study_conclusion || '',
+    showWarning: row.show_warning || '',
+    showBeforeAnswer: dbBoolean(row.show_before_answer),
+    showAfterAnswer: dbBoolean(row.show_after_answer),
+    sourceUrls: safeJsonParse(row.source_urls, []),
+    teachingCardMd: row.teaching_card_md || '',
+    generatedBy: row.generated_by || '',
+    verifiedStatus: row.verified_status || ''
+  };
 }
 
 function getQuestionLegalStudy(questionId) {
@@ -4786,6 +4833,7 @@ async function getQuestion(questionId) {
     Boolean(question.desatualizada)
   );
   const legalStudy = getQuestionLegalStudy(questionId);
+  const appliedTheoryCard = getQuestionAppliedTheoryCard(questionId);
   const adaptive = getQuestionAdaptiveSummary(questionId);
   const studyStatus = getQuestionStudyStatus(questionId);
 
@@ -4807,6 +4855,7 @@ async function getQuestion(questionId) {
     normativeUpdate,
     currentLawAnswer,
     normativeTeachingComment,
+    appliedTheoryCard,
     legalStudy,
     answering: {
       historicalAnswer: question.historical_answer || '',
@@ -5665,6 +5714,115 @@ function ensureSqliteLegalLinkPrecisionSchema(database) {
       if (!String(error?.message || '').includes('duplicate column')) throw error;
     }
   }
+}
+
+function initQuestionAppliedTheorySchema(database, client = 'sqlite') {
+  if (client === 'postgres') {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS question_applied_theory_cards (
+        question_id BIGINT PRIMARY KEY REFERENCES questions(id_question) ON DELETE CASCADE,
+        card_status TEXT NOT NULL CHECK (card_status IN ('published','draft_needs_review','needs_current_law_audit','no_valid_alternative','discarded','blocked')),
+        source_mode TEXT NOT NULL CHECK (source_mode IN ('historical_law','current_law_verified','current_law_no_valid_alternative','current_law_needs_audit','current_law_discard')),
+        historical_answer TEXT,
+        current_answer TEXT,
+        answer_changed BOOLEAN,
+        no_valid_alternative BOOLEAN DEFAULT FALSE,
+        title TEXT NOT NULL,
+        question_focus TEXT NOT NULL,
+        rule_that_solves_this_question TEXT NOT NULL,
+        legal_basis TEXT NOT NULL,
+        article_excerpt TEXT,
+        applied_explanation TEXT NOT NULL,
+        rule_summary_bullets JSONB NOT NULL DEFAULT '[]'::jsonb,
+        professor_tip TEXT,
+        common_traps JSONB NOT NULL DEFAULT '[]'::jsonb,
+        study_conclusion TEXT NOT NULL,
+        show_warning TEXT,
+        show_before_answer BOOLEAN NOT NULL DEFAULT FALSE,
+        show_after_answer BOOLEAN NOT NULL DEFAULT TRUE,
+        source_urls JSONB NOT NULL DEFAULT '[]'::jsonb,
+        teaching_card_md TEXT,
+        teaching_card_html TEXT,
+        generated_by TEXT,
+        verified_status TEXT NOT NULL DEFAULT 'unverified',
+        reviewed_by TEXT,
+        reviewed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_qatc_status ON question_applied_theory_cards(card_status);
+      CREATE INDEX IF NOT EXISTS idx_qatc_source_mode ON question_applied_theory_cards(source_mode);
+      CREATE INDEX IF NOT EXISTS idx_qatc_current_answer ON question_applied_theory_cards(current_answer);
+
+      CREATE TABLE IF NOT EXISTS question_applied_theory_generation_jobs (
+        id BIGSERIAL PRIMARY KEY,
+        question_id BIGINT NOT NULL REFERENCES questions(id_question) ON DELETE CASCADE,
+        priority INTEGER NOT NULL DEFAULT 100,
+        generation_policy TEXT NOT NULL,
+        job_payload JSONB NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','running','generated','imported','failed','blocked')),
+        error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(question_id, generation_policy)
+      );
+      CREATE INDEX IF NOT EXISTS idx_qat_jobs_status_priority ON question_applied_theory_generation_jobs(status, priority);
+      CREATE INDEX IF NOT EXISTS idx_qat_jobs_question ON question_applied_theory_generation_jobs(question_id);
+    `);
+    return;
+  }
+
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS question_applied_theory_cards (
+      question_id INTEGER PRIMARY KEY,
+      card_status TEXT NOT NULL,
+      source_mode TEXT NOT NULL,
+      historical_answer TEXT,
+      current_answer TEXT,
+      answer_changed INTEGER,
+      no_valid_alternative INTEGER DEFAULT 0,
+      title TEXT NOT NULL,
+      question_focus TEXT NOT NULL,
+      rule_that_solves_this_question TEXT NOT NULL,
+      legal_basis TEXT NOT NULL,
+      article_excerpt TEXT,
+      applied_explanation TEXT NOT NULL,
+      rule_summary_bullets TEXT NOT NULL DEFAULT '[]',
+      professor_tip TEXT,
+      common_traps TEXT NOT NULL DEFAULT '[]',
+      study_conclusion TEXT NOT NULL,
+      show_warning TEXT,
+      show_before_answer INTEGER NOT NULL DEFAULT 0,
+      show_after_answer INTEGER NOT NULL DEFAULT 1,
+      source_urls TEXT NOT NULL DEFAULT '[]',
+      teaching_card_md TEXT,
+      teaching_card_html TEXT,
+      generated_by TEXT,
+      verified_status TEXT NOT NULL DEFAULT 'unverified',
+      reviewed_by TEXT,
+      reviewed_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_qatc_status ON question_applied_theory_cards(card_status);
+    CREATE INDEX IF NOT EXISTS idx_qatc_source_mode ON question_applied_theory_cards(source_mode);
+    CREATE INDEX IF NOT EXISTS idx_qatc_current_answer ON question_applied_theory_cards(current_answer);
+
+    CREATE TABLE IF NOT EXISTS question_applied_theory_generation_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      question_id INTEGER NOT NULL,
+      priority INTEGER NOT NULL DEFAULT 100,
+      generation_policy TEXT NOT NULL,
+      job_payload TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      error TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(question_id, generation_policy)
+    );
+    CREATE INDEX IF NOT EXISTS idx_qat_jobs_status_priority ON question_applied_theory_generation_jobs(status, priority);
+    CREATE INDEX IF NOT EXISTS idx_qat_jobs_question ON question_applied_theory_generation_jobs(question_id);
+  `);
 }
 
 function initStudySchema(database) {

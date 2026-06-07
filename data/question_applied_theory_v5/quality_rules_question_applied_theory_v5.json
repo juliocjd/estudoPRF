@@ -1,0 +1,23 @@
+{
+  "version": "question_applied_theory_quality_v5",
+  "non_negotiable_rules": [
+    "Não publicar card que não cite ou responda elemento material do enunciado.",
+    "Não publicar card genérico de assunto como teoria principal da questão.",
+    "Questão desatualizada só recebe card publicado de lei atual se houver gabarito atual verificado ou auditoria completa com fundamento, trecho e comparação.",
+    "Para questões com prazo, percentual, idade, pontos, penalidade ou exceção, comparar explicitamente valor do enunciado x valor vigente.",
+    "Não usar confidence como fonte de gabarito.",
+    "Não usar comentário histórico para corrigir questão desatualizada em modo legislação atual.",
+    "Se não houver resposta atual segura, gerar card_status needs_current_law_audit, não published."
+  ],
+  "must_have_for_outdated_published": [
+    "current_answer ou no_valid_alternative",
+    "legal_basis com norma vigente",
+    "applied_explanation com comparação material",
+    "study_conclusion dizendo como estudar/corrigir",
+    "source_mode current_law_verified ou current_law_no_valid_alternative"
+  ],
+  "student_display_policy": {
+    "before_answer": "não mostrar gabarito nem conclusão que revele resposta no modo Estudar agora",
+    "after_answer": "mostrar card completo, curto e aplicado à questão"
+  }
+}

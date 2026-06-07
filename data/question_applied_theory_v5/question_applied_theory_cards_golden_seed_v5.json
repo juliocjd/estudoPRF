@@ -1,0 +1,170 @@
+{
+  "version": "question_applied_theory_v5_golden_seed",
+  "items": [
+    {
+      "question_id": 28259,
+      "card_status": "published",
+      "source_mode": "current_law_verified",
+      "historical_answer": "CERTO",
+      "current_answer": "ERRADO",
+      "answer_changed": true,
+      "no_valid_alternative": false,
+      "title": "Baixa de veículo irrecuperável: prazo atual de 30 dias",
+      "question_focus": "O enunciado mistura uma regra que continua correta — a baixa do veículo irrecuperável — com um prazo antigo de 15 dias.",
+      "rule_that_solves_this_question": "Pela regra vigente, a baixa deve ser providenciada em 30 dias após a constatação da condição do veículo por meio de laudo, nos casos aplicáveis. A omissão permanece sujeita ao art. 240 do CTB.",
+      "legal_basis": "Resolução CONTRAN nº 967/2022, art. 5º; CTB, art. 240.",
+      "article_excerpt": null,
+      "applied_explanation": "A questão fica errada porque afirma prazo de 15 dias. A consequência de infração grave está correta, mas, em certo/errado, um único elemento material falso torna o item errado.",
+      "rule_summary_bullets": [
+        "Veículo irrecuperável, definitivamente desmontado ou sinistrado com perda total exige baixa do registro.",
+        "O prazo atual é de 30 dias, não 15 dias.",
+        "Deixar de promover a baixa configura infração grave pelo CTB, art. 240."
+      ],
+      "professor_tip": "A pegadinha é a banca manter a consequência correta, mas trocar o prazo. Foque no número: 30 dias.",
+      "common_traps": [
+        "Responder CERTO porque a baixa é obrigatória e ignorar o prazo errado.",
+        "Confundir comentário histórico com regra vigente."
+      ],
+      "study_conclusion": "Estude esta questão como ERRADA pela legislação atual. Se o enunciado fosse adaptado para 30 dias, a conclusão poderia mudar.",
+      "show_warning": null,
+      "show_before_answer": false,
+      "show_after_answer": true,
+      "generated_by": "chatgpt_golden_v5",
+      "verified_status": "golden_manual_reviewed",
+      "teaching_card_md": "# Teoria aplicada à questão #28259\n\n**Gabarito pela legislação atual:** ERRADO\n\n## O que a questão cobra\nO enunciado mistura uma regra que continua correta — a baixa do veículo irrecuperável — com um prazo antigo de 15 dias.\n\n## Regra que resolve esta questão\nPela regra vigente, a baixa deve ser providenciada em 30 dias após a constatação da condição do veículo por meio de laudo, nos casos aplicáveis. A omissão permanece sujeita ao art. 240 do CTB.\n\n## Fundamento\nResolução CONTRAN nº 967/2022, art. 5º; CTB, art. 240.\n\n## Explicação aplicada ao enunciado\nA questão fica errada porque afirma prazo de 15 dias. A consequência de infração grave está correta, mas, em certo/errado, um único elemento material falso torna o item errado.\n\n## Regra em resumo\n- Veículo irrecuperável, definitivamente desmontado ou sinistrado com perda total exige baixa do registro.\n- O prazo atual é de 30 dias, não 15 dias.\n- Deixar de promover a baixa configura infração grave pelo CTB, art. 240.\n\n## Pegadinha de prova\nA pegadinha é a banca manter a consequência correta, mas trocar o prazo. Foque no número: 30 dias.\n\n## Conclusão para estudo\nEstude esta questão como ERRADA pela legislação atual. Se o enunciado fosse adaptado para 30 dias, a conclusão poderia mudar.\n",
+      "teaching_card_html": "# Teoria aplicada à questão #28259<br><br>**Gabarito pela legislação atual:** ERRADO<br><br>## O que a questão cobra<br>O enunciado mistura uma regra que continua correta — a baixa do veículo irrecuperável — com um prazo antigo de 15 dias.<br><br>## Regra que resolve esta questão<br>Pela regra vigente, a baixa deve ser providenciada em 30 dias após a constatação da condição do veículo por meio de laudo, nos casos aplicáveis. A omissão permanece sujeita ao art. 240 do CTB.<br><br>## Fundamento<br>Resolução CONTRAN nº 967/2022, art. 5º; CTB, art. 240.<br><br>## Explicação aplicada ao enunciado<br>A questão fica errada porque afirma prazo de 15 dias. A consequência de infração grave está correta, mas, em certo/errado, um único elemento material falso torna o item errado.<br><br>## Regra em resumo<br>- Veículo irrecuperável, definitivamente desmontado ou sinistrado com perda total exige baixa do registro.<br>- O prazo atual é de 30 dias, não 15 dias.<br>- Deixar de promover a baixa configura infração grave pelo CTB, art. 240.<br><br>## Pegadinha de prova<br>A pegadinha é a banca manter a consequência correta, mas trocar o prazo. Foque no número: 30 dias.<br><br>## Conclusão para estudo<br>Estude esta questão como ERRADA pela legislação atual. Se o enunciado fosse adaptado para 30 dias, a conclusão poderia mudar.<br>"
+    },
+    {
+      "question_id": 28260,
+      "card_status": "published",
+      "source_mode": "current_law_verified",
+      "historical_answer": "CERTO",
+      "current_answer": "CERTO",
+      "answer_changed": false,
+      "no_valid_alternative": false,
+      "title": "Película refletiva nas áreas envidraçadas",
+      "question_focus": "O enunciado pergunta se é proibida a aplicação de película refletiva nos vidros do veículo.",
+      "rule_that_solves_this_question": "A regra vigente veda a aplicação de películas refletivas nas áreas envidraçadas do veículo.",
+      "legal_basis": "Resolução CONTRAN nº 960/2022, art. 10, I.",
+      "article_excerpt": "Art. 10. São vedados: I — a aplicação de películas refletivas nas áreas envidraçadas do veículo.",
+      "applied_explanation": "A afirmação continua correta. “São vedados” equivale, para fins de prova, a dizer que a película refletiva é proibida.",
+      "rule_summary_bullets": [
+        "Película refletiva: vedada/proibida.",
+        "Película opaca ou que prejudique visibilidade/fiscalização: irregular.",
+        "Película não refletiva: pode ser admitida se respeitar a transmitância luminosa exigida."
+      ],
+      "professor_tip": "A pegadinha é trocar “película refletiva” por “qualquer película”. A norma não proíbe toda película; ela veda a refletiva e disciplina a película permitida.",
+      "common_traps": [
+        "Achar que qualquer película é proibida.",
+        "Confundir película refletiva com película não refletiva dentro dos percentuais."
+      ],
+      "study_conclusion": "Pode estudar esta questão como CERTA pela legislação atual.",
+      "show_warning": null,
+      "show_before_answer": false,
+      "show_after_answer": true,
+      "generated_by": "chatgpt_golden_v5",
+      "verified_status": "golden_manual_reviewed",
+      "teaching_card_md": "# Teoria aplicada à questão #28260\n\n**Gabarito pela legislação atual:** CERTO\n\n## O que a questão cobra\nO enunciado pergunta se é proibida a aplicação de película refletiva nos vidros do veículo.\n\n## Regra que resolve esta questão\nA regra vigente veda a aplicação de películas refletivas nas áreas envidraçadas do veículo.\n\n## Fundamento\nResolução CONTRAN nº 960/2022, art. 10, I.\n\n> Art. 10. São vedados: I — a aplicação de películas refletivas nas áreas envidraçadas do veículo.\n\n## Explicação aplicada ao enunciado\nA afirmação continua correta. “São vedados” equivale, para fins de prova, a dizer que a película refletiva é proibida.\n\n## Regra em resumo\n- Película refletiva: vedada/proibida.\n- Película opaca ou que prejudique visibilidade/fiscalização: irregular.\n- Película não refletiva: pode ser admitida se respeitar a transmitância luminosa exigida.\n\n## Pegadinha de prova\nA pegadinha é trocar “película refletiva” por “qualquer película”. A norma não proíbe toda película; ela veda a refletiva e disciplina a película permitida.\n\n## Conclusão para estudo\nPode estudar esta questão como CERTA pela legislação atual.\n",
+      "teaching_card_html": "# Teoria aplicada à questão #28260<br><br>**Gabarito pela legislação atual:** CERTO<br><br>## O que a questão cobra<br>O enunciado pergunta se é proibida a aplicação de película refletiva nos vidros do veículo.<br><br>## Regra que resolve esta questão<br>A regra vigente veda a aplicação de películas refletivas nas áreas envidraçadas do veículo.<br><br>## Fundamento<br>Resolução CONTRAN nº 960/2022, art. 10, I.<br><br>> Art. 10. São vedados: I — a aplicação de películas refletivas nas áreas envidraçadas do veículo.<br><br>## Explicação aplicada ao enunciado<br>A afirmação continua correta. “São vedados” equivale, para fins de prova, a dizer que a película refletiva é proibida.<br><br>## Regra em resumo<br>- Película refletiva: vedada/proibida.<br>- Película opaca ou que prejudique visibilidade/fiscalização: irregular.<br>- Película não refletiva: pode ser admitida se respeitar a transmitância luminosa exigida.<br><br>## Pegadinha de prova<br>A pegadinha é trocar “película refletiva” por “qualquer película”. A norma não proíbe toda película; ela veda a refletiva e disciplina a película permitida.<br><br>## Conclusão para estudo<br>Pode estudar esta questão como CERTA pela legislação atual.<br>"
+    },
+    {
+      "question_id": 2002422,
+      "card_status": "published",
+      "source_mode": "current_law_verified",
+      "historical_answer": "E",
+      "current_answer": "D",
+      "answer_changed": true,
+      "no_valid_alternative": false,
+      "title": "Transmitância luminosa do para-brisa: 70%",
+      "question_focus": "A questão pede o percentual mínimo de transmissão luminosa para os vidros incolores dos para-brisas.",
+      "rule_that_solves_this_question": "Pela regra atual, a transmitância luminosa não pode ser inferior a 70% para para-brisas e demais áreas envidraçadas indispensáveis à dirigibilidade.",
+      "legal_basis": "Resolução CONTRAN nº 960/2022, art. 4º, I.",
+      "article_excerpt": "Art. 4º A transmitância luminosa das áreas envidraçadas: I - não poderá ser inferior a 70% para os vidros dos para-brisas e das demais áreas envidraçadas indispensáveis à dirigibilidade do veículo.",
+      "applied_explanation": "A alternativa correta pela legislação atual é D, porque o enunciado pergunta especificamente o percentual do para-brisa. O percentual antigo de 75% não deve ser usado.",
+      "rule_summary_bullets": [
+        "Para-brisa e áreas indispensáveis à dirigibilidade: mínimo de 70%.",
+        "Áreas não indispensáveis: observar regra específica da Resolução 960/2022 e alterações.",
+        "Película refletiva segue vedada."
+      ],
+      "professor_tip": "A pegadinha é memorizar o percentual antigo de 75%. Pela regra atual, para para-brisa, guarde 70%.",
+      "common_traps": [
+        "Marcar 75% por memória de resolução revogada.",
+        "Misturar para-brisa com vidros não indispensáveis à dirigibilidade."
+      ],
+      "study_conclusion": "Estude esta questão como alternativa D pela legislação atual.",
+      "show_warning": null,
+      "show_before_answer": false,
+      "show_after_answer": true,
+      "generated_by": "chatgpt_golden_v5",
+      "verified_status": "golden_manual_reviewed",
+      "teaching_card_md": "# Teoria aplicada à questão #2002422\n\n**Gabarito pela legislação atual:** D\n\n## O que a questão cobra\nA questão pede o percentual mínimo de transmissão luminosa para os vidros incolores dos para-brisas.\n\n## Regra que resolve esta questão\nPela regra atual, a transmitância luminosa não pode ser inferior a 70% para para-brisas e demais áreas envidraçadas indispensáveis à dirigibilidade.\n\n## Fundamento\nResolução CONTRAN nº 960/2022, art. 4º, I.\n\n> Art. 4º A transmitância luminosa das áreas envidraçadas: I - não poderá ser inferior a 70% para os vidros dos para-brisas e das demais áreas envidraçadas indispensáveis à dirigibilidade do veículo.\n\n## Explicação aplicada ao enunciado\nA alternativa correta pela legislação atual é D, porque o enunciado pergunta especificamente o percentual do para-brisa. O percentual antigo de 75% não deve ser usado.\n\n## Regra em resumo\n- Para-brisa e áreas indispensáveis à dirigibilidade: mínimo de 70%.\n- Áreas não indispensáveis: observar regra específica da Resolução 960/2022 e alterações.\n- Película refletiva segue vedada.\n\n## Pegadinha de prova\nA pegadinha é memorizar o percentual antigo de 75%. Pela regra atual, para para-brisa, guarde 70%.\n\n## Conclusão para estudo\nEstude esta questão como alternativa D pela legislação atual.\n",
+      "teaching_card_html": "# Teoria aplicada à questão #2002422<br><br>**Gabarito pela legislação atual:** D<br><br>## O que a questão cobra<br>A questão pede o percentual mínimo de transmissão luminosa para os vidros incolores dos para-brisas.<br><br>## Regra que resolve esta questão<br>Pela regra atual, a transmitância luminosa não pode ser inferior a 70% para para-brisas e demais áreas envidraçadas indispensáveis à dirigibilidade.<br><br>## Fundamento<br>Resolução CONTRAN nº 960/2022, art. 4º, I.<br><br>> Art. 4º A transmitância luminosa das áreas envidraçadas: I - não poderá ser inferior a 70% para os vidros dos para-brisas e das demais áreas envidraçadas indispensáveis à dirigibilidade do veículo.<br><br>## Explicação aplicada ao enunciado<br>A alternativa correta pela legislação atual é D, porque o enunciado pergunta especificamente o percentual do para-brisa. O percentual antigo de 75% não deve ser usado.<br><br>## Regra em resumo<br>- Para-brisa e áreas indispensáveis à dirigibilidade: mínimo de 70%.<br>- Áreas não indispensáveis: observar regra específica da Resolução 960/2022 e alterações.<br>- Película refletiva segue vedada.<br><br>## Pegadinha de prova<br>A pegadinha é memorizar o percentual antigo de 75%. Pela regra atual, para para-brisa, guarde 70%.<br><br>## Conclusão para estudo<br>Estude esta questão como alternativa D pela legislação atual.<br>"
+    },
+    {
+      "question_id": 1028008,
+      "card_status": "no_valid_alternative",
+      "source_mode": "current_law_no_valid_alternative",
+      "historical_answer": "D",
+      "current_answer": null,
+      "answer_changed": true,
+      "no_valid_alternative": true,
+      "title": "Questão antiga de transmitância sem alternativa compatível",
+      "question_focus": "O enunciado usa a lógica da Resolução CONTRAN nº 254/2007 e oferece alternativas com combinação antiga de percentuais.",
+      "rule_that_solves_this_question": "Pela regra vigente, a combinação antiga 75% / 70% / 28% não corresponde ao desenho atual aplicável aos vidros indispensáveis à dirigibilidade.",
+      "legal_basis": "Resolução CONTRAN nº 960/2022, art. 4º, com alterações posteriores pertinentes.",
+      "article_excerpt": null,
+      "applied_explanation": "A questão não deve ser pontuada pela legislação atual porque nenhuma alternativa reproduz corretamente a combinação vigente. Ela serve para aprender a mudança, mas não para correção automática.",
+      "rule_summary_bullets": [
+        "Não use o gabarito antigo como resposta atual.",
+        "O para-brisa está no grupo de 70% pela regra vigente.",
+        "Se nenhuma alternativa for compatível com a regra atual, a questão deve ser marcada como sem alternativa válida."
+      ],
+      "professor_tip": "A pegadinha é tentar escolher a alternativa “menos errada”. Em estudo pela lei atual, a resposta correta é: não pontuar.",
+      "common_traps": [
+        "Forçar uma alternativa antiga.",
+        "Tratar questão desatualizada como se ainda tivesse gabarito válido."
+      ],
+      "study_conclusion": "Não use esta questão para pontuação no modo legislação atual. Use apenas como alerta sobre mudança normativa.",
+      "show_warning": "sem alternativa compatível pela legislação atual",
+      "show_before_answer": false,
+      "show_after_answer": true,
+      "generated_by": "chatgpt_golden_v5",
+      "verified_status": "golden_manual_reviewed",
+      "teaching_card_md": "# Teoria aplicada à questão #1028008\n\n**Gabarito pela legislação atual:** sem alternativa compatível / não pontuar\n\n## O que a questão cobra\nO enunciado usa a lógica da Resolução CONTRAN nº 254/2007 e oferece alternativas com combinação antiga de percentuais.\n\n## Regra que resolve esta questão\nPela regra vigente, a combinação antiga 75% / 70% / 28% não corresponde ao desenho atual aplicável aos vidros indispensáveis à dirigibilidade.\n\n## Fundamento\nResolução CONTRAN nº 960/2022, art. 4º, com alterações posteriores pertinentes.\n\n## Explicação aplicada ao enunciado\nA questão não deve ser pontuada pela legislação atual porque nenhuma alternativa reproduz corretamente a combinação vigente. Ela serve para aprender a mudança, mas não para correção automática.\n\n## Regra em resumo\n- Não use o gabarito antigo como resposta atual.\n- O para-brisa está no grupo de 70% pela regra vigente.\n- Se nenhuma alternativa for compatível com a regra atual, a questão deve ser marcada como sem alternativa válida.\n\n## Pegadinha de prova\nA pegadinha é tentar escolher a alternativa “menos errada”. Em estudo pela lei atual, a resposta correta é: não pontuar.\n\n## Conclusão para estudo\nNão use esta questão para pontuação no modo legislação atual. Use apenas como alerta sobre mudança normativa.\n",
+      "teaching_card_html": "# Teoria aplicada à questão #1028008<br><br>**Gabarito pela legislação atual:** sem alternativa compatível / não pontuar<br><br>## O que a questão cobra<br>O enunciado usa a lógica da Resolução CONTRAN nº 254/2007 e oferece alternativas com combinação antiga de percentuais.<br><br>## Regra que resolve esta questão<br>Pela regra vigente, a combinação antiga 75% / 70% / 28% não corresponde ao desenho atual aplicável aos vidros indispensáveis à dirigibilidade.<br><br>## Fundamento<br>Resolução CONTRAN nº 960/2022, art. 4º, com alterações posteriores pertinentes.<br><br>## Explicação aplicada ao enunciado<br>A questão não deve ser pontuada pela legislação atual porque nenhuma alternativa reproduz corretamente a combinação vigente. Ela serve para aprender a mudança, mas não para correção automática.<br><br>## Regra em resumo<br>- Não use o gabarito antigo como resposta atual.<br>- O para-brisa está no grupo de 70% pela regra vigente.<br>- Se nenhuma alternativa for compatível com a regra atual, a questão deve ser marcada como sem alternativa válida.<br><br>## Pegadinha de prova<br>A pegadinha é tentar escolher a alternativa “menos errada”. Em estudo pela lei atual, a resposta correta é: não pontuar.<br><br>## Conclusão para estudo<br>Não use esta questão para pontuação no modo legislação atual. Use apenas como alerta sobre mudança normativa.<br>"
+    },
+    {
+      "question_id": 28104,
+      "card_status": "published",
+      "source_mode": "historical_law",
+      "historical_answer": "ERRADO",
+      "current_answer": "ERRADO",
+      "answer_changed": false,
+      "no_valid_alternative": false,
+      "title": "Condução de escolares: quando há transporte escolar regular",
+      "question_focus": "A situação descreve pais revezando o transporte dos próprios filhos e dos filhos de amigo, em automóvel particular.",
+      "rule_that_solves_this_question": "As exigências de autorização e categoria D se aplicam a veículo destinado à condução coletiva de escolares, não ao revezamento particular descrito no enunciado.",
+      "legal_basis": "CTB, arts. 136 e 138.",
+      "article_excerpt": null,
+      "applied_explanation": "O item está errado porque transforma uma situação particular de revezamento familiar em transporte escolar regulamentado. O CTB exige autorização, inspeção e condutor categoria D para veículo destinado à condução coletiva de escolares.",
+      "rule_summary_bullets": [
+        "Transporte escolar regular: exige autorização, inspeção e requisitos do condutor.",
+        "Condutor de veículo escolar deve atender aos requisitos do art. 138 do CTB.",
+        "Revezamento familiar em carro particular não vira automaticamente transporte escolar regulamentado."
+      ],
+      "professor_tip": "A pegadinha é confundir transporte escolar regular com carona/revezamento entre pais.",
+      "common_traps": [
+        "Aplicar automaticamente as regras do transporte escolar a qualquer transporte de crianças.",
+        "Ignorar que o veículo não era destinado à condução coletiva de escolares."
+      ],
+      "study_conclusion": "Estude esta questão como ERRADA no gabarito histórico/legislação não desatualizada.",
+      "show_warning": null,
+      "show_before_answer": false,
+      "show_after_answer": true,
+      "generated_by": "chatgpt_golden_v5",
+      "verified_status": "golden_manual_reviewed",
+      "teaching_card_md": "# Teoria aplicada à questão #28104\n\n**Gabarito pela legislação atual:** ERRADO\n\n## O que a questão cobra\nA situação descreve pais revezando o transporte dos próprios filhos e dos filhos de amigo, em automóvel particular.\n\n## Regra que resolve esta questão\nAs exigências de autorização e categoria D se aplicam a veículo destinado à condução coletiva de escolares, não ao revezamento particular descrito no enunciado.\n\n## Fundamento\nCTB, arts. 136 e 138.\n\n## Explicação aplicada ao enunciado\nO item está errado porque transforma uma situação particular de revezamento familiar em transporte escolar regulamentado. O CTB exige autorização, inspeção e condutor categoria D para veículo destinado à condução coletiva de escolares.\n\n## Regra em resumo\n- Transporte escolar regular: exige autorização, inspeção e requisitos do condutor.\n- Condutor de veículo escolar deve atender aos requisitos do art. 138 do CTB.\n- Revezamento familiar em carro particular não vira automaticamente transporte escolar regulamentado.\n\n## Pegadinha de prova\nA pegadinha é confundir transporte escolar regular com carona/revezamento entre pais.\n\n## Conclusão para estudo\nEstude esta questão como ERRADA no gabarito histórico/legislação não desatualizada.\n",
+      "teaching_card_html": "# Teoria aplicada à questão #28104<br><br>**Gabarito pela legislação atual:** ERRADO<br><br>## O que a questão cobra<br>A situação descreve pais revezando o transporte dos próprios filhos e dos filhos de amigo, em automóvel particular.<br><br>## Regra que resolve esta questão<br>As exigências de autorização e categoria D se aplicam a veículo destinado à condução coletiva de escolares, não ao revezamento particular descrito no enunciado.<br><br>## Fundamento<br>CTB, arts. 136 e 138.<br><br>## Explicação aplicada ao enunciado<br>O item está errado porque transforma uma situação particular de revezamento familiar em transporte escolar regulamentado. O CTB exige autorização, inspeção e condutor categoria D para veículo destinado à condução coletiva de escolares.<br><br>## Regra em resumo<br>- Transporte escolar regular: exige autorização, inspeção e requisitos do condutor.<br>- Condutor de veículo escolar deve atender aos requisitos do art. 138 do CTB.<br>- Revezamento familiar em carro particular não vira automaticamente transporte escolar regulamentado.<br><br>## Pegadinha de prova<br>A pegadinha é confundir transporte escolar regular com carona/revezamento entre pais.<br><br>## Conclusão para estudo<br>Estude esta questão como ERRADA no gabarito histórico/legislação não desatualizada.<br>"
+    }
+  ]
+}
