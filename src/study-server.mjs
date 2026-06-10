@@ -2601,6 +2601,12 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
   if (resolvedPlan !== 'ver_todas') {
     filters.push(`${answerSql} != ''`);
     filters.push('COALESCE(q.anulada, 0) = 0');
+    filters.push(`NOT (
+      (last_answer.is_correct = 1 OR qm.last_result = 1)
+      AND qm.next_due_at IS NOT NULL
+      AND CAST(qm.next_due_at AS TEXT) != ''
+      AND qm.next_due_at > CURRENT_TIMESTAMP
+    )`);
     if (hasNormativeTeachingTable()) {
       filters.push(`NOT EXISTS (
         SELECT 1
