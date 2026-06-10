@@ -188,18 +188,48 @@ button:disabled {
   color: var(--text);
 }
 
-.field select[multiple] {
-  height: auto;
-  min-height: 132px;
-  padding: 6px 8px;
-}
-
-.field select[multiple] option {
-  padding: 4px 6px;
-}
-
 .advanced-field-wide {
   grid-column: span 2;
+}
+
+.matter-exclusion-list {
+  display: grid;
+  max-height: 180px;
+  overflow: auto;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  background: var(--surface);
+}
+
+.matter-exclusion-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-height: 28px;
+  padding: 5px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.matter-exclusion-option:hover {
+  background: var(--surface-muted);
+}
+
+.matter-exclusion-option input {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: auto;
+  margin-top: 1px;
+}
+
+.matter-exclusion-option span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .filter-actions {

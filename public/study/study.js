@@ -58,7 +58,7 @@ const els = {
   searchInput: document.querySelector('#searchInput'),
   matterSelect: document.querySelector('#matterSelect'),
   subjectSelect: document.querySelector('#subjectSelect'),
-  excludedMatterSelect: document.querySelector('#excludedMatterSelect'),
+  excludedMatterList: document.querySelector('#excludedMatterList'),
   profileSelect: document.querySelector('#profileSelect'),
   commentedOnly: document.querySelector('#commentedOnly'),
   unansweredOnly: document.querySelector('#unansweredOnly'),
@@ -180,6 +180,7 @@ const els = {
 };
 
 let searchTimer = null;
+let excludedMatterTimer = null;
 const mobileLayoutQuery = window.matchMedia('(max-width: 760px)');
 let lockedBodyScrollY = 0;
 
@@ -257,13 +258,16 @@ function bindEvents() {
     if (state.normativeVisible) await loadNormativeReview();
   });
 
-  els.excludedMatterSelect.addEventListener('change', async () => {
-    state.filters.excludedMaterias = selectedOptions(els.excludedMatterSelect);
+  els.excludedMatterList.addEventListener('change', () => {
+    state.filters.excludedMaterias = selectedExcludedMatterValues();
     state.page = 1;
     updateAdvancedFiltersSummary();
-    await loadCurrentModeTarget();
-    if (state.subjectsVisible) await loadSubjectsRanking();
-    if (state.normativeVisible) await loadNormativeReview();
+    clearTimeout(excludedMatterTimer);
+    excludedMatterTimer = setTimeout(async () => {
+      await loadCurrentModeTarget();
+      if (state.subjectsVisible) await loadSubjectsRanking();
+      if (state.normativeVisible) await loadNormativeReview();
+    }, 350);
   });
 
   els.profileSelect.addEventListener('change', async () => {
@@ -728,7 +732,7 @@ function clearFilters() {
   els.matterSelect.value = '';
   renderSubjectOptions();
   els.subjectSelect.value = '';
-  setSelectedOptions(els.excludedMatterSelect, []);
+  renderExcludedMatterOptions();
   els.commentedOnly.checked = false;
   els.unansweredOnly.checked = false;
   els.wrongOnly.checked = false;
@@ -879,23 +883,34 @@ async function loadFilters() {
   els.matterSelect.innerHTML = '<option value="">Todas</option>' + (filters.matters || [])
     .map((matter) => `<option value="${escapeAttr(matter.name)}">${escapeHtml(matter.name)} (${matter.count})</option>`)
     .join('');
-  els.excludedMatterSelect.innerHTML = (filters.matters || [])
-    .map((matter) => `<option value="${escapeAttr(matter.name)}">${escapeHtml(matter.name)} (${matter.count})</option>`)
-    .join('');
-  setSelectedOptions(els.excludedMatterSelect, state.filters.excludedMaterias);
+  renderExcludedMatterOptions(filters.matters || []);
 
   renderSubjectOptions();
 }
 
-function selectedOptions(select) {
-  return [...(select?.selectedOptions || [])].map((option) => option.value).filter(Boolean);
+function renderExcludedMatterOptions(matters) {
+  const selected = new Set(state.filters.excludedMaterias || []);
+  if (!Array.isArray(matters)) {
+    els.excludedMatterList.querySelectorAll('input[name="excludeMateria"]').forEach((input) => {
+      input.checked = selected.has(input.value);
+    });
+    return;
+  }
+  els.excludedMatterList.innerHTML = matters.map((matter) => {
+    const value = matter.name || '';
+    return `
+      <label class="matter-exclusion-option">
+        <input type="checkbox" name="excludeMateria" value="${escapeAttr(value)}" ${selected.has(value) ? 'checked' : ''}>
+        <span>${escapeHtml(value)} (${Number(matter.count || 0).toLocaleString('pt-BR')})</span>
+      </label>
+    `;
+  }).join('');
 }
 
-function setSelectedOptions(select, values) {
-  const selected = new Set(values || []);
-  [...(select?.options || [])].forEach((option) => {
-    option.selected = selected.has(option.value);
-  });
+function selectedExcludedMatterValues() {
+  return [...els.excludedMatterList.querySelectorAll('input[name="excludeMateria"]:checked')]
+    .map((input) => input.value)
+    .filter(Boolean);
 }
 
 async function loadExamProfiles() {
