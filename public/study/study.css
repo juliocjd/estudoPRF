@@ -188,6 +188,20 @@ button:disabled {
   color: var(--text);
 }
 
+.field select[multiple] {
+  height: auto;
+  min-height: 132px;
+  padding: 6px 8px;
+}
+
+.field select[multiple] option {
+  padding: 4px 6px;
+}
+
+.advanced-field-wide {
+  grid-column: span 2;
+}
+
 .filter-actions {
   display: flex;
   gap: 8px;
@@ -2142,6 +2156,10 @@ button:disabled {
   .study-metrics,
   .answer-actions {
     grid-template-columns: 1fr;
+  }
+
+  .advanced-field-wide {
+    grid-column: auto;
   }
 
   .question-card-head {

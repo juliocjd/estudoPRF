@@ -1395,6 +1395,7 @@ function getNormativeUpdates(searchParams) {
   const values = [];
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
+  const excludedMaterias = getExcludedMaterias(searchParams);
   const assunto = String(searchParams.get('assunto') || '').trim();
   const recomendacao = String(searchParams.get('recomendacao') || '').trim();
   const nivelSeguranca = String(searchParams.get('nivelSeguranca') || '').trim();
@@ -1418,6 +1419,7 @@ function getNormativeUpdates(searchParams) {
     where.push('q.materia = ?');
     values.push(materia);
   }
+  applyExcludedMateriasFilter(where, values, excludedMaterias);
   if (assunto) {
     where.push('q.assunto = ?');
     values.push(assunto);
@@ -1780,6 +1782,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
 
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
+  const excludedMaterias = getExcludedMaterias(searchParams, extra);
   const assunto = String(searchParams.get('assunto') || '').trim();
   const commented = searchParams.get('commented') === '1';
   const unanswered = searchParams.get('unanswered') === '1' || extra.unanswered;
@@ -1801,6 +1804,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
     where.push('q.materia = ?');
     values.push(materia);
   }
+  applyExcludedMateriasFilter(where, values, excludedMaterias);
   if (assunto) {
     where.push('q.assunto = ?');
     values.push(assunto);
@@ -1866,6 +1870,23 @@ function buildQuestionWhere(searchParams, extra = {}) {
     whereSql: where.length ? `WHERE ${where.join(' AND ')}` : '',
     values
   };
+}
+
+function getExcludedMaterias(searchParams, extra = {}) {
+  const repeated = typeof searchParams.getAll === 'function'
+    ? searchParams.getAll('excludeMateria')
+    : [];
+  const csv = String(searchParams.get('excludeMaterias') || '').split(',');
+  const extraValues = Array.isArray(extra.excludeMaterias) ? extra.excludeMaterias : [];
+  return [...new Set([...repeated, ...csv, ...extraValues]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean))];
+}
+
+function applyExcludedMateriasFilter(where, values, materias, alias = 'q') {
+  if (!materias.length) return;
+  where.push(`COALESCE(${alias}.materia, '') NOT IN (${materias.map(() => '?').join(', ')})`);
+  values.push(...materias);
 }
 
 function applyQuestionStudyStatusFilter(where) {
@@ -3740,6 +3761,7 @@ function getSubjectsRanking(searchParams) {
   const limit = Math.min(200, Math.max(10, Number(searchParams.get('limit') || 80)));
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
+  const excludedMaterias = getExcludedMaterias(searchParams);
   const hideOutdated = searchParams.get('hideOutdated') === '1';
   const hideStudyExcluded = searchParams.get('hideStudyExcluded') === '1';
   const where = ["COALESCE(q.assunto, '') != ''"];
@@ -3753,6 +3775,7 @@ function getSubjectsRanking(searchParams) {
     where.push('q.materia = ?');
     values.push(materia);
   }
+  applyExcludedMateriasFilter(where, values, excludedMaterias);
   if (hideOutdated) {
     where.push('COALESCE(q.desatualizada, 0) = 0');
   }
@@ -3867,6 +3890,7 @@ function getSubjectMasteryRanking(searchParams) {
   const limit = Math.min(500, Math.max(10, Number(searchParams.get('limit') || 200)));
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
+  const excludedMaterias = getExcludedMaterias(searchParams);
   const where = ["COALESCE(q.assunto, '') != ''"];
   const values = [];
 
@@ -3878,6 +3902,7 @@ function getSubjectMasteryRanking(searchParams) {
     where.push('q.materia = ?');
     values.push(materia);
   }
+  applyExcludedMateriasFilter(where, values, excludedMaterias);
 
   const rows = db.prepare(`
     SELECT

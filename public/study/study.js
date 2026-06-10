@@ -27,6 +27,7 @@ const state = {
     q: '',
     materia: '',
     assunto: '',
+    excludedMaterias: [],
     commented: false,
     unanswered: false,
     lastWrong: false,
@@ -57,6 +58,7 @@ const els = {
   searchInput: document.querySelector('#searchInput'),
   matterSelect: document.querySelector('#matterSelect'),
   subjectSelect: document.querySelector('#subjectSelect'),
+  excludedMatterSelect: document.querySelector('#excludedMatterSelect'),
   profileSelect: document.querySelector('#profileSelect'),
   commentedOnly: document.querySelector('#commentedOnly'),
   unansweredOnly: document.querySelector('#unansweredOnly'),
@@ -255,6 +257,15 @@ function bindEvents() {
     if (state.normativeVisible) await loadNormativeReview();
   });
 
+  els.excludedMatterSelect.addEventListener('change', async () => {
+    state.filters.excludedMaterias = selectedOptions(els.excludedMatterSelect);
+    state.page = 1;
+    updateAdvancedFiltersSummary();
+    await loadCurrentModeTarget();
+    if (state.subjectsVisible) await loadSubjectsRanking();
+    if (state.normativeVisible) await loadNormativeReview();
+  });
+
   els.profileSelect.addEventListener('change', async () => {
     state.activeProfile = els.profileSelect.value;
     await api('/api/exam-profiles/active', {
@@ -376,7 +387,7 @@ function bindEvents() {
   els.repairQueue.addEventListener('click', () => {
     closeAllDropdowns();
     setStudyMode('repair');
-    loadRepairQueueTarget();
+    loadAdaptiveTarget('revisar_erros');
   });
   els.dueReviews.addEventListener('click', () => {
     closeAllDropdowns();
@@ -702,6 +713,7 @@ function clearFilters() {
     q: '',
     materia: '',
     assunto: '',
+    excludedMaterias: [],
     commented: false,
     unanswered: false,
     lastWrong: false,
@@ -716,6 +728,7 @@ function clearFilters() {
   els.matterSelect.value = '';
   renderSubjectOptions();
   els.subjectSelect.value = '';
+  setSelectedOptions(els.excludedMatterSelect, []);
   els.commentedOnly.checked = false;
   els.unansweredOnly.checked = false;
   els.wrongOnly.checked = false;
@@ -732,6 +745,7 @@ function updateAdvancedFiltersSummary() {
     state.filters.q,
     state.filters.materia,
     state.filters.assunto,
+    state.filters.excludedMaterias.length,
     state.filters.commented,
     state.filters.unanswered,
     state.filters.lastWrong,
@@ -757,7 +771,7 @@ function setStudyMode(mode) {
     adaptive: 'Plano: PRF Otimizado',
     all: 'Modo: Ver todas',
     review: 'Modo: Revisar hoje',
-    repair: 'Modo: Corrigir erros',
+    repair: 'Plano: Revisar erros',
     unanswered: 'Modo: Não resolvidas',
     subject: 'Modo: Trocar assunto'
   };
@@ -853,7 +867,7 @@ async function loadStats() {
   els.stats.innerHTML = [
     statMarkup(stats.readyToStudy ?? stats.knownAnswers ?? 0, 'prontas para estudar'),
     statMarkup(stats.dueReviews || 0, 'revisar hoje'),
-    statMarkup(stats.repairQuestions || 0, 'corrigir erros'),
+    statMarkup(stats.repairQuestions || 0, 'revisar erros'),
     statMarkup(stats.answered || 0, 'resolvidas')
   ].join('');
 }
@@ -865,8 +879,23 @@ async function loadFilters() {
   els.matterSelect.innerHTML = '<option value="">Todas</option>' + (filters.matters || [])
     .map((matter) => `<option value="${escapeAttr(matter.name)}">${escapeHtml(matter.name)} (${matter.count})</option>`)
     .join('');
+  els.excludedMatterSelect.innerHTML = (filters.matters || [])
+    .map((matter) => `<option value="${escapeAttr(matter.name)}">${escapeHtml(matter.name)} (${matter.count})</option>`)
+    .join('');
+  setSelectedOptions(els.excludedMatterSelect, state.filters.excludedMaterias);
 
   renderSubjectOptions();
+}
+
+function selectedOptions(select) {
+  return [...(select?.selectedOptions || [])].map((option) => option.value).filter(Boolean);
+}
+
+function setSelectedOptions(select, values) {
+  const selected = new Set(values || []);
+  [...(select?.options || [])].forEach((option) => {
+    option.selected = selected.has(option.value);
+  });
 }
 
 async function loadExamProfiles() {
@@ -945,7 +974,7 @@ async function loadCurrentModeTarget() {
   }
 
   if (state.studyMode === 'repair') {
-    await loadRepairQueueTarget();
+    await loadAdaptiveTarget('revisar_erros');
     return;
   }
 
@@ -965,6 +994,7 @@ function buildQuestionParams() {
   });
   if (state.filters.q) params.set('q', state.filters.q);
   if (state.filters.materia) params.set('materia', state.filters.materia);
+  for (const materia of state.filters.excludedMaterias) params.append('excludeMateria', materia);
   if (state.filters.assunto) params.set('assunto', state.filters.assunto);
   if (state.filters.commented) params.set('commented', '1');
   if (state.filters.unanswered) params.set('unanswered', '1');
@@ -1062,7 +1092,7 @@ async function goNext() {
   }
 
   if (state.studyMode === 'repair') {
-    await loadRepairQueueTarget();
+    await loadAdaptiveTarget('revisar_erros');
     return;
   }
 
@@ -1127,20 +1157,6 @@ async function navigateSpecial(mode) {
   await loadQuestions({ targetId: target.id });
 }
 
-async function loadRepairQueueTarget() {
-  setStudyMode('repair');
-  const params = buildQuestionParams();
-  params.set('limit', '1');
-  const data = await api(`/api/repair-queue?${params}`);
-  const target = data.rows?.[0];
-  if (!target?.id) {
-    els.answerStatus.textContent = 'Nada em reparo';
-    return;
-  }
-  state.page = 1;
-  await loadQuestions({ targetId: target.id });
-}
-
 async function loadSmartQueueV2Target() {
   return loadAdaptiveTarget('prf_otimizado');
 }
@@ -1177,6 +1193,7 @@ async function loadSubjectsRanking() {
   const params = new URLSearchParams({ limit: '80' });
   if (state.filters.q) params.set('q', state.filters.q);
   if (state.filters.materia) params.set('materia', state.filters.materia);
+  for (const materia of state.filters.excludedMaterias) params.append('excludeMateria', materia);
   if (state.filters.hideOutdated) params.set('hideOutdated', '1');
   if (state.filters.hideStudyExcluded) params.set('hideStudyExcluded', '1');
 
@@ -1287,6 +1304,7 @@ function buildNormativeReviewParams() {
   if (els.normativeReviewStatusFilter.value) params.set('reviewStatus', els.normativeReviewStatusFilter.value);
   if (els.normativeTeachingStatusFilter.value) params.set('teachingStatus', els.normativeTeachingStatusFilter.value);
   if (state.filters.materia) params.set('materia', state.filters.materia);
+  for (const materia of state.filters.excludedMaterias) params.append('excludeMateria', materia);
   if (state.filters.assunto) params.set('assunto', state.filters.assunto);
   if (state.filters.q) params.set('q', state.filters.q);
   return params;

@@ -80,6 +80,10 @@
           <input id="representativeOnly" type="checkbox">
           <span>Representativas</span>
         </label>
+        <label class="field advanced-field-wide">
+          <span>Excluir matérias</span>
+          <select id="excludedMatterSelect" multiple size="6" aria-label="Matérias que não quero estudar"></select>
+        </label>
         <label class="field compact-field">
           <span>Atualização normativa</span>
           <select id="normativeFilter">
@@ -124,7 +128,7 @@
               <div class="dropdown-menu" role="menu" hidden>
                 <button id="smartQueue" class="menu-item" type="button" hidden>Estudar agora</button>
                 <button id="dueReviews" class="menu-item" type="button">Revisar hoje</button>
-                <button id="repairQueue" class="menu-item" type="button">Corrigir erros</button>
+                <button id="repairQueue" class="menu-item" type="button">Revisar erros</button>
                 <button id="nextUnanswered" class="menu-item" type="button">Próxima não resolvida</button>
                 <button id="nextSubject" class="menu-item" type="button">Trocar assunto</button>
               </div>
