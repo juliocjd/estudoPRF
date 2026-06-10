@@ -18,6 +18,7 @@ const state = {
   studyMode: 'study',
   supportOpen: false,
   supportTab: 'comment',
+  inlineSupportTab: 'comment',
   lastSupportTrigger: null,
   questionStartedAt: Date.now(),
   timerId: null,
@@ -123,6 +124,12 @@ const els = {
   supportSubtitle: document.querySelector('#supportSubtitle'),
   closeSupport: document.querySelector('#closeSupport'),
   supportTabs: document.querySelectorAll('[data-support-tab]'),
+  inlineSupportCard: document.querySelector('#inlineSupportCard'),
+  inlineSupportTitle: document.querySelector('#inlineSupportTitle'),
+  inlineSupportSubtitle: document.querySelector('#inlineSupportSubtitle'),
+  inlineSupportTabs: document.querySelector('#inlineSupportTabs'),
+  inlineSupportBody: document.querySelector('#inlineSupportBody'),
+  inlineOpenDrawer: document.querySelector('#inlineOpenDrawer'),
   supportTheoryPanel: document.querySelector('#supportTheoryPanel'),
   supportAppliedTheoryPanel: document.querySelector('#supportAppliedTheoryPanel'),
   supportTabAppliedTheory: document.querySelector('#supportTabAppliedTheory'),
@@ -594,6 +601,35 @@ function bindEvents() {
     });
   });
 
+  els.inlineSupportTabs?.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-inline-support-tab]');
+    if (!button || button.disabled) return;
+    const tab = button.dataset.inlineSupportTab || 'comment';
+    state.inlineSupportTab = tab;
+    if (tab === 'similar') await loadSimilarQuestions();
+    if (tab === 'quickTheory') state.openedTheory = true;
+    renderInlineSupportCard();
+  });
+
+  els.inlineOpenDrawer?.addEventListener('click', () => {
+    openSupportPanel(state.inlineSupportTab || 'comment');
+  });
+
+  els.inlineSupportBody?.addEventListener('click', async (event) => {
+    const questionLinkTrigger = event.target.closest('[data-question-id]');
+    if (questionLinkTrigger) {
+      event.preventDefault();
+      event.stopPropagation();
+      const questionId = Number(questionLinkTrigger.dataset.questionId || 0);
+      if (questionId) await openQuestionDirect(questionId, { fallbackHref: questionLinkTrigger.href });
+      return;
+    }
+    const actionButton = event.target.closest('[data-action]');
+    if (actionButton) {
+      await handleInlineSupportAction(actionButton, event);
+    }
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && state.supportOpen) {
       closeSupportPanel();
@@ -1030,6 +1066,7 @@ function renderEmptyQuestion() {
   state.theoryUrl = '';
   state.supportOpen = false;
   state.supportTab = 'comment';
+  state.inlineSupportTab = 'comment';
   if (state.timerId) {
     clearInterval(state.timerId);
     state.timerId = null;
@@ -1052,6 +1089,8 @@ function renderEmptyQuestion() {
   els.answerDetails.innerHTML = '';
   els.answerResult.hidden = true;
   els.answerResult.innerHTML = '';
+  if (els.inlineSupportCard) els.inlineSupportCard.hidden = true;
+  if (els.inlineSupportBody) els.inlineSupportBody.innerHTML = '';
   els.answerHint.textContent = 'Sem questão selecionada';
   els.errorTypeWrapper.hidden = true;
   els.teachingInfo.textContent = '';
@@ -1340,6 +1379,7 @@ async function selectQuestion(questionId, options = {}) {
   state.eliminatedAnswers = new Set();
   state.supportOpen = false;
   state.supportTab = 'comment';
+  state.inlineSupportTab = 'comment';
   state.sawComment = false;
   state.openedTheory = false;
   state.questionStartedAt = Date.now();
@@ -1423,6 +1463,7 @@ function renderQuestion(question, options = {}) {
   renderMastery(question.mastery);
   renderQuestionSituationTone(question);
   els.statement.innerHTML = formatStatementHtml(question) || question.statementHtml || `<p>${escapeHtml(question.statementText || 'Sem enunciado')}</p>`;
+  applyStatementLengthClass(question);
   renderAnswerStatus(question);
 
   const alternatives = getDisplayAlternatives(question);
@@ -1523,6 +1564,7 @@ function renderQuestion(question, options = {}) {
   renderSelectedAlternative();
   updateAnswerActions();
   renderSupportVisibility();
+  renderInlineSupportCard();
 
   if (previousQuestionId !== nextQuestionId && options.scrollToStatement !== false) {
     scrollToStatementStart();
@@ -2507,6 +2549,7 @@ function renderAnswerResult(result) {
   renderSelectedAlternative();
   updateAnswerActions();
   renderSupportVisibility();
+  renderInlineSupportCard();
 }
 
 function applyAnswerResultToCurrentQuestion(result) {
@@ -3089,23 +3132,145 @@ function matchesCertoErradoAlias(answer, text) {
   return (answer === 'C' && text === 'CERTO') || (answer === 'E' && text === 'ERRADO');
 }
 
+function applyStatementLengthClass(question) {
+  const card = els.statement?.closest('.question-card');
+  if (!card) return;
+  const textLength = String(question?.statementText || els.statement?.textContent || '').replace(/\s+/g, ' ').trim().length;
+  card.classList.remove('is-short-statement', 'is-medium-statement', 'is-long-statement', 'is-very-long-statement');
+  if (textLength >= 1600) {
+    card.classList.add('is-very-long-statement');
+  } else if (textLength >= 900) {
+    card.classList.add('is-long-statement');
+  } else if (textLength >= 360) {
+    card.classList.add('is-medium-statement');
+  } else {
+    card.classList.add('is-short-statement');
+  }
+}
+
+function preferredSupportTab(question = state.currentQuestion) {
+  const canRevealCurrentLaw = canRevealCurrentLawAnswer(question);
+  const hasHistoricalComment = Boolean(question?.comment?.html || question?.comment?.text);
+  if (hasAppliedTheorySupport(question) && canRevealAppliedTheory(question)) return 'appliedTheory';
+  if (canRevealCurrentLaw && (question?.currentLawAnswer?.exists || question?.metadata?.desatualizada)) return 'teaching';
+  if (canRevealCurrentLaw && question?.normativeTeachingComment?.exists) return 'teaching';
+  if (hasHistoricalComment) return 'comment';
+  if (question?.normativeUpdate?.exists) return 'normative';
+  if (hasQuickTheorySupport(question)) return 'quickTheory';
+  return 'comment';
+}
+
+function supportTabTitle(tab, question = state.currentQuestion) {
+  const titles = {
+    teaching: ['Resposta pela legislacao atual', 'Gabarito atual, fundamento e conclusao de estudo'],
+    appliedTheory: ['Teoria aplicada', 'Regra que resolve esta questao'],
+    quickTheory: ['Teoria rapida', 'Regra, artigo e pegadinha de prova'],
+    comment: ['Explicacao historica', 'Comentario do professor e gabarito historico'],
+    normative: ['Atualizacao normativa', 'Analise auxiliar da desatualizacao'],
+    theory: ['Teoria relacionada', 'Material em PDF da materia/assunto'],
+    history: ['Historico da questao', 'Tentativas registradas no banco local'],
+    similar: question?.adaptive?.clusterPolicy === 'stats_only'
+      ? ['Outras do assunto', 'Agrupamento amplo para consulta']
+      : ['Questoes semelhantes', 'Representantes e variacoes de reforco']
+  };
+  return titles[tab] || titles.comment;
+}
+
+function inlineSupportTabs() {
+  return [
+    ['teaching', 'Resposta atual', els.supportTabTeaching],
+    ['appliedTheory', 'Teoria aplicada', els.supportTabAppliedTheory],
+    ['quickTheory', 'Teoria rápida', els.supportTabQuickTheory],
+    ['normative', 'Atualização normativa', els.supportTabNormative],
+    ['comment', 'Explicação histórica', null],
+    ['theory', 'PDF', null],
+    ['history', 'Histórico', null],
+    ['similar', 'Semelhantes', null]
+  ].filter(([, , sourceButton]) => !sourceButton || !sourceButton.hidden);
+}
+
+function inlineSupportBodyForTab(tab) {
+  const sources = {
+    teaching: els.supportTeachingBody,
+    appliedTheory: els.supportAppliedTheoryBody,
+    quickTheory: els.supportQuickTheoryBody,
+    normative: els.supportNormativeBody,
+    comment: els.commentBody,
+    theory: els.supportTheoryBody,
+    history: els.supportHistoryBody,
+    similar: els.supportSimilarBody
+  };
+  return sources[tab]?.innerHTML || '<p class="empty">Conteúdo indisponível.</p>';
+}
+
+function canUseInlineSupportTab(tab, sourceButton, question = state.currentQuestion) {
+  if (sourceButton?.disabled) return false;
+  if (supportTabRequiresAnswer(tab) && !canRevealExplanation(question)) return false;
+  if (tab === 'appliedTheory' && !canRevealAppliedTheory(question)) return false;
+  if (tab === 'quickTheory' && !hasQuickTheorySupport(question)) return false;
+  if (tab === 'normative' && !hasNormativeSupport(question)) return false;
+  if (tab === 'teaching') {
+    return Boolean(question?.currentLawAnswer?.exists || question?.normativeTeachingComment?.exists || question?.metadata?.desatualizada);
+  }
+  return true;
+}
+
+function renderInlineSupportCard() {
+  if (!els.inlineSupportCard) return;
+  const question = state.currentQuestion;
+  const shouldShow = Boolean(question && hasAnsweredCurrentPrompt(question) && canRevealExplanation(question));
+  els.inlineSupportCard.hidden = !shouldShow;
+  if (!shouldShow) {
+    if (els.inlineSupportBody) els.inlineSupportBody.innerHTML = '';
+    return;
+  }
+
+  const tabs = inlineSupportTabs();
+  const usableTabs = tabs.filter(([tab, , sourceButton]) => canUseInlineSupportTab(tab, sourceButton, question));
+  if (!usableTabs.some(([tab]) => tab === state.inlineSupportTab)) {
+    const preferred = preferredSupportTab(question);
+    state.inlineSupportTab = usableTabs.some(([tab]) => tab === preferred) ? preferred : (usableTabs[0]?.[0] || 'comment');
+  }
+
+  els.inlineSupportTabs.innerHTML = tabs.map(([tab, label, sourceButton]) => {
+    const disabled = !canUseInlineSupportTab(tab, sourceButton, question);
+    return `<button class="support-tab${tab === state.inlineSupportTab ? ' is-active' : ''}" type="button" data-inline-support-tab="${escapeAttr(tab)}" ${disabled ? 'disabled' : ''}>${escapeHtml(label)}</button>`;
+  }).join('');
+
+  const [title, subtitle] = supportTabTitle(state.inlineSupportTab, question);
+  els.inlineSupportTitle.textContent = title;
+  els.inlineSupportSubtitle.textContent = subtitle;
+  els.inlineSupportBody.innerHTML = inlineSupportBodyForTab(state.inlineSupportTab);
+}
+
+async function handleInlineSupportAction(button, event) {
+  const action = button.dataset.action || '';
+  if (!action.startsWith('current-law-') && !action.startsWith('teaching-')) return;
+  event.preventDefault();
+  if (action === 'current-law-edit') {
+    state.currentLawEditMode = true;
+    renderNormativeTeachingPanel(state.currentQuestion);
+  } else if (action === 'current-law-cancel-edit') {
+    state.currentLawEditMode = false;
+    renderNormativeTeachingPanel(state.currentQuestion);
+  } else if (action === 'current-law-save-edit') {
+    await saveCurrentLawAnswerEdit();
+  } else if (action === 'teaching-edit') {
+    state.teachingEditMode = true;
+    renderNormativeTeachingPanel(state.currentQuestion);
+  } else if (action === 'teaching-cancel-edit') {
+    state.teachingEditMode = false;
+    renderNormativeTeachingPanel(state.currentQuestion);
+  } else if (action === 'teaching-save-edit') {
+    await saveNormativeTeachingEdit();
+  } else if (action === 'teaching-reset-edit') {
+    await resetNormativeTeachingEdit();
+  }
+  renderInlineSupportCard();
+}
+
 function showCommentPanel() {
-  const canRevealCurrentLaw = canRevealCurrentLawAnswer(state.currentQuestion);
-  const hasHistoricalComment = Boolean(state.currentQuestion?.comment?.html || state.currentQuestion?.comment?.text);
-  const preferredTab = hasAppliedTheorySupport(state.currentQuestion) && canRevealAppliedTheory(state.currentQuestion)
-    ? 'appliedTheory'
-    : canRevealCurrentLaw && (state.currentQuestion?.currentLawAnswer?.exists || state.currentQuestion?.metadata?.desatualizada)
-      ? 'teaching'
-      : canRevealCurrentLaw && state.currentQuestion?.normativeTeachingComment?.exists
-        ? 'teaching'
-        : hasHistoricalComment
-          ? 'comment'
-          : state.currentQuestion?.normativeUpdate?.exists
-            ? 'normative'
-            : hasQuickTheorySupport(state.currentQuestion)
-              ? 'quickTheory'
-              : 'comment';
-  openSupportPanel(preferredTab);
+  openSupportPanel(preferredSupportTab(state.currentQuestion));
   state.sawComment = true;
   recordQuestionEvent('opened_comment');
 }

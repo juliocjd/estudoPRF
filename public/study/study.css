@@ -508,6 +508,7 @@ button:disabled {
 }
 
 .question-card,
+.inline-support-card,
 .answer-panel,
 .subjects-panel,
 .coverage-panel,
@@ -519,8 +520,24 @@ button:disabled {
 }
 
 .question-card {
+  grid-column: 1;
   overflow: hidden;
   min-height: 300px;
+}
+
+.inline-support-card {
+  grid-column: 1;
+  display: grid;
+  overflow: hidden;
+}
+
+.inline-support-card[hidden] {
+  display: none;
+}
+
+.answer-panel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
 }
 
 .study-layout.is-outdated-question .question-card,
@@ -615,6 +632,22 @@ button:disabled {
   color: var(--text);
   font-size: 18px;
   line-height: 1.68;
+}
+
+.question-card.is-short-statement .statement {
+  min-height: 180px;
+}
+
+.question-card.is-medium-statement .statement {
+  min-height: 240px;
+}
+
+.question-card.is-long-statement .statement {
+  min-height: 320px;
+}
+
+.question-card.is-very-long-statement .statement {
+  min-height: 420px;
 }
 
 .statement p {
@@ -1408,6 +1441,32 @@ button:disabled {
   padding: 15px 16px;
 }
 
+.inline-support-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 16px;
+  background: var(--surface);
+}
+
+.inline-support-head > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.inline-support-head strong {
+  font-size: 15px;
+}
+
+.inline-support-head span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .support-head > div {
   display: grid;
   gap: 3px;
@@ -1420,6 +1479,10 @@ button:disabled {
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
   min-width: 0;
+}
+
+.inline-support-tabs {
+  overflow-x: auto;
 }
 
 .support-tab {
@@ -1460,6 +1523,13 @@ button:disabled {
   color: var(--text);
   font-size: 15px;
   line-height: 1.62;
+}
+
+.inline-support-body {
+  max-height: min(58vh, 620px);
+  overflow: auto;
+  margin-top: 0;
+  padding: 18px 20px 22px;
 }
 
 .support-body p {
@@ -2053,7 +2123,13 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .inline-support-card {
+    display: none !important;
+  }
+
   .answer-panel {
+    grid-column: auto;
+    grid-row: auto;
     position: static;
   }
 }
