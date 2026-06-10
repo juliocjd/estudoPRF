@@ -2501,7 +2501,12 @@ function getStudyResumeTarget(searchParams) {
   const lastOpenId = Number(flow?.last_open_question_id || 0);
   const lastAnsweredId = Number(flow?.last_answered_question_id || 0);
 
-  if (lastOpenId && flow?.last_opened_at && !wasQuestionAnsweredAfter(lastOpenId, flow.last_opened_at)) {
+  if (
+    lastOpenId
+    && flow?.last_opened_at
+    && !wasQuestionAnsweredAfter(lastOpenId, flow.last_opened_at)
+    && !isQuestionInFutureReview(lastOpenId)
+  ) {
     recordServedQuestion(lastOpenId, {
       mode: plan,
       profileId,
@@ -2554,7 +2559,7 @@ function getStudyResumeTarget(searchParams) {
     };
   }
 
-  const fallback = getFallbackQuestionId(searchParams, { hideStudyExcluded: true });
+  const fallback = getFallbackQuestionId(searchParams, { hideStudyExcluded: true, hideFutureReviews: true });
   if (fallback) {
     return {
       id: fallback,
@@ -2602,10 +2607,14 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
     filters.push(`${answerSql} != ''`);
     filters.push('COALESCE(q.anulada, 0) = 0');
     filters.push(`NOT (
-      (last_answer.is_correct = 1 OR qm.last_result = 1)
-      AND qm.next_due_at IS NOT NULL
+      qm.next_due_at IS NOT NULL
       AND CAST(qm.next_due_at AS TEXT) != ''
       AND qm.next_due_at > CURRENT_TIMESTAMP
+      AND (
+        answer_stats.question_id IS NOT NULL
+        OR COALESCE(qm.attempts, 0) > 0
+        OR qm.last_result IS NOT NULL
+      )
     )`);
     if (hasNormativeTeachingTable()) {
       filters.push(`NOT EXISTS (
@@ -6541,6 +6550,29 @@ function wasQuestionAnsweredAfter(questionId, openedAt) {
   return Boolean(row);
 }
 
+function isQuestionInFutureReview(questionId) {
+  if (!questionId) return false;
+  const row = db.prepare(`
+    SELECT 1 AS future_review
+    FROM question_mastery qm
+    WHERE qm.question_id = ?
+      AND qm.next_due_at IS NOT NULL
+      AND CAST(qm.next_due_at AS TEXT) != ''
+      AND qm.next_due_at > CURRENT_TIMESTAMP
+      AND (
+        EXISTS (
+          SELECT 1
+          FROM study_answers sa
+          WHERE sa.question_id = qm.question_id
+        )
+        OR COALESCE(qm.attempts, 0) > 0
+        OR qm.last_result IS NOT NULL
+      )
+    LIMIT 1
+  `).get(questionId);
+  return Boolean(row);
+}
+
 function recordServedQuestion(questionId, { mode = '', profileId = '', source = '', reason = '', clusterId = null, servedContext = null } = {}) {
   if (!questionId) return;
   db.prepare(`
@@ -6560,8 +6592,37 @@ function recordServedQuestion(questionId, { mode = '', profileId = '', source = 
 }
 
 function getFallbackQuestionId(searchParams, extra = {}) {
-  const ids = getQuestionIds(searchParams, extra);
-  return ids[0] || null;
+  const { whereSql, values } = buildQuestionWhere(searchParams, extra);
+  const finalWhere = extra.hideFutureReviews
+    ? appendWhere(whereSql, `
+      NOT EXISTS (
+        SELECT 1
+        FROM question_mastery qm_future
+        WHERE qm_future.question_id = q.id_question
+          AND qm_future.next_due_at IS NOT NULL
+          AND CAST(qm_future.next_due_at AS TEXT) != ''
+          AND qm_future.next_due_at > CURRENT_TIMESTAMP
+          AND (
+            EXISTS (
+              SELECT 1
+              FROM study_answers sa_future
+              WHERE sa_future.question_id = qm_future.question_id
+            )
+            OR COALESCE(qm_future.attempts, 0) > 0
+            OR qm_future.last_result IS NOT NULL
+          )
+      )
+    `)
+    : whereSql;
+  const row = db.prepare(`
+    SELECT q.id_question AS id
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    ${finalWhere}
+    ORDER BY COALESCE(q.materia, ''), COALESCE(q.assunto, ''), q.id_question
+    LIMIT 1
+  `).get(...values);
+  return row?.id || null;
 }
 
 function getSetting(key, fallback = '') {
