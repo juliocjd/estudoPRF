@@ -19,6 +19,7 @@ const state = {
   supportOpen: false,
   supportTab: 'comment',
   inlineSupportTab: 'comment',
+  inlineSupportRenderKey: '',
   lastSupportTrigger: null,
   questionStartedAt: Date.now(),
   timerId: null,
@@ -1632,6 +1633,12 @@ function renderHistoricalCommentPanel(question) {
           spellcheck="true"
           aria-label="Editor da explicação histórica"
         >${html || '<p></p>'}</div>
+        ${question.metadata?.desatualizada ? `
+          <label class="historical-comment-option">
+            <input type="checkbox" data-historical-comment-clear-outdated>
+            <span>Esta questão não está mais desatualizada</span>
+          </label>
+        ` : ''}
       </section>
     `;
     return;
@@ -1671,6 +1678,13 @@ function historicalCommentToolbar({ editing }) {
         <button class="format-button" type="button" title="Itálico" data-action="historical-comment-format" data-command="italic"><em>I</em></button>
         <button class="format-button" type="button" title="Sublinhado" data-action="historical-comment-format" data-command="underline"><span class="format-underline">U</span></button>
         <button class="format-button" type="button" title="Tachado" data-action="historical-comment-format" data-command="strikeThrough"><s>S</s></button>
+        <span class="format-divider"></span>
+        <button class="format-button" type="button" title="Alinhar à esquerda" data-action="historical-comment-format" data-command="justifyLeft"><span class="format-align is-left"></span></button>
+        <button class="format-button" type="button" title="Centralizar" data-action="historical-comment-format" data-command="justifyCenter"><span class="format-align is-center"></span></button>
+        <button class="format-button" type="button" title="Alinhar à direita" data-action="historical-comment-format" data-command="justifyRight"><span class="format-align is-right"></span></button>
+        <span class="format-divider"></span>
+        <button class="format-button" type="button" title="Reduzir recuo" data-action="historical-comment-format" data-command="outdent"><span class="format-indent is-outdent"></span></button>
+        <button class="format-button" type="button" title="Aumentar recuo" data-action="historical-comment-format" data-command="indent"><span class="format-indent is-indent"></span></button>
         <span class="format-divider"></span>
         ${colorButtons.map(([color, label]) => `
           <button
@@ -1761,11 +1775,13 @@ async function saveHistoricalCommentEdit(button) {
   const editor = findHistoricalCommentEditor(button);
   if (!editor) return;
   const html = editor.innerHTML.trim();
+  const card = button.closest('[data-historical-comment-card]');
+  const markNotOutdated = Boolean(card?.querySelector('[data-historical-comment-clear-outdated]')?.checked);
   setHistoricalCommentStatus('Salvando...');
   const result = await api(`/api/questions/${state.selectedId}/historical-comment`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ html })
+    body: JSON.stringify({ html, markNotOutdated })
   });
   if (result.error) {
     setHistoricalCommentStatus(result.error, true);
@@ -1775,7 +1791,29 @@ async function saveHistoricalCommentEdit(button) {
     ...state.currentQuestion.comment,
     ...(result.comment || {})
   };
+  if (result.metadata) {
+    state.currentQuestion.metadata = {
+      ...state.currentQuestion.metadata,
+      ...result.metadata
+    };
+  }
   state.historicalCommentEditMode = false;
+  renderQuestionSituationTone(state.currentQuestion);
+  renderQuestionBadges(state.currentQuestion);
+  renderNormativeAlert(state.currentQuestion);
+  renderNormativeTeachingPanel(state.currentQuestion);
+  renderNormativePanel(state.currentQuestion);
+  const hasTeachingSupport = Boolean(
+    canRevealCurrentLawAnswer(state.currentQuestion) && (
+      state.currentQuestion.currentLawAnswer?.exists
+      || state.currentQuestion.normativeTeachingComment?.exists
+      || state.currentQuestion.metadata?.desatualizada
+    )
+  );
+  els.openTeaching.disabled = !hasTeachingSupport;
+  if (els.supportTabTeaching) els.supportTabTeaching.disabled = !hasTeachingSupport;
+  syncNormativeSupportAvailability(state.currentQuestion);
+  renderSupportVisibility();
   renderHistoricalCommentPanel(state.currentQuestion);
   renderInlineSupportCard();
   setHistoricalCommentStatus('Explicação salva.');
@@ -3437,9 +3475,11 @@ function renderInlineSupportCard() {
   if (!els.inlineSupportCard) return;
   const question = state.currentQuestion;
   const shouldShow = Boolean(question && hasAnsweredCurrentPrompt(question) && canRevealExplanation(question));
+  const wasHidden = els.inlineSupportCard.hidden;
   els.inlineSupportCard.hidden = !shouldShow;
   if (!shouldShow) {
     if (els.inlineSupportBody) els.inlineSupportBody.innerHTML = '';
+    state.inlineSupportRenderKey = '';
     return;
   }
 
@@ -3458,7 +3498,28 @@ function renderInlineSupportCard() {
   const [title, subtitle] = supportTabTitle(state.inlineSupportTab, question);
   els.inlineSupportTitle.textContent = title;
   els.inlineSupportSubtitle.textContent = subtitle;
-  els.inlineSupportBody.innerHTML = inlineSupportBodyForTab(state.inlineSupportTab);
+  const bodyHtml = inlineSupportBodyForTab(state.inlineSupportTab);
+  const renderKey = [
+    question.id || question.questionId || '',
+    state.inlineSupportTab,
+    state.answerResult?.questionId || '',
+    question.comment?.userEditedAt || '',
+    bodyHtml.length
+  ].join('|');
+  const shouldResetScroll = wasHidden || renderKey !== state.inlineSupportRenderKey;
+  els.inlineSupportBody.innerHTML = bodyHtml;
+  state.inlineSupportRenderKey = renderKey;
+  if (shouldResetScroll) {
+    resetInlineSupportScroll();
+  }
+}
+
+function resetInlineSupportScroll() {
+  if (!els.inlineSupportBody) return;
+  els.inlineSupportBody.scrollTop = 0;
+  window.requestAnimationFrame(() => {
+    els.inlineSupportBody.scrollTop = 0;
+  });
 }
 
 async function handleInlineSupportAction(button, event) {

@@ -4860,8 +4860,18 @@ function saveHistoricalCommentEdit(questionId, body) {
       checked_at = CURRENT_TIMESTAMP
   `).run(questionId, html, text, String(body?.editedBy || 'student').slice(0, 120));
 
+  if (body?.markNotOutdated) {
+    db.prepare(`
+      UPDATE questions
+      SET desatualizada = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id_question = ?
+    `).run(activeDbClient === 'postgres' ? false : 0, questionId);
+  }
+
   const question = db.prepare(`
     SELECT
+      q.desatualizada,
       COALESCE(c.html_local, c.html, '') AS comment_html,
       COALESCE(c.text, '') AS comment_text,
       COALESCE(c.professor, '') AS professor,
@@ -4882,6 +4892,9 @@ function saveHistoricalCommentEdit(questionId, body) {
 
   return {
     ok: true,
+    metadata: {
+      desatualizada: Boolean(question.desatualizada)
+    },
     comment: {
       html: sanitizeStoredHtml(question.comment_html),
       text: question.comment_text || '',
