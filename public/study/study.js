@@ -44,7 +44,8 @@ const state = {
   theoryCoverageVisible: false,
   normativeVisible: false,
   teachingEditMode: false,
-  currentLawEditMode: false
+  currentLawEditMode: false,
+  historicalCommentEditMode: false
 };
 
 const els = {
@@ -153,6 +154,7 @@ const els = {
   supportSimilarBody: document.querySelector('#supportSimilarBody'),
   commentPanel: document.querySelector('#commentPanel'),
   commentInfo: document.querySelector('#commentInfo'),
+  commentEditStatus: document.querySelector('#commentEditStatus'),
   commentBody: document.querySelector('#commentBody'),
   subjectsPanel: document.querySelector('#subjectsPanel'),
   subjectsInfo: document.querySelector('#subjectsInfo'),
@@ -591,6 +593,24 @@ function bindEvents() {
     }
   });
 
+  els.commentBody.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-action]');
+    if (!button) return;
+    await handleHistoricalCommentAction(button, event);
+  });
+
+  els.commentBody.addEventListener('input', (event) => {
+    if (event.target.closest('[data-historical-comment-editor]')) {
+      setHistoricalCommentStatus('');
+    }
+  });
+
+  els.commentBody.addEventListener('change', async (event) => {
+    const colorInput = event.target.closest('[data-historical-comment-color]');
+    if (!colorInput) return;
+    await handleHistoricalCommentColor(colorInput, event);
+  });
+
   els.closeSupport.addEventListener('click', () => closeSupportPanel());
   els.supportOverlay.addEventListener('click', () => closeSupportPanel());
   els.supportTabs.forEach((button) => {
@@ -626,8 +646,18 @@ function bindEvents() {
     }
     const actionButton = event.target.closest('[data-action]');
     if (actionButton) {
-      await handleInlineSupportAction(actionButton, event);
+      if (String(actionButton.dataset.action || '').startsWith('historical-comment-')) {
+        await handleHistoricalCommentAction(actionButton, event);
+      } else {
+        await handleInlineSupportAction(actionButton, event);
+      }
     }
+  });
+
+  els.inlineSupportBody?.addEventListener('change', async (event) => {
+    const colorInput = event.target.closest('[data-historical-comment-color]');
+    if (!colorInput) return;
+    await handleHistoricalCommentColor(colorInput, event);
   });
 
   document.addEventListener('keydown', (event) => {
@@ -1452,6 +1482,7 @@ function renderQuestion(question, options = {}) {
   if (previousQuestionId !== nextQuestionId) {
     state.teachingEditMode = false;
     state.currentLawEditMode = false;
+    state.historicalCommentEditMode = false;
   }
   state.currentQuestion = question;
   const adaptiveReason = options.adaptiveTarget?.reasonText || question.adaptive?.reasonText || '';
@@ -1532,24 +1563,20 @@ function renderQuestion(question, options = {}) {
   const historicalAnswer = answering.historicalAnswer || question.comment.historicalAnswer || question.comment.extractedAnswer || '';
   const studyAnswer = answering.studyAnswer || question.comment.studyAnswer || '';
   const info = [
+    question.comment.userEditedAt ? 'comentário atualizado por você' : '',
     question.comment.sourceType === 'ai' ? 'gerado por IA' : '',
     historicalAnswer ? `Gabarito histórico: ${historicalAnswer}` : '',
     question.comment.professor || '',
     question.comment.aiModel || ''
   ].filter(Boolean).join(' - ');
   els.commentInfo.textContent = [
+    question.comment.userEditedAt ? 'comentário atualizado por você' : '',
     question.comment.sourceType === 'ai' ? 'gerado por IA' : '',
     historicalAnswer ? `Gabarito histórico: ${historicalAnswer}` : '',
     question.comment.professor || '',
     question.comment.aiModel || ''
   ].filter(Boolean).join(' - ') || info;
-  const historicalWarning = question.metadata?.desatualizada
-    && historicalAnswer
-    && studyAnswer
-    && normalizeAnswerText(historicalAnswer) !== normalizeAnswerText(studyAnswer)
-    ? `<p class="normative-warning is-warning">Atenção: este comentário explica o gabarito original. Pela legislação atual, o gabarito de estudo é ${escapeHtml(currentAnswerLabel(studyAnswer))}.</p>`
-    : '';
-  els.commentBody.innerHTML = historicalWarning + (question.comment.html || `<p class="empty">${escapeHtml(question.comment.text || 'Comentário ainda não coletado.')}</p>`);
+  renderHistoricalCommentPanel(question);
   renderNormativeAlert(question);
   renderNormativeTeachingPanel(question);
   renderNormativePanel(question);
@@ -1569,6 +1596,196 @@ function renderQuestion(question, options = {}) {
   if (previousQuestionId !== nextQuestionId && options.scrollToStatement !== false) {
     scrollToStatementStart();
   }
+}
+
+function renderHistoricalCommentPanel(question) {
+  if (!els.commentBody) return;
+  const answering = question.answering || {};
+  const historicalAnswer = answering.historicalAnswer || question.comment?.historicalAnswer || question.comment?.extractedAnswer || '';
+  const studyAnswer = answering.studyAnswer || question.comment?.studyAnswer || '';
+  const historicalWarning = question.metadata?.desatualizada
+    && historicalAnswer
+    && studyAnswer
+    && normalizeAnswerText(historicalAnswer) !== normalizeAnswerText(studyAnswer)
+    ? `<p class="normative-warning is-warning">Atenção: este comentário explica o gabarito original. Pela legislação atual, o gabarito de estudo é ${escapeHtml(currentAnswerLabel(studyAnswer))}.</p>`
+    : '';
+  const userEditedNotice = question.comment?.userEditedAt
+    ? `<p class="historical-user-edit-notice">Comentário atualizado por você${question.comment.userEditedAt ? ` em ${escapeHtml(formatFullDate(question.comment.userEditedAt))}` : ''}.</p>`
+    : '';
+  const html = question.comment?.html || (question.comment?.text ? `<p>${escapeHtml(question.comment.text)}</p>` : '');
+  const canEdit = canEditHistoricalComment();
+  setHistoricalCommentStatus('');
+  if (!canEdit) {
+    state.historicalCommentEditMode = false;
+  }
+
+  if (state.historicalCommentEditMode && canEdit) {
+    els.commentBody.innerHTML = `
+      ${userEditedNotice}
+      ${historicalWarning}
+      <section class="historical-comment-editor-card" data-historical-comment-card>
+        ${historicalCommentToolbar({ editing: true })}
+        <div
+          class="historical-comment-editor"
+          data-historical-comment-editor
+          contenteditable="true"
+          spellcheck="true"
+          aria-label="Editor da explicação histórica"
+        >${html || '<p></p>'}</div>
+      </section>
+    `;
+    return;
+  }
+
+  els.commentBody.innerHTML = `
+    ${userEditedNotice}
+    ${historicalWarning}
+    <section class="historical-comment-view" data-historical-comment-card>
+      ${canEdit ? historicalCommentToolbar({ editing: false }) : ''}
+      <div class="historical-comment-content">
+        ${html || `<p class="empty">${escapeHtml('Comentário ainda não coletado.')}</p>`}
+      </div>
+    </section>
+  `;
+}
+
+function historicalCommentToolbar({ editing }) {
+  const colorButtons = [
+    ['#0f172a', 'Preto'],
+    ['#1d4ed8', 'Azul'],
+    ['#15803d', 'Verde'],
+    ['#b45309', 'Âmbar'],
+    ['#dc2626', 'Vermelho']
+  ];
+  if (!editing) {
+    return `
+      <div class="historical-comment-toolbar" data-historical-comment-toolbar>
+        <button class="button button-secondary" type="button" data-action="historical-comment-edit">Editar</button>
+      </div>
+    `;
+  }
+  return `
+    <div class="historical-comment-toolbar is-editing" data-historical-comment-toolbar>
+      <div class="historical-format-tools" aria-label="Formatação da explicação histórica">
+        <button class="format-button" type="button" title="Negrito" data-action="historical-comment-format" data-command="bold"><strong>B</strong></button>
+        <button class="format-button" type="button" title="Itálico" data-action="historical-comment-format" data-command="italic"><em>I</em></button>
+        <button class="format-button" type="button" title="Sublinhado" data-action="historical-comment-format" data-command="underline"><span class="format-underline">U</span></button>
+        <button class="format-button" type="button" title="Tachado" data-action="historical-comment-format" data-command="strikeThrough"><s>S</s></button>
+        <span class="format-divider"></span>
+        ${colorButtons.map(([color, label]) => `
+          <button
+            class="format-swatch"
+            type="button"
+            title="${escapeAttr(label)}"
+            style="--swatch-color: ${escapeAttr(color)}"
+            data-action="historical-comment-format"
+            data-command="foreColor"
+            data-value="${escapeAttr(color)}"
+          ></button>
+        `).join('')}
+      </div>
+      <div class="historical-edit-actions">
+        <button class="button button-primary" type="button" data-action="historical-comment-save">Salvar</button>
+        <button class="button button-secondary" type="button" data-action="historical-comment-cancel">Cancelar</button>
+      </div>
+    </div>
+  `;
+}
+
+function canEditHistoricalComment() {
+  return window.matchMedia?.('(min-width: 1181px)').matches;
+}
+
+async function handleHistoricalCommentAction(button, event) {
+  const action = button.dataset.action || '';
+  if (!action.startsWith('historical-comment-')) return;
+  event.preventDefault();
+  if (!canEditHistoricalComment()) return;
+
+  if (action === 'historical-comment-edit') {
+    state.historicalCommentEditMode = true;
+    renderHistoricalCommentPanel(state.currentQuestion);
+    renderInlineSupportCard();
+    focusHistoricalCommentEditor();
+    return;
+  }
+
+  if (action === 'historical-comment-cancel') {
+    state.historicalCommentEditMode = false;
+    renderHistoricalCommentPanel(state.currentQuestion);
+    renderInlineSupportCard();
+    return;
+  }
+
+  if (action === 'historical-comment-format') {
+    applyHistoricalCommentFormat(button);
+    return;
+  }
+
+  if (action === 'historical-comment-save') {
+    await saveHistoricalCommentEdit(button);
+  }
+}
+
+async function handleHistoricalCommentColor(input, event) {
+  event.preventDefault();
+  if (!canEditHistoricalComment()) return;
+  applyHistoricalCommentFormat({ dataset: { command: 'foreColor', value: input.value || '#0f172a' } });
+}
+
+function applyHistoricalCommentFormat(button) {
+  const command = button.dataset.command || '';
+  if (!command) return;
+  const editor = findHistoricalCommentEditor(button);
+  if (!editor) return;
+  editor.focus();
+  document.execCommand(command, false, button.dataset.value || null);
+  setHistoricalCommentStatus('');
+}
+
+function findHistoricalCommentEditor(source) {
+  const root = source?.closest?.('[data-historical-comment-card]') || document;
+  return root.querySelector?.('[data-historical-comment-editor]');
+}
+
+function focusHistoricalCommentEditor() {
+  window.requestAnimationFrame(() => {
+    const editor = (!els.inlineSupportCard?.hidden && els.inlineSupportBody?.querySelector('[data-historical-comment-editor]'))
+      || els.commentBody?.querySelector('[data-historical-comment-editor]');
+    editor?.focus();
+  });
+}
+
+async function saveHistoricalCommentEdit(button) {
+  if (!state.selectedId || !state.currentQuestion) return;
+  const editor = findHistoricalCommentEditor(button);
+  if (!editor) return;
+  const html = editor.innerHTML.trim();
+  setHistoricalCommentStatus('Salvando...');
+  const result = await api(`/api/questions/${state.selectedId}/historical-comment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ html })
+  });
+  if (result.error) {
+    setHistoricalCommentStatus(result.error, true);
+    return;
+  }
+  state.currentQuestion.comment = {
+    ...state.currentQuestion.comment,
+    ...(result.comment || {})
+  };
+  state.historicalCommentEditMode = false;
+  renderHistoricalCommentPanel(state.currentQuestion);
+  renderInlineSupportCard();
+  setHistoricalCommentStatus('Explicação salva.');
+}
+
+function setHistoricalCommentStatus(message, isError = false) {
+  if (!els.commentEditStatus) return;
+  els.commentEditStatus.textContent = message || '';
+  els.commentEditStatus.classList.toggle('is-error', Boolean(isError));
+  els.commentEditStatus.hidden = !message;
 }
 
 function renderNormativeAlert(question) {
@@ -3151,6 +3368,7 @@ function applyStatementLengthClass(question) {
 function preferredSupportTab(question = state.currentQuestion) {
   const canRevealCurrentLaw = canRevealCurrentLawAnswer(question);
   const hasHistoricalComment = Boolean(question?.comment?.html || question?.comment?.text);
+  if (question?.comment?.userEditedAt && hasHistoricalComment) return 'comment';
   if (hasAppliedTheorySupport(question) && canRevealAppliedTheory(question)) return 'appliedTheory';
   if (canRevealCurrentLaw && (question?.currentLawAnswer?.exists || question?.metadata?.desatualizada)) return 'teaching';
   if (canRevealCurrentLaw && question?.normativeTeachingComment?.exists) return 'teaching';

@@ -58,6 +58,7 @@ const { db, client: activeDbClient } = openStudyDatabase({ dbPath, databaseUrl, 
 if (activeDbClient === 'sqlite') {
   initStudySchema(db);
 }
+initHistoricalCommentEditSchema(db);
 initQuestionStudyStatusSchema(db);
 initTheoryPagesSchema(db);
 initNormativeTeachingStudentEditsSchema(db);
@@ -271,6 +272,14 @@ async function routeRequest(request, response) {
   if (studyStatusMatch && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, saveQuestionStudyStatus(Number(studyStatusMatch[1]), body));
+    return;
+  }
+
+  const historicalCommentMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/historical-comment$/);
+  if (historicalCommentMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const result = saveHistoricalCommentEdit(Number(historicalCommentMatch[1]), body);
+    sendJson(response, result?.error ? 400 : 200, result);
     return;
   }
 
@@ -4820,6 +4829,77 @@ function saveQuestionStudyStatus(questionId, body) {
   return { ok: true, studyStatus: getQuestionStudyStatus(questionId) };
 }
 
+function saveHistoricalCommentEdit(questionId, body) {
+  if (!db.prepare('SELECT 1 FROM questions WHERE id_question = ?').get(questionId)) {
+    return { error: 'Questao nao encontrada' };
+  }
+
+  const html = sanitizeStoredHtml(limitText(body?.html, 300000)).trim();
+  const text = htmlToPlainText(html).slice(0, 200000);
+  if (!html && !text) {
+    return { error: 'A explicacao historica nao pode ficar vazia.' };
+  }
+
+  db.prepare(`
+    INSERT INTO comments (
+      question_id,
+      html_local,
+      text,
+      source_type,
+      user_edited_at,
+      user_edited_by,
+      checked_at
+    )
+    VALUES (?, ?, ?, 'manual_edit', CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(question_id) DO UPDATE SET
+      html_local = excluded.html_local,
+      text = excluded.text,
+      source_type = excluded.source_type,
+      user_edited_at = CURRENT_TIMESTAMP,
+      user_edited_by = excluded.user_edited_by,
+      checked_at = CURRENT_TIMESTAMP
+  `).run(questionId, html, text, String(body?.editedBy || 'student').slice(0, 120));
+
+  const question = db.prepare(`
+    SELECT
+      COALESCE(c.html_local, c.html, '') AS comment_html,
+      COALESCE(c.text, '') AS comment_text,
+      COALESCE(c.professor, '') AS professor,
+      COALESCE(c.date_text, '') AS comment_date,
+      COALESCE(c.source_type, '') AS comment_source_type,
+      COALESCE(c.ai_model, '') AS comment_ai_model,
+      COALESCE(CAST(c.ai_generated_at AS TEXT), '') AS comment_ai_generated_at,
+      COALESCE(CAST(c.user_edited_at AS TEXT), '') AS comment_user_edited_at,
+      COALESCE(c.user_edited_by, '') AS comment_user_edited_by,
+      ${historicalAnswerSql('q', 'c')} AS historical_answer,
+      ${historicalAnswerSourceSql('q', 'c')} AS historical_answer_source,
+      ${currentLawStudyAnswerSql('q', 'c')} AS study_answer
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    WHERE q.id_question = ?
+    LIMIT 1
+  `).get(questionId);
+
+  return {
+    ok: true,
+    comment: {
+      html: sanitizeStoredHtml(question.comment_html),
+      text: question.comment_text || '',
+      professor: question.professor || '',
+      date: question.comment_date || '',
+      extractedAnswer: question.historical_answer || '',
+      historicalAnswer: question.historical_answer || '',
+      historicalAnswerSource: question.historical_answer_source || '',
+      studyAnswer: question.study_answer || '',
+      sourceType: question.comment_source_type || '',
+      aiModel: question.comment_ai_model || '',
+      aiGeneratedAt: question.comment_ai_generated_at || '',
+      userEditedAt: question.comment_user_edited_at || '',
+      userEditedBy: question.comment_user_edited_by || ''
+    }
+  };
+}
+
 function normativeTextHasManual(value) {
   const normalized = normalizePlain(value);
   return normalized.includes('revisao manual') || normalized.includes('revisão manual');
@@ -4840,6 +4920,8 @@ async function getQuestion(questionId) {
       COALESCE(c.source_type, '') AS comment_source_type,
       COALESCE(c.ai_model, '') AS comment_ai_model,
       COALESCE(CAST(c.ai_generated_at AS TEXT), '') AS comment_ai_generated_at,
+      COALESCE(CAST(c.user_edited_at AS TEXT), '') AS comment_user_edited_at,
+      COALESCE(c.user_edited_by, '') AS comment_user_edited_by,
       COALESCE(c.extracted_answer, '') AS extracted_answer,
       COALESCE(qm.mastery_score, 0) AS mastery_score,
       COALESCE(qm.difficulty, 0.5) AS difficulty,
@@ -4950,7 +5032,9 @@ async function getQuestion(questionId) {
       answerSource: correction.answerSource || '',
       sourceType: question.comment_source_type || '',
       aiModel: question.comment_ai_model || '',
-      aiGeneratedAt: question.comment_ai_generated_at || ''
+      aiGeneratedAt: question.comment_ai_generated_at || '',
+      userEditedAt: question.comment_user_edited_at || '',
+      userEditedBy: question.comment_user_edited_by || ''
     },
     theory,
     answerStats: {
@@ -6258,6 +6342,7 @@ function initStudySchema(database) {
   ensureColumn(database, 'notebook_questions', 'answer', 'TEXT');
   ensureColumn(database, 'notebook_questions', 'answer_source', 'TEXT');
   ensureColumn(database, 'notebook_questions', 'raw_json', 'TEXT');
+  ensureColumn(database, 'comments', 'html_local', 'TEXT');
   ensureColumn(database, 'comments', 'source_type', 'TEXT');
   ensureColumn(database, 'comments', 'ai_model', 'TEXT');
   ensureColumn(database, 'comments', 'ai_generated_at', 'TEXT');
@@ -6292,6 +6377,12 @@ function initStudySchema(database) {
     SET created_at = COALESCE(NULLIF(created_at, ''), NULLIF(answered_at, ''), CURRENT_TIMESTAMP)
     WHERE created_at IS NULL OR created_at = '';
   `);
+}
+
+function initHistoricalCommentEditSchema(database) {
+  ensureColumn(database, 'comments', 'html_local', 'TEXT');
+  ensureColumn(database, 'comments', 'user_edited_at', 'TEXT');
+  ensureColumn(database, 'comments', 'user_edited_by', 'TEXT');
 }
 
 function initAdaptiveStudySchema(database) {
@@ -6734,6 +6825,25 @@ function sanitizeStoredHtml(html) {
     .replace(/<p\b[^>]*>(?:\s|&nbsp;|\u00a0|<br\s*\/?>)*<\/p>/gi, '')
     .replace(/\son[a-z]+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, '')
     .replace(/javascript:/gi, '');
+}
+
+function htmlToPlainText(html) {
+  return String(html || '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function normalizeLocalAssetRefs(html) {
