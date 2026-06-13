@@ -1068,6 +1068,17 @@ function getLawCompendiumSource(slug, searchParams = new URLSearchParams()) {
       AND COALESCE(l.confidence, 0) >= 0.90
     ORDER BY l.confidence DESC, l.id
   `).all(...sectionIds) : [];
+  const relatedQuestionLinks = sectionIds.length ? db.prepare(`
+    SELECT l.section_id, l.question_id, l.link_kind, l.evidence, l.confidence,
+      q.materia, q.assunto, substr(COALESCE(q.statement_text, ''), 1, 280) AS statement_text
+    FROM law_section_question_links l
+    LEFT JOIN questions q ON q.id_question = l.question_id
+    WHERE l.section_id IN (${sectionIds.map(() => '?').join(',')})
+      AND COALESCE(l.display_policy, 'hide') = 'show_related'
+      AND COALESCE(l.link_status, '') = 'inferred_content_match'
+      AND COALESCE(l.confidence, 0) >= 0.68
+    ORDER BY l.confidence DESC, l.id
+  `).all(...sectionIds) : [];
   const commentLinks = sectionIds.length ? db.prepare(`
     SELECT section_id, question_id, comment_source, excerpt, evidence, confidence
     FROM law_section_comment_links
@@ -1083,7 +1094,7 @@ function getLawCompendiumSource(slug, searchParams = new URLSearchParams()) {
     mode,
     source: lawSourceDetailPayload(source),
     summary: summary ? lawSummaryPayload(summary) : null,
-    sections: sections.map((section) => lawSectionPayload(section, crossRefs, questionLinks, commentLinks))
+    sections: sections.map((section) => lawSectionPayload(section, crossRefs, questionLinks, commentLinks, relatedQuestionLinks))
   };
 }
 
@@ -1135,7 +1146,7 @@ function lawSummaryPayload(summary) {
   };
 }
 
-function lawSectionPayload(section, crossRefs, questionLinks, commentLinks) {
+function lawSectionPayload(section, crossRefs, questionLinks, commentLinks, relatedQuestionLinks = []) {
   const sectionId = Number(section.id);
   return {
     id: section.id,
@@ -1158,6 +1169,15 @@ function lawSectionPayload(section, crossRefs, questionLinks, commentLinks) {
       status: ref.resolution_status || ''
     })),
     questionLinks: questionLinks.filter((link) => Number(link.section_id) === sectionId).slice(0, 8).map((link) => ({
+      questionId: link.question_id,
+      linkKind: link.link_kind || '',
+      evidence: link.evidence || '',
+      confidence: link.confidence || 0,
+      materia: link.materia || '',
+      assunto: link.assunto || '',
+      statementText: link.statement_text || ''
+    })),
+    relatedQuestionLinks: relatedQuestionLinks.filter((link) => Number(link.section_id) === sectionId).slice(0, 8).map((link) => ({
       questionId: link.question_id,
       linkKind: link.link_kind || '',
       evidence: link.evidence || '',

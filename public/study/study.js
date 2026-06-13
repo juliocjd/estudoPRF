@@ -1787,14 +1787,15 @@ function lawCrossRefsMarkup(refs) {
 
 function lawRelatedMarkup(section) {
   const questions = section.questionLinks || [];
+  const relatedQuestions = section.relatedQuestionLinks || [];
   const comments = section.commentLinks || [];
-  if (!questions.length && !comments.length) return '';
+  if (!questions.length && !relatedQuestions.length && !comments.length) return '';
   return `
     <details class="law-related">
-      <summary>Questões e comentários que citam este dispositivo</summary>
+      <summary>Questões vinculadas a este dispositivo</summary>
       ${questions.length ? `
         <div class="law-related-block">
-          <strong>Questões</strong>
+          <strong>Questões que citam o dispositivo</strong>
           ${questions.map((question) => `
             <a href="${escapeAttr(questionLink(question.questionId))}" data-question-id="${escapeAttr(question.questionId)}">
               #${Number(question.questionId || 0).toLocaleString('pt-BR')} - ${escapeHtml(question.evidence || question.assunto || '')}
@@ -1802,9 +1803,19 @@ function lawRelatedMarkup(section) {
           `).join('')}
         </div>
       ` : ''}
+      ${relatedQuestions.length ? `
+        <div class="law-related-block">
+          <strong>Questões relacionadas ao conteúdo</strong>
+          ${relatedQuestions.map((question) => `
+            <a href="${escapeAttr(questionLink(question.questionId))}" data-question-id="${escapeAttr(question.questionId)}">
+              #${Number(question.questionId || 0).toLocaleString('pt-BR')} - ${escapeHtml(question.assunto || question.evidence || '')}
+            </a>
+          `).join('')}
+        </div>
+      ` : ''}
       ${comments.length ? `
         <div class="law-related-block">
-          <strong>Comentários de professor</strong>
+          <strong>Comentários de professor ligados a citação exata</strong>
           ${comments.map((comment) => `<p>${escapeHtml(comment.excerpt || comment.evidence || '')}</p>`).join('')}
         </div>
       ` : ''}

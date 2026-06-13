@@ -16,6 +16,7 @@ try {
 
   const sectionsByLocator = buildSectionIndex();
   let questionLinks = 0;
+  let relatedQuestionLinks = 0;
   let commentLinks = 0;
   const seenQuestionsBySection = new Map();
 
@@ -40,10 +41,13 @@ try {
     commentLinks += linkCommentsDerivedFromVerifiedQuestions(seenQuestionsBySection);
   }
 
+  relatedQuestionLinks += linkQuestionsByContent(seenQuestionsBySection);
+
   console.log('# Vínculos estritos Apostila da Lei -> questões/comentários v2');
   console.log(`Banco: ${client}`);
   console.log(`Seções indexadas: ${sectionsByLocator.size}`);
   console.log(`Vínculos de questões verificados: ${questionLinks}`);
+  console.log(`Questões relacionadas por conteúdo: ${relatedQuestionLinks}`);
   console.log(`Comentários derivados de questão verificada: ${commentLinks}`);
 } finally {
   db.close();
@@ -246,6 +250,145 @@ function linkCommentsDerivedFromVerifiedQuestions(seenQuestionsBySection) {
     linked += 1;
   }
   return linked;
+}
+
+function linkQuestionsByContent(seenQuestionsBySection) {
+  if (!tableExists(db, 'questions')) return 0;
+  const exactPairs = new Set([...seenQuestionsBySection.values()].map((item) => `${item.sectionId}:${item.questionId}`));
+  const sections = readContentMatchSections();
+  const questions = readContentMatchQuestions();
+  const questionsById = new Map(questions.map((question) => [question.id, question]));
+  const questionIndex = buildQuestionTokenIndex(questions);
+  let linked = 0;
+
+  for (const section of sections) {
+    const sectionTokens = textTokens(section.text);
+    if (sectionTokens.length < 8) continue;
+    const candidateScores = new Map();
+    for (const token of sectionTokens) {
+      const rows = questionIndex.get(token);
+      if (!rows) continue;
+      for (const row of rows) candidateScores.set(row.id, (candidateScores.get(row.id) || 0) + 1);
+    }
+    const ranked = [...candidateScores]
+      .map(([questionId, overlap]) => {
+        const question = questionsById.get(questionId);
+        if (!question) return null;
+        const score = contentMatchScore(sectionTokens, question.tokens, overlap);
+        return { question, score, overlap };
+      })
+      .filter(Boolean)
+      .filter((item) => item.score >= 0.68 && item.overlap >= 6)
+      .sort((a, b) => b.score - a.score || b.overlap - a.overlap)
+      .slice(0, 5);
+
+    for (const item of ranked) {
+      if (exactPairs.has(`${section.id}:${item.question.id}`)) continue;
+      upsertRelatedQuestionLink(section, item.question, item.score, item.overlap);
+      linked += 1;
+    }
+  }
+
+  return linked;
+}
+
+function readContentMatchSections() {
+  return queryOptional(`
+    SELECT s.id, s.source_slug, s.display_ref, s.hierarchy_level, s.text
+    FROM law_compendium_sections s
+    JOIN law_compendium_sources src ON src.slug = s.source_slug
+    WHERE src.status = 'validated_current'
+      AND COALESCE(s.is_current, TRUE) != FALSE
+      AND s.hierarchy_level IN ('artigo', 'inciso', 'alinea', 'paragrafo')
+      AND length(COALESCE(s.text, '')) >= 80
+    ORDER BY s.source_slug, s.order_index, s.id
+  `);
+}
+
+function readContentMatchQuestions() {
+  return queryOptional(`
+    SELECT id_question AS id, materia, assunto, statement_text
+    FROM questions
+    WHERE COALESCE(statement_text, '') <> ''
+      AND COALESCE(anulada, 0) = 0
+      AND COALESCE(desatualizada, 0) = 0
+      AND (
+        lower(COALESCE(materia, '')) LIKE '%trânsito%'
+        OR lower(COALESCE(materia, '')) LIKE '%transito%'
+        OR lower(COALESCE(materia, '')) LIKE '%legislação%'
+        OR lower(COALESCE(materia, '')) LIKE '%legislacao%'
+        OR lower(COALESCE(assunto, '')) LIKE '%trânsito%'
+        OR lower(COALESCE(assunto, '')) LIKE '%transito%'
+      )
+  `).map((row) => ({
+    ...row,
+    tokens: textTokens(`${row.statement_text || ''} ${row.assunto || ''}`)
+  })).filter((row) => row.tokens.length >= 6);
+}
+
+function buildQuestionTokenIndex(questions) {
+  const index = new Map();
+  for (const question of questions) {
+    for (const token of new Set(question.tokens)) {
+      if (!index.has(token)) index.set(token, []);
+      index.get(token).push(question);
+    }
+  }
+  return index;
+}
+
+function contentMatchScore(sectionTokens, questionTokens, overlap) {
+  const sectionUnique = new Set(sectionTokens);
+  const questionUnique = new Set(questionTokens);
+  const containment = overlap / Math.min(sectionUnique.size, questionUnique.size);
+  const dice = (2 * overlap) / (sectionUnique.size + questionUnique.size);
+  return Number((containment * 0.72 + dice * 0.28).toFixed(4));
+}
+
+function upsertRelatedQuestionLink(section, question, score, overlap) {
+  db.prepare(`
+    INSERT INTO law_section_question_links (
+      section_id, question_id, link_kind, evidence, confidence,
+      display_policy, link_status, matched_source_slug, matched_display_ref,
+      matched_locator_json, material_match_status, review_status, source_table, source_field
+    )
+    VALUES (?, ?, 'content_related', ?, ?, 'show_related', 'inferred_content_match', ?, ?, ?, 'lexical_content_match', 'needs_review', 'questions', 'statement_text')
+    ON CONFLICT(section_id, question_id, link_kind) DO UPDATE SET
+      evidence = excluded.evidence,
+      confidence = excluded.confidence,
+      display_policy = excluded.display_policy,
+      link_status = excluded.link_status,
+      matched_source_slug = excluded.matched_source_slug,
+      matched_display_ref = excluded.matched_display_ref,
+      matched_locator_json = excluded.matched_locator_json,
+      material_match_status = excluded.material_match_status,
+      review_status = excluded.review_status,
+      source_table = excluded.source_table,
+      source_field = excluded.source_field
+  `).run(
+    section.id,
+    question.id,
+    `Correspondência lexical com o texto do dispositivo (${overlap} termos relevantes em comum).`,
+    score,
+    section.source_slug,
+    section.display_ref,
+    jsonValue({ method: 'lexical_content_match', overlap, score })
+  );
+}
+
+function textTokens(value) {
+  const stopwords = new Set([
+    'ainda', 'alem', 'ante', 'apos', 'aquela', 'aquelas', 'aquele', 'aqueles',
+    'cada', 'caso', 'como', 'contra', 'cujo', 'cujos', 'dada', 'dado', 'deste',
+    'desta', 'desses', 'devera', 'devem', 'deve', 'direito', 'dispoe', 'este',
+    'esta', 'estes', 'estas', 'forma', 'foram', 'havera', 'inciso', 'incisos',
+    'mediante', 'nao', 'para', 'pela', 'pelo', 'pelos', 'perante', 'podera',
+    'podem', 'quando', 'quanto', 'sobre', 'todos', 'trata', 'transito',
+    'veiculo', 'veiculos', 'codigo', 'previstas', 'previsto'
+  ]);
+  return [...new Set(normalizeSearchText(value)
+    .split(' ')
+    .filter((token) => token.length >= 4 && !stopwords.has(token) && !/^\d+$/.test(token)))];
 }
 
 function expandArticleRange(start, end) {
