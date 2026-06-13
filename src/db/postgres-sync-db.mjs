@@ -2,10 +2,9 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
 
-const WORKER_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), 'postgres-sync-worker.mjs');
+const WORKER_URL = new URL('./postgres-sync-worker.mjs', import.meta.url);
 
 export class PostgresSyncDatabase {
   constructor(databaseUrl) {
@@ -17,7 +16,7 @@ export class PostgresSyncDatabase {
     this.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'prf-pg-sync-'));
     this.requestPath = path.join(this.tmpDir, 'request.json');
     this.responsePath = path.join(this.tmpDir, 'response.json');
-    this.worker = new Worker(WORKER_PATH, {
+    this.worker = new Worker(WORKER_URL, {
       execArgv: process.execArgv.filter((arg) => !arg.startsWith('--input-type')),
       workerData: {
         databaseUrl,
