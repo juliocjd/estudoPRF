@@ -209,6 +209,8 @@ export function normalizeSearchText(value) {
 export function normalizeWhitespace(value) {
   return String(value || '')
     .replace(/\u0000/g, '')
+    .replace(/\u0096/g, '–')
+    .replace(/\u0097/g, '—')
     .replace(/\r/g, '\n')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n[ \t]+/g, '\n')
@@ -460,12 +462,7 @@ export function replaceLawSections(db, sourceSlug, sections) {
 }
 
 export function extractLawSections(sourceSlug, rawText) {
-  const preparedText = normalizeWhitespace(rawText)
-    .replace(/\s+(Art\.?\s*\d+[A-Za-zº°-]*\.?)/g, '\n$1')
-    .replace(/\s+((?:§\s*\d+[º°]?|Parágrafo\s+único)\.?\s*)/gi, '\n$1')
-    .replace(/\s+([IVXLCDM]+)\s*[-–—.]\s+/g, '\n$1 - ')
-    .replace(/\s+([a-z]\)\s+)/g, '\n$1')
-    .replace(/\s+(ANEXO\s+[IVXLCDM\d]+\b)/gi, '\n$1');
+  const preparedText = prepareLawTextForSectioning(rawText);
   const lines = preparedText
     .split(/\n+/)
     .map((line) => line.trim())
@@ -492,6 +489,7 @@ export function extractLawSections(sourceSlug, rawText) {
       previous.rawFragment = normalizeWhitespace(`${previous.rawFragment || previous.text} ${line}`);
       continue;
     }
+    if (isNonPublishableLegalDevice(parsed)) continue;
     if (parsed.hierarchyLevel === 'artigo') currentArticleKey = parsed.sectionKey;
     const rawSectionKey = `${sourceSlug}:${parsed.sectionKey}`;
     const sectionKey = uniqueSectionKey(rawSectionKey, usedSectionKeys);
@@ -518,7 +516,31 @@ export function extractLawSections(sourceSlug, rawText) {
     });
   }
 
-  return sections;
+  return sections.filter((section) => !isNonPublishableLegalDevice(section));
+}
+
+function prepareLawTextForSectioning(rawText) {
+  return normalizeWhitespace(rawText)
+    .replace(/§\s*\n+\s*(\d+[º°]?)/g, '§ $1')
+    .replace(/§\s+(\d+[º°]?)/g, '§ $1')
+    .replace(/\s+(Art\.?\s*\d+[A-Za-zº°-]*\.?)/g, '\n$1')
+    .replace(/\s+((?:§\s*\d+[º°]?|Parágrafo\s+único)\.?\s*)/gi, '\n$1')
+    .replace(/\s+((?:CAP[IÍ]TULO|T[ÍI]TULO|SE[ÇC][ÃA]O)\s+[IVXLCDM\d]+\b)/gi, '\n$1')
+    .replace(/\s+([IVXLCDM]+)\s*[-–—.]\s+/g, '\n$1 - ')
+    .replace(/\s+([a-z]\)\s+)/g, '\n$1')
+    .replace(/\s+(ANEXO\s+[IVXLCDM\d]+\b)/gi, '\n$1');
+}
+
+function isNonPublishableLegalDevice(section) {
+  if (!section || !/\b(revogado|revogada|vetado)\b/i.test(section.text || '')) return false;
+  if (!['artigo', 'paragrafo', 'inciso', 'alinea'].includes(section.hierarchyLevel)) return false;
+  const displayRef = String(section.displayRef || '').trim();
+  let body = String(section.text || '').trim();
+  if (displayRef) {
+    const escapedRef = displayRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    body = body.replace(new RegExp(`^${escapedRef}\\s*[-–—.]?\\s*`, 'i'), '').trim();
+  }
+  return /^(?:[º°o]\s+)?(?:§\s*\d+\s*[º°o]?\s*)?\(?\s*(?:vetado|revogado|revogada)(?:\s+pela\b[^)]*)?\s*\)?\s*[.;]?\s*(?:e)?(?:\s*\([^)]*\))*\s*$/i.test(body);
 }
 
 function isOfficialFooterLine(line) {
@@ -541,7 +563,7 @@ function uniqueSectionKey(baseKey, usedKeys) {
 }
 
 function parseLawLineStable(line, currentArticleKey) {
-  const revoked = /\b(revogado|revogada)\b/i.test(line);
+  const revoked = /\b(revogado|revogada|vetado)\b/i.test(line);
   const annex = line.match(/^(ANEXO|Anexo)\s+([IVXLCDM\d]+)?\b(.*)$/i);
   if (annex) {
     const ref = `Anexo ${annex[2] || ''}`.trim();
@@ -572,21 +594,6 @@ function parseLawLineStable(line, currentArticleKey) {
     };
   }
 
-  const ordinalArticle = line.match(/^(\d+[º°])\s+(.*)$/);
-  if (ordinalArticle && currentArticleKey) {
-    const ref = `Art ${ordinalArticle[1]}`;
-    return {
-      sectionKey: slugKey(ref),
-      parentSectionKey: '',
-      hierarchyLevel: 'artigo',
-      displayRef: ref,
-      title: '',
-      text: `${ref} ${ordinalArticle[2]}`,
-      rawFragment: line,
-      isRevoked: revoked
-    };
-  }
-
   const paragraph = line.match(/^((?:§\s*\d+[º°]?|Parágrafo\s+único)\.?\s*)(.*)$/i);
   if (paragraph && currentArticleKey) {
     const ref = normalizeDisplayRef(paragraph[1]);
@@ -597,6 +604,21 @@ function parseLawLineStable(line, currentArticleKey) {
       displayRef: ref,
       title: '',
       text: line,
+      rawFragment: line,
+      isRevoked: revoked
+    };
+  }
+
+  const annexHeading = line.match(/^([IVXLCDM]+)\s*[-–—.]\s+((?:CAP[IÍ]TULO|T[ÍI]TULO|SE[ÇC][ÃA]O)\b.*)$/i);
+  if (annexHeading) {
+    const ref = `Anexo ${annexHeading[1]}`;
+    return {
+      sectionKey: slugKey(ref),
+      parentSectionKey: '',
+      hierarchyLevel: 'anexo',
+      displayRef: ref,
+      title: annexHeading[2]?.trim() || '',
+      text: `${ref} - ${annexHeading[2]}`,
       rawFragment: line,
       isRevoked: revoked
     };

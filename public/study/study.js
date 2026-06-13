@@ -1720,18 +1720,37 @@ function lawBulletBlock(title, items = []) {
 }
 
 function lawSectionMarkup(section, isDryLaw) {
+  const hierarchyLevel = section.hierarchyLevel || 'item';
+  if (['titulo', 'capitulo', 'secao'].includes(hierarchyLevel)) {
+    const title = section.title && section.title !== section.displayRef ? section.title : '';
+    return `
+      <div class="law-divider is-${escapeAttr(hierarchyLevel)}">
+        <strong>${escapeHtml(section.displayRef || title || '')}</strong>
+        ${title ? `<span>${escapeHtml(title)}</span>` : ''}
+      </div>
+    `;
+  }
   const related = !isDryLaw ? lawRelatedMarkup(section) : '';
   return `
-    <article class="law-section is-${escapeAttr(section.hierarchyLevel || 'item')}">
+    <article class="law-section is-${escapeAttr(hierarchyLevel)}">
       <header>
         <strong>${escapeHtml(section.displayRef || '')}</strong>
         ${section.title ? `<span>${escapeHtml(section.title)}</span>` : ''}
       </header>
-      <p>${escapeHtml(String(section.text || '').replace(/\s+§\s*$/g, ''))}</p>
+      <p>${escapeHtml(lawSectionBodyText(section))}</p>
       ${lawCrossRefsMarkup(section.crossReferences || [])}
       ${related}
     </article>
   `;
+}
+
+function lawSectionBodyText(section) {
+  let text = String(section.text || '').replace(/\s+§\s*$/g, '').trim();
+  const displayRef = String(section.displayRef || '').trim();
+  if (!displayRef) return text;
+  const escapedRef = displayRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  text = text.replace(new RegExp(`^${escapedRef}\\s*[-–—.]?\\s*`, 'i'), '').trim();
+  return text;
 }
 
 function lawCrossRefsMarkup(refs) {

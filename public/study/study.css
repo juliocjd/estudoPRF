@@ -1619,6 +1619,27 @@ button:disabled {
   line-height: 1.62;
 }
 
+.law-divider {
+  display: grid;
+  gap: 3px;
+  margin: 10px 0 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.law-divider strong {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.law-divider span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .law-section.is-titulo,
 .law-section.is-capitulo,
 .law-section.is-secao,

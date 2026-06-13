@@ -99,6 +99,7 @@ function extractStrictReferences(section) {
     });
   };
 
+  addCtbParagraphReferences(text, section, refs);
   // Ex.: art. 168 do CTB; arts. 136 a 139-B da Lei nº 9.503/1997.
   addMatches(text, /\b(?:arts?\.|artigos?)\s*\d+[A-Za-zº°-]*(?:\s*(?:,|e|a)\s*\d+[A-Za-zº°-]*)*\s+(?:do|da)\s+(?:CTB|C[oó]digo\s+de\s+Tr[aâ]nsito\s+Brasileiro|Lei\s+n?[ºo°.]?\s*9\.503(?:\/1997)?)\b/gi, 'ctb_article', push);
   // Ex.: inciso II do art. 5º da Resolução CONTRAN nº 967/2022.
@@ -119,6 +120,28 @@ function addMatches(text, pattern, kind, push, confidence) {
   let match;
   while ((match = pattern.exec(String(text || '')))) {
     push(match, kind, confidence);
+  }
+}
+
+function addCtbParagraphReferences(text, section, refs) {
+  const pattern = /(§{1,2}\s*\d+[º°]?(?:\s*(?:,|e)\s*\d+[º°]?)*)(\s+do\s+art\.?\s*)(\d+[A-Za-zº°-]*)(?:\s+(?:do|da)\s+(CTB|C[oó]digo\s+de\s+Tr[aâ]nsito\s+Brasileiro|Lei\s+n?[ºo°.]?\s*9\.503(?:\/1997)?))?/gi;
+  let match;
+  while ((match = pattern.exec(String(text || '')))) {
+    const explicitCtb = Boolean(match[4]);
+    if (!explicitCtb && section.source_slug !== 'lei_9503_1997_ctb_compilado') continue;
+    const articleNumber = match[3];
+    const paragraphNumbers = [...match[1].matchAll(/\d+[º°]?/g)].map((item) => item[0]);
+    for (const paragraphNumber of paragraphNumbers) {
+      refs.push({
+        text: `§ ${paragraphNumber} do art. ${articleNumber}`,
+        kind: 'ctb_paragraph',
+        confidence: 0.96,
+        articleNumber,
+        paragraphNumber,
+        context: contextAround(text, match.index, match[0].length),
+        originalText: normalizeWhitespace(match[0])
+      });
+    }
   }
 }
 
@@ -150,6 +173,9 @@ function dedupeReferences(refs) {
 }
 
 function resolveReference(section, ref) {
+  if (ref.kind === 'ctb_paragraph') {
+    return findSectionByParagraph('lei_9503_1997_ctb_compilado', ref.articleNumber, ref.paragraphNumber);
+  }
   if (ref.kind === 'ctb_article') {
     const article = firstArticleNumber(ref.text);
     return findSectionByArticle('lei_9503_1997_ctb_compilado', article);
@@ -232,6 +258,37 @@ function findSectionByArticle(sourceSlug, articleNumber) {
   };
 }
 
+function findSectionByParagraph(sourceSlug, articleNumber, paragraphNumber) {
+  if (!sourceSlug || !articleNumber || !paragraphNumber) {
+    return { sourceSlug, locator: `§ ${paragraphNumber || ''} do art. ${articleNumber || ''}`.trim(), status: 'unresolved' };
+  }
+  const article = findSectionByArticle(sourceSlug, articleNumber);
+  if (article.status !== 'resolved' || !article.sectionId) return article;
+  const normalizedWanted = normalizeParagraphNumber(paragraphNumber);
+  const rows = db.prepare(`
+    SELECT id, source_slug, display_ref, text
+    FROM law_compendium_sections
+    WHERE source_slug = ?
+      AND parent_section_key = (
+        SELECT section_key
+        FROM law_compendium_sections
+        WHERE id = ?
+      )
+      AND hierarchy_level = 'paragrafo'
+    ORDER BY order_index, id
+  `).all(sourceSlug, article.sectionId);
+  const row = rows.find((candidate) => normalizeParagraphNumber(candidate.display_ref) === normalizedWanted);
+  if (!row) return { sourceSlug, locator: `§ ${paragraphNumber} do art. ${articleNumber}`, status: 'unresolved' };
+  return {
+    sourceSlug: row.source_slug,
+    locator: `${row.display_ref} do ${article.displayRef}`,
+    displayRef: `${row.display_ref} do ${article.displayRef}`,
+    sectionId: row.id,
+    quotedText: normalizeWhitespace(row.text).replace(/\s+§\s*$/g, ''),
+    status: 'resolved'
+  };
+}
+
 function findSectionByDisplayRef(sourceSlug, displayRef) {
   const normalizedWanted = normalizeSearchText(displayRef);
   const rows = db.prepare(`
@@ -257,6 +314,17 @@ function normalizeArticleNumber(value) {
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/^art\.?\s*/i, '')
+    .replace(/[º°]/g, '')
+    .replace(/[^0-9a-z-]/g, '')
+    .trim();
+}
+
+function normalizeParagraphNumber(value) {
+  return String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/^§+\s*/i, '')
+    .replace(/^paragrafo\s+/, '')
     .replace(/[º°]/g, '')
     .replace(/[^0-9a-z-]/g, '')
     .trim();
