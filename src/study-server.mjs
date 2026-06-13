@@ -62,18 +62,21 @@ const databaseUrl = args['database-url'] || process.env.DATABASE_URL || '';
 const dbClient = args['db-client'] || process.env.DB_CLIENT || '';
 
 const { db, client: activeDbClient } = openStudyDatabase({ dbPath, databaseUrl, client: dbClient });
+const skipStartupSchemaMaintenance = activeDbClient === 'postgres' && process.env.VERCEL;
 if (activeDbClient === 'sqlite') {
   initStudySchema(db);
 }
-ensureStudyTimeColumns(db);
-initHistoricalCommentEditSchema(db);
-initQuestionStudyStatusSchema(db);
-initTheoryPagesSchema(db);
-initNormativeTeachingStudentEditsSchema(db);
-initQuestionCurrentLawAnswersSchema(db, activeDbClient);
-initLegalKnowledgeSchema(db, activeDbClient);
-initQuestionAppliedTheorySchema(db, activeDbClient);
-initLawCompendiumSchemaShared(db, activeDbClient);
+if (!skipStartupSchemaMaintenance) {
+  ensureStudyTimeColumns(db);
+  initHistoricalCommentEditSchema(db);
+  initQuestionStudyStatusSchema(db);
+  initTheoryPagesSchema(db);
+  initNormativeTeachingStudentEditsSchema(db);
+  initQuestionCurrentLawAnswersSchema(db, activeDbClient);
+  initLegalKnowledgeSchema(db, activeDbClient);
+  initQuestionAppliedTheorySchema(db, activeDbClient);
+  initLawCompendiumSchemaShared(db, activeDbClient);
+}
 
 export async function handleStudyRequest(request, response) {
   try {
