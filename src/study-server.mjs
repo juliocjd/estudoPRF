@@ -5256,7 +5256,7 @@ function saveHistoricalCommentEdit(questionId, body) {
       SET desatualizada = ?,
           updated_at = CURRENT_TIMESTAMP
       WHERE id_question = ?
-    `).run(activeDbClient === 'postgres' ? false : 0, questionId);
+    `).run(0, questionId);
   }
 
   const question = db.prepare(`
