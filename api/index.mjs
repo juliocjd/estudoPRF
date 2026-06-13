@@ -4,6 +4,12 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+function ensureDbClient() {
+  if (!process.env.DB_CLIENT && process.env.DATABASE_URL) {
+    process.env.DB_CLIENT = 'postgres';
+  }
+}
+
 function safeError(error) {
   const raw = error?.message || String(error || 'Erro desconhecido');
   return raw
@@ -12,6 +18,7 @@ function safeError(error) {
 }
 
 function runtimeDiagnostics() {
+  ensureDbClient();
   return {
     node: process.version,
     vercel: Boolean(process.env.VERCEL),
@@ -82,6 +89,7 @@ async function handleHealth(response) {
 }
 
 export default async function handler(request, response) {
+  ensureDbClient();
   const url = new URL(request.url || '/', `https://${request.headers.host || 'localhost'}`);
   if (url.pathname === '/api/health' || url.pathname === '/api/_health') {
     await handleHealth(response);
