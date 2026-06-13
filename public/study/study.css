@@ -1647,7 +1647,7 @@ button:disabled {
   background: #f8fbfd;
 }
 
-.law-cross-ref,
+.law-cross-refs,
 .law-related {
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1655,7 +1655,29 @@ button:disabled {
   background: var(--surface-muted);
 }
 
-.law-cross-ref summary,
+.law-cross-refs {
+  display: grid;
+  gap: 6px;
+  border-left: 3px solid var(--primary);
+}
+
+.law-cross-refs strong {
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.law-cross-refs p {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.law-cross-refs p span {
+  color: var(--primary);
+  font-weight: 900;
+}
+
 .law-related summary {
   cursor: pointer;
   color: var(--primary);

@@ -1733,10 +1733,6 @@ function lawSectionMarkup(section, isDryLaw) {
   const related = !isDryLaw ? lawRelatedMarkup(section) : '';
   return `
     <article class="law-section is-${escapeAttr(hierarchyLevel)}">
-      <header>
-        <strong>${escapeHtml(section.displayRef || '')}</strong>
-        ${section.title ? `<span>${escapeHtml(section.title)}</span>` : ''}
-      </header>
       <p>${escapeHtml(lawSectionBodyText(section))}</p>
       ${lawCrossRefsMarkup(section.crossReferences || [])}
       ${related}
@@ -1750,18 +1746,43 @@ function lawSectionBodyText(section) {
   if (!displayRef) return text;
   const escapedRef = displayRef.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   text = text.replace(new RegExp(`^${escapedRef}\\s*[-–—.]?\\s*`, 'i'), '').trim();
-  return text;
+  if ((section.hierarchyLevel || '') === 'artigo') {
+    return `${normalizeLawArticleRef(displayRef)} ${text}`.trim();
+  }
+  if ((section.hierarchyLevel || '') === 'paragrafo') {
+    return `${normalizeLawParagraphRef(displayRef)} ${text}`.trim();
+  }
+  if ((section.hierarchyLevel || '') === 'inciso') {
+    return `${displayRef} - ${text}`.trim();
+  }
+  if ((section.hierarchyLevel || '') === 'alinea') {
+    return `${displayRef} ${text}`.trim();
+  }
+  return `${displayRef} ${text}`.trim();
+}
+
+function normalizeLawArticleRef(displayRef) {
+  const ref = String(displayRef || '').replace(/\.$/, '').trim();
+  return /\.$/.test(ref) ? ref : `${ref}.`;
+}
+
+function normalizeLawParagraphRef(displayRef) {
+  const ref = String(displayRef || '').replace(/\.$/, '').trim();
+  if (/^Parágrafo\s+único/i.test(ref)) return 'Parágrafo único.';
+  return /\.$/.test(ref) ? ref : `${ref}.`;
 }
 
 function lawCrossRefsMarkup(refs) {
   const resolved = refs.filter((ref) => ref.status === 'resolved' && ref.quotedTargetText);
   if (!resolved.length) return '';
-  return resolved.map((ref) => `
-    <details class="law-cross-ref">
-      <summary>Remissão citada: ${escapeHtml(ref.refText || ref.targetLocator || '')}</summary>
-      <p>${escapeHtml(ref.quotedTargetText || '')}</p>
-    </details>
-  `).join('');
+  return `
+    <div class="law-cross-refs" aria-label="Remissões citadas">
+      <strong>Remissões citadas</strong>
+      ${resolved.map((ref) => `
+        <p><span>${escapeHtml(ref.refText || ref.targetLocator || '')}</span> ${escapeHtml(ref.quotedTargetText || '')}</p>
+      `).join('')}
+    </div>
+  `;
 }
 
 function lawRelatedMarkup(section) {

@@ -516,7 +516,10 @@ export function extractLawSections(sourceSlug, rawText) {
     });
   }
 
-  return sections.filter((section) => !isNonPublishableLegalDevice(section));
+  return splitInlineAlineas(mergeMisparsedReferenceContinuations(sections))
+    .filter((section) => !isNonPublishableLegalDevice(section))
+    .map(cleanLawSectionForStudy)
+    .map((section, index) => ({ ...section, orderIndex: (index + 1) * 10 }));
 }
 
 function prepareLawTextForSectioning(rawText) {
@@ -541,6 +544,120 @@ function isNonPublishableLegalDevice(section) {
     body = body.replace(new RegExp(`^${escapedRef}\\s*[-–—.]?\\s*`, 'i'), '').trim();
   }
   return /^(?:[º°o]\s+)?(?:§\s*\d+\s*[º°o]?\s*)?\(?\s*(?:vetado|revogado|revogada)(?:\s+pela\b[^)]*)?\s*\)?\s*[.;]?\s*(?:e)?(?:\s*\([^)]*\))*\s*$/i.test(body);
+}
+
+function mergeMisparsedReferenceContinuations(sections) {
+  const merged = [];
+  for (const section of sections) {
+    if (
+      section.hierarchyLevel === 'paragrafo'
+      && /^§\s*\d+\s*[º°o]?\s+do\s+art\.?\s*\d+[A-Za-zº°-]*/i.test(section.text || '')
+      && merged.length
+    ) {
+      const previous = merged[merged.length - 1];
+      previous.text = normalizeWhitespace(`${previous.text} ${section.text}`);
+      previous.rawFragment = normalizeWhitespace(`${previous.rawFragment || previous.text} ${section.rawFragment || section.text}`);
+      continue;
+    }
+    merged.push(section);
+  }
+  return merged;
+}
+
+function splitInlineAlineas(sections) {
+  const output = [];
+  const usedKeys = new Set();
+  let currentIncisoKey = '';
+
+  const push = (section) => {
+    const sectionKey = uniqueSectionKey(section.sectionKey, usedKeys);
+    output.push({ ...section, sectionKey });
+  };
+
+  for (const section of sections) {
+    if (section.hierarchyLevel === 'artigo' || section.hierarchyLevel === 'paragrafo') currentIncisoKey = '';
+
+    if (section.hierarchyLevel === 'inciso') {
+      const split = splitInlineAlineaText(section.text);
+      const inciso = split.alineas.length && split.preamble
+        ? { ...section, text: split.preamble, rawFragment: split.preamble }
+        : section;
+      push(inciso);
+      currentIncisoKey = inciso.sectionKey;
+      if (split.alineas.length && split.preamble) {
+        for (const alinea of split.alineas) push(alineaSection(currentIncisoKey, alinea, section));
+      }
+      continue;
+    }
+
+    if (section.hierarchyLevel === 'alinea') {
+      const parentKey = currentIncisoKey || section.parentSectionKey;
+      const split = splitInlineAlineaText(section.text);
+      const alineas = split.alineas.length ? split.alineas : [{
+        ref: section.displayRef,
+        text: section.text
+      }];
+      for (const alinea of alineas) push(alineaSection(parentKey, alinea, section));
+      continue;
+    }
+
+    push(section);
+  }
+
+  return output;
+}
+
+function splitInlineAlineaText(text) {
+  const value = normalizeWhitespace(text);
+  const matches = [...value.matchAll(/(?:^|\s)([a-z])\)\s+/g)];
+  if (!matches.length) return { preamble: value, alineas: [] };
+  const markers = matches.map((match) => ({
+    letter: match[1].toLowerCase(),
+    start: match.index + (match[0].startsWith(' ') ? 1 : 0)
+  }));
+  const preamble = value.slice(0, markers[0].start).trim();
+  const alineas = markers.map((marker, index) => {
+    const end = markers[index + 1]?.start ?? value.length;
+    const segment = value.slice(marker.start, end).trim();
+    return {
+      ref: `${marker.letter})`,
+      text: segment.replace(/^[a-z]\)\s+/i, '').trim()
+    };
+  }).filter((item) => item.text);
+  return { preamble, alineas };
+}
+
+function alineaSection(parentSectionKey, alinea, sourceSection) {
+  return {
+    ...sourceSection,
+    sectionKey: `${parentSectionKey}:alinea_${alinea.ref.replace(/\)/g, '')}`,
+    parentSectionKey,
+    hierarchyLevel: 'alinea',
+    displayRef: alinea.ref,
+    title: '',
+    text: `${alinea.ref} ${alinea.text}`,
+    rawFragment: `${alinea.ref} ${alinea.text}`,
+    extractionConfidence: sourceSection.extractionConfidence ?? 0.9
+  };
+}
+
+function cleanLawSectionForStudy(section) {
+  const text = cleanLawStudyText(section.text);
+  return {
+    ...section,
+    text,
+    isRevoked: section.isRevoked && /\b(revogado|revogada|vetado)\b/i.test(text)
+  };
+}
+
+function cleanLawStudyText(value) {
+  return normalizeWhitespace(String(value || '')
+    .replace(/\[\((?:Inclu[ií]d[oa]|Reda[cç][aã]o dada|Revogad[oa]|Renumerad[oa]|Vig[eê]ncia|Vide|Produ[cç][aã]o de efeitos)[^\]]*?\)\]\([^)]+\)/gi, ' ')
+    .replace(/\(\s*(?:Inclu[ií]d[oa]|Reda[cç][aã]o dada|Revogad[oa]|Renumerad[oa]|Vig[eê]ncia|Vide|Produ[cç][aã]o de efeitos)\b[^)]*\)/gi, ' ')
+    .replace(/\bProdu[cç][aã]o de efeitos\b\.?/gi, ' ')
+    .replace(/\s+([,.;:])/g, '$1')
+    .replace(/:\s*;/g, ';')
+    .replace(/\s{2,}/g, ' '));
 }
 
 function isOfficialFooterLine(line) {
@@ -594,9 +711,35 @@ function parseLawLineStable(line, currentArticleKey) {
     };
   }
 
+  if (/^§\s*\d+\s*[º°o]?\s+do\s+art\.?\s*\d+[A-Za-zº°-]*/i.test(line) && currentArticleKey) {
+    return {
+      sectionKey: `${currentArticleKey}:item_${sha256(line).slice(0, 10)}`,
+      parentSectionKey: currentArticleKey,
+      hierarchyLevel: 'item',
+      displayRef: 'Item',
+      title: '',
+      text: line,
+      rawFragment: line,
+      isRevoked: revoked
+    };
+  }
+
   const paragraph = line.match(/^((?:§\s*\d+[º°]?|Parágrafo\s+único)\.?\s*)(.*)$/i);
   if (paragraph && currentArticleKey) {
     const ref = normalizeDisplayRef(paragraph[1]);
+    const body = paragraph[2]?.trim() || '';
+    if (/^[º°o]?\s*do\s+art\.?\s*\d+[A-Za-zº°-]*/i.test(body)) {
+      return {
+        sectionKey: `${currentArticleKey}:item_${sha256(line).slice(0, 10)}`,
+        parentSectionKey: currentArticleKey,
+        hierarchyLevel: 'item',
+        displayRef: 'Item',
+        title: '',
+        text: line,
+        rawFragment: line,
+        isRevoked: revoked
+      };
+    }
     return {
       sectionKey: `${currentArticleKey}:${slugKey(ref)}`,
       parentSectionKey: currentArticleKey,

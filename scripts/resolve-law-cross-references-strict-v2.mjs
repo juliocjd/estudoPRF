@@ -13,7 +13,7 @@ try {
   db.prepare('DELETE FROM law_compendium_cross_references').run();
 
   const sections = db.prepare(`
-    SELECT s.id, s.source_slug, s.display_ref, s.hierarchy_level, s.text,
+    SELECT s.id, s.source_slug, s.section_key, s.parent_section_key, s.display_ref, s.hierarchy_level, s.text,
       src.source_type, src.number, src.year, src.status
     FROM law_compendium_sections s
     JOIN law_compendium_sources src ON src.slug = s.source_slug
@@ -100,6 +100,10 @@ function extractStrictReferences(section) {
   };
 
   addCtbParagraphReferences(text, section, refs);
+  addCtbCurrentArticleParagraphReferences(text, section, refs);
+  addCtbCurrentArticleIncisoReferences(text, section, refs);
+  addCtbExplicitIncisoReferences(text, section, refs);
+  addCtbInternalArticleReferences(text, section, refs);
   // Ex.: art. 168 do CTB; arts. 136 a 139-B da Lei nº 9.503/1997.
   addMatches(text, /\b(?:arts?\.|artigos?)\s*\d+[A-Za-zº°-]*(?:\s*(?:,|e|a)\s*\d+[A-Za-zº°-]*)*\s+(?:do|da)\s+(?:CTB|C[oó]digo\s+de\s+Tr[aâ]nsito\s+Brasileiro|Lei\s+n?[ºo°.]?\s*9\.503(?:\/1997)?)\b/gi, 'ctb_article', push);
   // Ex.: inciso II do art. 5º da Resolução CONTRAN nº 967/2022.
@@ -145,6 +149,91 @@ function addCtbParagraphReferences(text, section, refs) {
   }
 }
 
+function addCtbCurrentArticleParagraphReferences(text, section, refs) {
+  if (section.source_slug !== 'lei_9503_1997_ctb_compilado') return;
+  const article = containingArticleNumber(section);
+  if (!article) return;
+  const pattern = /(§{1,2}\s*\d+[º°]?(?:\s*(?:,|e)\s*\d+[º°]?)*)(?:\s+do\s+caput)?\s+deste\s+artigo\b/gi;
+  let match;
+  while ((match = pattern.exec(String(text || '')))) {
+    const paragraphNumbers = [...match[1].matchAll(/\d+[º°]?/g)].map((item) => item[0]);
+    for (const paragraphNumber of paragraphNumbers) {
+      refs.push({
+        text: `§ ${paragraphNumber} deste artigo`,
+        kind: 'ctb_paragraph',
+        confidence: 0.95,
+        articleNumber: article,
+        paragraphNumber,
+        context: contextAround(text, match.index, match[0].length),
+        originalText: normalizeWhitespace(match[0])
+      });
+    }
+  }
+}
+
+function addCtbCurrentArticleIncisoReferences(text, section, refs) {
+  if (section.source_slug !== 'lei_9503_1997_ctb_compilado') return;
+  const article = containingArticleNumber(section);
+  if (!article) return;
+  const pattern = /\b(?:inciso|inc\.)\s+([IVXLCDM]+)(?:\s+do\s+caput)?\s+deste\s+artigo\b/gi;
+  let match;
+  while ((match = pattern.exec(String(text || '')))) {
+    refs.push({
+      text: `inciso ${match[1]} deste artigo`,
+      kind: 'ctb_inciso',
+      confidence: 0.95,
+      articleNumber: article,
+      incisoRef: match[1],
+      context: contextAround(text, match.index, match[0].length),
+      originalText: normalizeWhitespace(match[0])
+    });
+  }
+}
+
+function addCtbExplicitIncisoReferences(text, section, refs) {
+  if (section.source_slug !== 'lei_9503_1997_ctb_compilado') return;
+  const pattern = /\bincisos?\s+([IVXLCDM]+(?:\s*(?:,|e)\s*[IVXLCDM]+)*)(?:\s+do\s+caput)?\s+do\s+art\.?\s*(\d+[A-Za-zº°-]*)/gi;
+  let match;
+  while ((match = pattern.exec(String(text || '')))) {
+    const incisoRefs = [...match[1].matchAll(/[IVXLCDM]+/gi)].map((item) => item[0]);
+    for (const incisoRef of incisoRefs) {
+      refs.push({
+        text: `inciso ${incisoRef} do art. ${match[2]}`,
+        kind: 'ctb_inciso',
+        confidence: 0.96,
+        articleNumber: match[2],
+        incisoRef,
+        context: contextAround(text, match.index, match[0].length),
+        originalText: normalizeWhitespace(match[0])
+      });
+    }
+  }
+}
+
+function addCtbInternalArticleReferences(text, section, refs) {
+  if (section.source_slug !== 'lei_9503_1997_ctb_compilado') return;
+  const pattern = /\barts?\.?\s*(\d+[A-Za-zº°-]*)(?:\s*a\s*(\d+[A-Za-zº°-]*))?(?=\s*(?:[,.;:]|$|deste\s+C[oó]digo\b))(?:\s+deste\s+C[oó]digo\b)?/gi;
+  let match;
+  while ((match = pattern.exec(String(text || '')))) {
+    if (isSpecificLocatorPrefix(text, match.index)) continue;
+    for (const articleNumber of expandArticleRange(match[1], match[2])) {
+      refs.push({
+        text: `art. ${articleNumber}`,
+        kind: 'ctb_article',
+        confidence: match[0].match(/deste\s+C[oó]digo/i) ? 0.95 : 0.9,
+        articleNumber,
+        context: contextAround(text, match.index, match[0].length),
+        originalText: normalizeWhitespace(match[0])
+      });
+    }
+  }
+}
+
+function isSpecificLocatorPrefix(text, matchIndex) {
+  const before = String(text || '').slice(Math.max(0, matchIndex - 80), matchIndex);
+  return /(?:§{1,2}\s*\d+[º°]?(?:\s*(?:,|e)\s*\d+[º°]?)*|incisos?\s+[IVXLCDM]+(?:\s*(?:,|e)\s*[IVXLCDM]+)*)(?:\s+do\s+caput)?\s+do\s+$/i.test(before);
+}
+
 function stripSelfHeading(text, displayRef) {
   let clean = normalizeWhitespace(text).replace(/\s+§\s*$/g, '');
   const ref = String(displayRef || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -176,8 +265,11 @@ function resolveReference(section, ref) {
   if (ref.kind === 'ctb_paragraph') {
     return findSectionByParagraph('lei_9503_1997_ctb_compilado', ref.articleNumber, ref.paragraphNumber);
   }
+  if (ref.kind === 'ctb_inciso') {
+    return findSectionByInciso('lei_9503_1997_ctb_compilado', ref.articleNumber, ref.incisoRef);
+  }
   if (ref.kind === 'ctb_article') {
-    const article = firstArticleNumber(ref.text);
+    const article = ref.articleNumber || firstArticleNumber(ref.text);
     return findSectionByArticle('lei_9503_1997_ctb_compilado', article);
   }
   if (ref.kind === 'resolution_article' || ref.kind === 'resolution_article_inciso') {
@@ -289,6 +381,37 @@ function findSectionByParagraph(sourceSlug, articleNumber, paragraphNumber) {
   };
 }
 
+function findSectionByInciso(sourceSlug, articleNumber, incisoRef) {
+  if (!sourceSlug || !articleNumber || !incisoRef) {
+    return { sourceSlug, locator: `inciso ${incisoRef || ''} do art. ${articleNumber || ''}`.trim(), status: 'unresolved' };
+  }
+  const article = findSectionByArticle(sourceSlug, articleNumber);
+  if (article.status !== 'resolved' || !article.sectionId) return article;
+  const normalizedWanted = normalizeRoman(incisoRef);
+  const rows = db.prepare(`
+    SELECT id, source_slug, display_ref, text
+    FROM law_compendium_sections
+    WHERE source_slug = ?
+      AND parent_section_key = (
+        SELECT section_key
+        FROM law_compendium_sections
+        WHERE id = ?
+      )
+      AND hierarchy_level = 'inciso'
+    ORDER BY order_index, id
+  `).all(sourceSlug, article.sectionId);
+  const row = rows.find((candidate) => normalizeRoman(candidate.display_ref) === normalizedWanted);
+  if (!row) return { sourceSlug, locator: `inciso ${incisoRef} do art. ${articleNumber}`, status: 'unresolved' };
+  return {
+    sourceSlug: row.source_slug,
+    locator: `${row.display_ref} do ${article.displayRef}`,
+    displayRef: `${row.display_ref} do ${article.displayRef}`,
+    sectionId: row.id,
+    quotedText: normalizeWhitespace(row.text).replace(/\s+§\s*$/g, ''),
+    status: 'resolved'
+  };
+}
+
 function findSectionByDisplayRef(sourceSlug, displayRef) {
   const normalizedWanted = normalizeSearchText(displayRef);
   const rows = db.prepare(`
@@ -319,6 +442,33 @@ function normalizeArticleNumber(value) {
     .trim();
 }
 
+function containingArticleNumber(section) {
+  if (section.hierarchy_level === 'artigo') return firstArticleNumber(section.display_ref);
+  const key = String(section.parent_section_key || section.section_key || '');
+  const match = key.match(/:art_(\d+)(?:_([a-z]))?(?::|$)/i);
+  if (!match) return firstArticleNumber(section.display_ref);
+  return `${match[1]}${match[2] ? `-${match[2].toUpperCase()}` : ''}`;
+}
+
+function expandArticleRange(start, end) {
+  const first = normalizeArticleNumber(start);
+  const last = normalizeArticleNumber(end || '');
+  if (!first) return [];
+  if (!last || first === last) return [start];
+  const firstMatch = first.match(/^(\d+)(?:-([a-z]))?$/i);
+  const lastMatch = last.match(/^(\d+)(?:-([a-z]))?$/i);
+  if (!firstMatch || !lastMatch) return [start, end].filter(Boolean);
+  const firstNumber = Number(firstMatch[1]);
+  const lastNumber = Number(lastMatch[1]);
+  if (!Number.isInteger(firstNumber) || !Number.isInteger(lastNumber) || lastNumber < firstNumber || lastNumber - firstNumber > 80) {
+    return [start, end].filter(Boolean);
+  }
+  const values = [];
+  for (let number = firstNumber; number <= lastNumber; number += 1) values.push(String(number));
+  if (lastMatch[2]) values.push(`${lastNumber}-${lastMatch[2].toUpperCase()}`);
+  return [...new Set(values)];
+}
+
 function normalizeParagraphNumber(value) {
   return String(value || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -327,6 +477,14 @@ function normalizeParagraphNumber(value) {
     .replace(/^paragrafo\s+/, '')
     .replace(/[º°]/g, '')
     .replace(/[^0-9a-z-]/g, '')
+    .trim();
+}
+
+function normalizeRoman(value) {
+  return String(value || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^IVXLCDM]/g, '')
     .trim();
 }
 
