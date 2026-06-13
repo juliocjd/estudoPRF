@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openStudyDatabase } from './db/open-study-database.mjs';
 import { safeJsonParse } from './normative-teaching-utils.mjs';
+import { initLawCompendiumSchema as initLawCompendiumSchemaShared, safeJson as parseLawJson } from '../scripts/law-compendium-utils.mjs';
 
 const CURRENT_FILE = fileURLToPath(import.meta.url);
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -72,6 +73,7 @@ initNormativeTeachingStudentEditsSchema(db);
 initQuestionCurrentLawAnswersSchema(db, activeDbClient);
 initLegalKnowledgeSchema(db, activeDbClient);
 initQuestionAppliedTheorySchema(db, activeDbClient);
+initLawCompendiumSchemaShared(db, activeDbClient);
 
 export async function handleStudyRequest(request, response) {
   try {
@@ -164,6 +166,17 @@ async function routeRequest(request, response) {
 
   if (url.pathname === '/api/legal-search' && request.method === 'GET') {
     sendJson(response, 200, getLegalSearch(url.searchParams));
+    return;
+  }
+
+  if (url.pathname === '/api/law-compendium/overview' && request.method === 'GET') {
+    sendJson(response, 200, getLawCompendiumOverview());
+    return;
+  }
+
+  const lawCompendiumSourceMatch = url.pathname.match(/^\/api\/law-compendium\/sources\/([^/]+)$/);
+  if (lawCompendiumSourceMatch && request.method === 'GET') {
+    sendJson(response, 200, getLawCompendiumSource(decodeURIComponent(lawCompendiumSourceMatch[1]), url.searchParams));
     return;
   }
 
@@ -938,6 +951,201 @@ function getLegalSearch(searchParams) {
       microtema: row.microtema || '',
       answerSummary: row.answer_summary || '',
       verifiedStatus: row.verified_status || ''
+    }))
+  };
+}
+
+function hasLawCompendiumTables() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'law_compendium_sources'").get())
+    && Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'law_compendium_sections'").get());
+}
+
+function getLawCompendiumOverview() {
+  if (!hasLawCompendiumTables()) {
+    return { available: false, reason: 'Apostila da Lei ainda nao criada.' };
+  }
+  const sources = db.prepare(`
+    SELECT src.slug, src.source_type, src.number, src.year, src.title, src.summary,
+      src.status, src.current_status, src.official_url, src.edital_origin,
+      src.validation_notes,
+      COUNT(sec.id) AS sections,
+      CASE WHEN sum.source_slug IS NULL THEN 0 ELSE 1 END AS has_summary
+    FROM law_compendium_sources src
+    LEFT JOIN law_compendium_sections sec ON sec.source_slug = src.slug
+    LEFT JOIN law_compendium_study_summaries sum ON sum.source_slug = src.slug
+    GROUP BY src.slug, src.source_type, src.number, src.year, src.title, src.summary,
+      src.status, src.current_status, src.official_url, src.edital_origin,
+      src.validation_notes, sum.source_slug
+    ORDER BY
+      CASE src.status WHEN 'validated_current' THEN 0 WHEN 'historical_revoked' THEN 1 ELSE 2 END,
+      src.source_type,
+      src.year,
+      CAST(src.number AS INTEGER),
+      src.title
+  `).all();
+  const current = sources.filter((source) => source.status === 'validated_current');
+  const historical = sources.filter((source) => source.status === 'historical_revoked');
+  const pending = sources.filter((source) => !['validated_current', 'historical_revoked'].includes(source.status));
+  return {
+    available: true,
+    stats: {
+      total: sources.length,
+      current: current.length,
+      historical: historical.length,
+      pending: pending.length,
+      sections: sources.reduce((sum, source) => sum + Number(source.sections || 0), 0)
+    },
+    current: current.map(lawSourceListPayload),
+    historical: historical.map(lawSourceListPayload),
+    pending: pending.map(lawSourceListPayload)
+  };
+}
+
+function getLawCompendiumSource(slug, searchParams = new URLSearchParams()) {
+  if (!hasLawCompendiumTables()) {
+    return { available: false, reason: 'Apostila da Lei ainda nao criada.' };
+  }
+  const mode = String(searchParams.get('mode') || 'beginner');
+  const source = db.prepare(`
+    SELECT *
+    FROM law_compendium_sources
+    WHERE slug = ?
+    LIMIT 1
+  `).get(slug);
+  if (!source) {
+    return { available: false, reason: 'Norma nao encontrada.' };
+  }
+  if (source.status !== 'validated_current' && mode !== 'history') {
+    return {
+      available: true,
+      blocked: true,
+      source: lawSourceDetailPayload(source),
+      reason: 'Fonte nao validada como vigente; exibida apenas como historico/pendencia.'
+    };
+  }
+  const summary = db.prepare(`
+    SELECT *
+    FROM law_compendium_study_summaries
+    WHERE source_slug = ?
+  `).get(slug) || null;
+  const sections = db.prepare(`
+    SELECT *
+    FROM law_compendium_sections
+    WHERE source_slug = ?
+      AND is_current != 0
+    ORDER BY order_index, id
+  `).all(slug);
+  const sectionIds = sections.map((section) => section.id);
+  const crossRefs = sectionIds.length ? db.prepare(`
+    SELECT *
+    FROM law_compendium_cross_references
+    WHERE section_id IN (${sectionIds.map(() => '?').join(',')})
+    ORDER BY id
+  `).all(...sectionIds) : [];
+  const questionLinks = sectionIds.length ? db.prepare(`
+    SELECT l.section_id, l.question_id, l.link_kind, l.evidence, l.confidence,
+      q.materia, q.assunto, substr(COALESCE(q.statement_text, ''), 1, 280) AS statement_text
+    FROM law_section_question_links l
+    LEFT JOIN questions q ON q.id_question = l.question_id
+    WHERE l.section_id IN (${sectionIds.map(() => '?').join(',')})
+    ORDER BY l.confidence DESC, l.id
+  `).all(...sectionIds) : [];
+  const commentLinks = sectionIds.length ? db.prepare(`
+    SELECT section_id, question_id, comment_source, excerpt, evidence, confidence
+    FROM law_section_comment_links
+    WHERE section_id IN (${sectionIds.map(() => '?').join(',')})
+    ORDER BY confidence DESC, id
+  `).all(...sectionIds) : [];
+  return {
+    available: true,
+    blocked: false,
+    mode,
+    source: lawSourceDetailPayload(source),
+    summary: summary ? lawSummaryPayload(summary) : null,
+    sections: sections.map((section) => lawSectionPayload(section, crossRefs, questionLinks, commentLinks))
+  };
+}
+
+function lawSourceListPayload(source) {
+  return {
+    slug: source.slug,
+    sourceType: source.source_type || '',
+    number: source.number || '',
+    year: source.year || '',
+    title: source.title || '',
+    status: source.status || '',
+    currentStatus: source.current_status || '',
+    officialUrl: source.official_url || '',
+    editalOrigin: parseLawJson(source.edital_origin, []),
+    validationNotes: source.validation_notes || '',
+    sections: Number(source.sections || 0),
+    hasSummary: Boolean(source.has_summary)
+  };
+}
+
+function lawSourceDetailPayload(source) {
+  return {
+    slug: source.slug,
+    sourceType: source.source_type || '',
+    number: source.number || '',
+    year: source.year || '',
+    title: source.title || '',
+    summary: source.summary || '',
+    status: source.status || '',
+    currentStatus: source.current_status || '',
+    officialUrl: source.official_url || '',
+    officialCheckedAt: source.official_checked_at || '',
+    replaces: parseLawJson(source.replaces, []),
+    replacedBy: parseLawJson(source.replaced_by, []),
+    editalOrigin: parseLawJson(source.edital_origin, []),
+    validationNotes: source.validation_notes || '',
+    metadata: parseLawJson(source.metadata, {})
+  };
+}
+
+function lawSummaryPayload(summary) {
+  return {
+    topSummary: summary.top_summary || '',
+    whatItCovers: parseLawJson(summary.what_it_covers, []),
+    highYieldPoints: parseLawJson(summary.high_yield_points, []),
+    commonTraps: parseLawJson(summary.common_traps, []),
+    relatedCtbArticles: parseLawJson(summary.related_ctb_articles, []),
+    generatedBy: summary.generated_by || ''
+  };
+}
+
+function lawSectionPayload(section, crossRefs, questionLinks, commentLinks) {
+  return {
+    id: section.id,
+    sectionKey: section.section_key || '',
+    parentSectionKey: section.parent_section_key || '',
+    hierarchyLevel: section.hierarchy_level || '',
+    displayRef: section.display_ref || '',
+    title: section.title || '',
+    text: section.text || '',
+    isRevoked: Boolean(section.is_revoked),
+    crossReferences: crossRefs.filter((ref) => Number(ref.section_id) === Number(section.id)).map((ref) => ({
+      refText: ref.ref_text || '',
+      targetSourceSlug: ref.target_source_slug || '',
+      targetLocator: ref.target_locator || '',
+      quotedTargetText: ref.quoted_target_text || '',
+      status: ref.resolution_status || ''
+    })),
+    questionLinks: questionLinks.filter((link) => Number(link.section_id) === Number(section.id)).slice(0, 12).map((link) => ({
+      questionId: link.question_id,
+      linkKind: link.link_kind || '',
+      evidence: link.evidence || '',
+      confidence: link.confidence || 0,
+      materia: link.materia || '',
+      assunto: link.assunto || '',
+      statementText: link.statement_text || ''
+    })),
+    commentLinks: commentLinks.filter((link) => Number(link.section_id) === Number(section.id)).slice(0, 8).map((link) => ({
+      questionId: link.question_id || null,
+      commentSource: link.comment_source || '',
+      excerpt: link.excerpt || '',
+      evidence: link.evidence || '',
+      confidence: link.confidence || 0
     }))
   };
 }
@@ -6700,6 +6908,38 @@ function initAdaptiveStudySchema(database) {
 
 function ensureStudyTimeColumns(database) {
   ensureColumn(database, 'study_sessions', 'total_elapsed_ms', 'INTEGER DEFAULT 0');
+  backfillStudySessionElapsedMs(database);
+}
+
+function backfillStudySessionElapsedMs(database) {
+  let sessions = [];
+  try {
+    sessions = database.prepare(`
+      SELECT id
+      FROM study_sessions
+      WHERE total_elapsed_ms IS NULL
+         OR total_elapsed_ms = 0
+    `).all();
+  } catch {
+    return;
+  }
+  const selectAnswers = database.prepare(`
+    SELECT elapsed_ms
+    FROM study_answers
+    WHERE session_id = ?
+      AND elapsed_ms IS NOT NULL
+      AND elapsed_ms > 0
+  `);
+  const updateSession = database.prepare(`
+    UPDATE study_sessions
+    SET total_elapsed_ms = ?
+    WHERE id = ?
+  `);
+  for (const session of sessions) {
+    const totalElapsedMs = selectAnswers.all(session.id)
+      .reduce((total, row) => total + normalizeStudyElapsedMs(row.elapsed_ms), 0);
+    updateSession.run(totalElapsedMs, session.id);
+  }
 }
 
 function ensureColumn(database, tableName, columnName, definition) {

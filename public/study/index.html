@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260613-historical-text-tools">
+    <link rel="stylesheet" href="/study.css?v=20260613-study-time-live">
   </head>
   <body>
     <div class="app-shell">
@@ -159,6 +159,7 @@
                 <button id="toggleTheoryCoverage" class="menu-item" type="button">Cobertura de teoria</button>
                 <button id="toggleSubjects" class="menu-item" type="button">Ranking de assuntos</button>
                 <button id="toggleNormative" class="menu-item" type="button">Revisão normativa</button>
+                <button id="toggleLawCompendium" class="menu-item" type="button">Legislação PRF</button>
               </div>
             </div>
 
@@ -369,6 +370,18 @@
           </div>
           <div id="normativeTable" class="normative-table"></div>
         </section>
+
+        <section class="law-compendium-panel" id="lawCompendiumPanel" hidden>
+          <div class="subjects-head">
+            <strong>Legislação PRF</strong>
+            <span id="lawCompendiumInfo"></span>
+          </div>
+          <div id="lawCompendiumStats" class="normative-stats"></div>
+          <div class="law-compendium-layout">
+            <aside class="law-source-list" id="lawSourceList" aria-label="Normas da apostila"></aside>
+            <article class="law-source-detail" id="lawSourceDetail" aria-label="Apostila da Lei"></article>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -459,6 +472,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260613-historical-text-tools" type="module"></script>
+    <script src="/study.js?v=20260613-study-time-live" type="module"></script>
   </body>
 </html>

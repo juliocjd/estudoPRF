@@ -47,11 +47,16 @@ const state = {
   coverageVisible: false,
   theoryCoverageVisible: false,
   normativeVisible: false,
+  lawCompendiumVisible: false,
+  lawCompendiumMode: 'beginner',
+  activeLawSourceSlug: '',
+  lawCompendiumOverview: null,
   teachingEditMode: false,
   currentLawEditMode: false,
   historicalCommentEditMode: false,
   historicalCommentSelection: null,
-  studyTimeTab: 'today'
+  studyTimeTab: 'today',
+  studyTimeSummary: null
 };
 
 const els = {
@@ -102,6 +107,12 @@ const els = {
   toggleTheoryCoverage: document.querySelector('#toggleTheoryCoverage'),
   toggleSubjects: document.querySelector('#toggleSubjects'),
   toggleNormative: document.querySelector('#toggleNormative'),
+  toggleLawCompendium: document.querySelector('#toggleLawCompendium'),
+  lawCompendiumPanel: document.querySelector('#lawCompendiumPanel'),
+  lawCompendiumInfo: document.querySelector('#lawCompendiumInfo'),
+  lawCompendiumStats: document.querySelector('#lawCompendiumStats'),
+  lawSourceList: document.querySelector('#lawSourceList'),
+  lawSourceDetail: document.querySelector('#lawSourceDetail'),
   pageLabel: document.querySelector('#pageLabel'),
   questionMeta: document.querySelector('#questionMeta'),
   questionQuickStatus: document.querySelector('#questionQuickStatus'),
@@ -459,6 +470,14 @@ function bindEvents() {
       await loadNormativeReview();
     }
   });
+  els.toggleLawCompendium?.addEventListener('click', async () => {
+    closeAllDropdowns();
+    state.lawCompendiumVisible = !state.lawCompendiumVisible;
+    renderLawCompendiumVisibility();
+    if (state.lawCompendiumVisible) {
+      await loadLawCompendiumOverview();
+    }
+  });
 
   els.subjectsList.addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-materia][data-assunto]');
@@ -558,6 +577,18 @@ function bindEvents() {
     if (state.selectedId === questionId) {
       openSupportPanel('normative');
     }
+  });
+
+  els.lawSourceDetail?.addEventListener('click', async (event) => {
+    const trigger = event.target.closest('[data-question-id]');
+    if (!trigger) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const questionId = Number(trigger.dataset.questionId || 0);
+    if (!questionId) return;
+    state.lawCompendiumVisible = false;
+    renderLawCompendiumVisibility();
+    await openQuestionDirect(questionId, { fallbackHref: trigger.href });
   });
 
   els.supportSimilarBody.addEventListener('click', async (event) => {
@@ -788,6 +819,8 @@ function bindEvents() {
     }
 
     els.submitAnswer.disabled = true;
+    const elapsedMs = getQuestionElapsedMs();
+    pauseQuestionTimer();
     try {
       const result = await api(`/api/questions/${state.selectedId}/answer`, {
         method: 'POST',
@@ -796,7 +829,7 @@ function bindEvents() {
           answer: selected,
           confidence: els.confidenceSelect.value,
           errorType: els.errorTypeSelect.value,
-          elapsedMs: getQuestionElapsedMs(),
+          elapsedMs,
           studyMode: state.studyMode,
           sessionId: state.sessionId,
           sawComment: state.sawComment,
@@ -806,6 +839,7 @@ function bindEvents() {
       renderAnswerResult(result);
       loadStats().catch(() => {});
     } catch (error) {
+      syncQuestionTimerTracking();
       showAnswerSubmitError(error);
     }
   });
@@ -1031,7 +1065,8 @@ async function loadStats() {
     statMarkup(stats.repairQuestions || 0, 'revisar erros'),
     statMarkup(stats.answered || 0, 'resolvidas')
   ].join('');
-  renderStudyTimeSummary(stats.studyTime || {});
+  state.studyTimeSummary = stats.studyTime || {};
+  renderStudyTimeSummary();
 }
 
 async function loadFilters() {
@@ -1105,6 +1140,7 @@ function renderTimer() {
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
   els.timerLabel.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  renderStudyTimeSummary();
 }
 
 function resetQuestionTimer() {
@@ -1513,6 +1549,214 @@ async function loadNormativeReview() {
   els.normativeTable.innerHTML = list.rows?.length
     ? list.rows.map((row) => normativeRowMarkup(row)).join('')
     : '<p class="empty">Nenhuma análise normativa encontrada para os filtros.</p>';
+}
+
+async function loadLawCompendiumOverview() {
+  if (!els.lawCompendiumInfo || !els.lawSourceList || !els.lawSourceDetail) return;
+  els.lawCompendiumInfo.textContent = 'carregando';
+  els.lawSourceList.innerHTML = '<p class="empty">Carregando normas...</p>';
+  els.lawSourceDetail.innerHTML = '<p class="empty">Selecione uma norma.</p>';
+  const data = await api('/api/law-compendium/overview');
+  state.lawCompendiumOverview = data;
+  if (!data.available) {
+    els.lawCompendiumInfo.textContent = 'sem dados';
+    els.lawCompendiumStats.innerHTML = '';
+    els.lawSourceList.innerHTML = '';
+    els.lawSourceDetail.innerHTML = `<p class="empty">${escapeHtml(data.reason || 'Apostila da Lei indisponivel.')}</p>`;
+    return;
+  }
+  els.lawCompendiumInfo.textContent = `${Number(data.stats?.current || 0).toLocaleString('pt-BR')} vigentes validadas`;
+  els.lawCompendiumStats.innerHTML = [
+    statMarkup(data.stats?.current || 0, 'vigentes'),
+    statMarkup(data.stats?.historical || 0, 'historicas'),
+    statMarkup(data.stats?.pending || 0, 'pendentes'),
+    statMarkup(data.stats?.sections || 0, 'secoes')
+  ].join('');
+  renderLawSourceList(data);
+  const first = data.current?.[0] || data.pending?.[0] || data.historical?.[0];
+  if (first) await openLawSource(first.slug);
+}
+
+function renderLawSourceList(data) {
+  const groups = [
+    ['Apostila vigente', data.current || []],
+    ['Histórico do edital', data.historical || []],
+    ['Pendentes de verificação', data.pending || []]
+  ];
+  els.lawSourceList.innerHTML = groups.map(([title, rows]) => `
+    <section class="law-source-group">
+      <strong>${escapeHtml(title)}</strong>
+      ${rows.length ? rows.map((row) => lawSourceButtonMarkup(row)).join('') : '<p class="empty">Nenhuma norma.</p>'}
+    </section>
+  `).join('');
+  els.lawSourceList.querySelectorAll('[data-law-source]').forEach((button) => {
+    button.addEventListener('click', () => openLawSource(button.dataset.lawSource || ''));
+  });
+}
+
+function lawSourceButtonMarkup(row) {
+  const active = row.slug === state.activeLawSourceSlug ? ' is-active' : '';
+  const meta = [
+    lawStatusLabel(row.status),
+    row.sections ? `${Number(row.sections).toLocaleString('pt-BR')} secoes` : '',
+    row.editalOrigin?.length ? `edital: ${row.editalOrigin.slice(0, 2).join('; ')}` : ''
+  ].filter(Boolean).join(' - ');
+  return `
+    <button class="law-source-button${active}" type="button" data-law-source="${escapeAttr(row.slug)}">
+      <span>${escapeHtml(row.title || row.slug)}</span>
+      <small>${escapeHtml(meta)}</small>
+    </button>
+  `;
+}
+
+async function openLawSource(slug) {
+  if (!slug) return;
+  state.activeLawSourceSlug = slug;
+  renderLawSourceList(state.lawCompendiumOverview || { current: [], historical: [], pending: [] });
+  els.lawSourceDetail.innerHTML = '<p class="empty">Carregando norma...</p>';
+  const row = findLawSourceInOverview(slug);
+  const mode = row?.status === 'historical_revoked' ? 'history' : (state.lawCompendiumMode || 'beginner');
+  const data = await api(`/api/law-compendium/sources/${encodeURIComponent(slug)}?mode=${encodeURIComponent(mode)}`);
+  renderLawSourceDetail(data);
+}
+
+function findLawSourceInOverview(slug) {
+  const overview = state.lawCompendiumOverview || {};
+  return [...(overview.current || []), ...(overview.historical || []), ...(overview.pending || [])]
+    .find((row) => row.slug === slug);
+}
+
+function renderLawSourceDetail(data) {
+  if (!data.available) {
+    els.lawSourceDetail.innerHTML = `<p class="empty">${escapeHtml(data.reason || 'Norma indisponivel.')}</p>`;
+    return;
+  }
+  const source = data.source || {};
+  if (data.blocked) {
+    els.lawSourceDetail.innerHTML = `
+      <div class="law-source-head">
+        <div>
+          <strong>${escapeHtml(source.title || source.slug || 'Norma')}</strong>
+          <span>${escapeHtml(lawStatusLabel(source.status))}</span>
+        </div>
+      </div>
+      <p class="normative-warning is-warning">${escapeHtml(data.reason || 'Fonte bloqueada para a apostila vigente.')}</p>
+      <p class="empty">${escapeHtml(source.validationNotes || '')}</p>
+    `;
+    return;
+  }
+  const isDryLaw = state.lawCompendiumMode === 'dry';
+  els.lawSourceDetail.innerHTML = `
+    <div class="law-source-head">
+      <div>
+        <strong>${escapeHtml(source.title || source.slug || 'Norma')}</strong>
+        <span>${escapeHtml(lawStatusLabel(source.status))}${source.officialCheckedAt ? ` - checada em ${escapeHtml(formatFullDate(source.officialCheckedAt))}` : ''}</span>
+      </div>
+      <div class="law-mode-toggle" role="group" aria-label="Modo da apostila">
+        <button class="button ${isDryLaw ? 'button-secondary' : 'button-primary'}" type="button" data-law-mode="beginner">Iniciante</button>
+        <button class="button ${isDryLaw ? 'button-primary' : 'button-secondary'}" type="button" data-law-mode="dry">Lei seca</button>
+      </div>
+    </div>
+    ${source.officialUrl ? `<a class="law-official-link" href="${escapeAttr(source.officialUrl)}" target="_blank" rel="noreferrer">Fonte oficial</a>` : ''}
+    ${!isDryLaw ? lawSummaryMarkup(data.summary, source) : ''}
+    <div class="law-sections">
+      ${(data.sections || []).map((section) => lawSectionMarkup(section, isDryLaw)).join('') || '<p class="empty">Nenhuma seção extraída.</p>'}
+    </div>
+  `;
+  els.lawSourceDetail.querySelectorAll('[data-law-mode]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      state.lawCompendiumMode = button.dataset.lawMode || 'beginner';
+      await openLawSource(state.activeLawSourceSlug);
+    });
+  });
+}
+
+function lawSummaryMarkup(summary, source) {
+  if (!summary) return '<p class="empty">Resumo ainda não criado. Rode build-law-compendium-summaries.</p>';
+  return `
+    <section class="law-summary">
+      <strong>Resumo de estudo</strong>
+      <p>${escapeHtml(summary.topSummary || '')}</p>
+      ${lawBulletBlock('O que cobre', summary.whatItCovers)}
+      ${lawBulletBlock('Pontos cobrados', summary.highYieldPoints)}
+      ${lawBulletBlock('Pegadinhas', summary.commonTraps)}
+      ${source.editalOrigin?.length ? lawBulletBlock('Histórico do edital', source.editalOrigin) : ''}
+    </section>
+  `;
+}
+
+function lawBulletBlock(title, items = []) {
+  const rows = (items || []).filter(Boolean);
+  if (!rows.length) return '';
+  return `
+    <div class="law-bullet-block">
+      <span>${escapeHtml(title)}</span>
+      <ul>${rows.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+    </div>
+  `;
+}
+
+function lawSectionMarkup(section, isDryLaw) {
+  const related = !isDryLaw ? lawRelatedMarkup(section) : '';
+  return `
+    <article class="law-section is-${escapeAttr(section.hierarchyLevel || 'item')}">
+      <header>
+        <strong>${escapeHtml(section.displayRef || '')}</strong>
+        ${section.title ? `<span>${escapeHtml(section.title)}</span>` : ''}
+      </header>
+      <p>${escapeHtml(section.text || '')}</p>
+      ${lawCrossRefsMarkup(section.crossReferences || [])}
+      ${related}
+    </article>
+  `;
+}
+
+function lawCrossRefsMarkup(refs) {
+  const resolved = refs.filter((ref) => ref.status === 'resolved' && ref.quotedTargetText);
+  if (!resolved.length) return '';
+  return resolved.map((ref) => `
+    <details class="law-cross-ref">
+      <summary>Dispositivo citado: ${escapeHtml(ref.refText || ref.targetLocator || '')}</summary>
+      <p>${escapeHtml(ref.quotedTargetText || '')}</p>
+    </details>
+  `).join('');
+}
+
+function lawRelatedMarkup(section) {
+  const questions = section.questionLinks || [];
+  const comments = section.commentLinks || [];
+  if (!questions.length && !comments.length) return '';
+  return `
+    <details class="law-related">
+      <summary>Questões e comentários relacionados</summary>
+      ${questions.length ? `
+        <div class="law-related-block">
+          <strong>Questões</strong>
+          ${questions.map((question) => `
+            <a href="${escapeAttr(questionLink(question.questionId))}" data-question-id="${escapeAttr(question.questionId)}">
+              #${Number(question.questionId || 0).toLocaleString('pt-BR')} - ${escapeHtml(question.assunto || question.evidence || '')}
+            </a>
+          `).join('')}
+        </div>
+      ` : ''}
+      ${comments.length ? `
+        <div class="law-related-block">
+          <strong>Comentários de professor</strong>
+          ${comments.map((comment) => `<p>${escapeHtml(comment.excerpt || comment.evidence || '')}</p>`).join('')}
+        </div>
+      ` : ''}
+    </details>
+  `;
+}
+
+function lawStatusLabel(status) {
+  return {
+    validated_current: 'vigente validada',
+    historical_revoked: 'histórico/revogada',
+    needs_verification: 'pendente',
+    import_error: 'erro de importação',
+    draft: 'rascunho'
+  }[status] || status || 'sem status';
 }
 
 function buildNormativeReviewParams() {
@@ -4106,6 +4350,12 @@ function renderNormativeVisibility() {
   els.toggleNormative.textContent = state.normativeVisible ? 'Ocultar revisão normativa' : 'Revisão normativa';
 }
 
+function renderLawCompendiumVisibility() {
+  if (!els.lawCompendiumPanel || !els.toggleLawCompendium) return;
+  els.lawCompendiumPanel.hidden = !state.lawCompendiumVisible;
+  els.toggleLawCompendium.textContent = state.lawCompendiumVisible ? 'Ocultar Legislação PRF' : 'Legislação PRF';
+}
+
 function renderPager() {
   const absoluteIndex = state.rows.length
     ? ((state.page - 1) * PAGE_SIZE) + state.rowIndex + 1
@@ -4122,10 +4372,11 @@ function statMarkup(value, label) {
   return `<div class="stat"><strong>${escapeHtml(displayValue)}</strong><span>${label}</span></div>`;
 }
 
-function renderStudyTimeSummary(studyTime) {
+function renderStudyTimeSummary(studyTime = state.studyTimeSummary || {}) {
   if (!els.studyTimeToday || !els.studyTimeTotal) return;
-  const todayMs = Number(studyTime?.todayMs || 0);
-  const totalMs = Number(studyTime?.totalMs || 0);
+  const liveMs = getLiveStudyTimeMs();
+  const todayMs = Number(studyTime?.todayMs || 0) + liveMs;
+  const totalMs = Number(studyTime?.totalMs || 0) + liveMs;
   const todayAttempts = Number(studyTime?.todayAttempts || 0);
   const timedAttempts = Number(studyTime?.timedAttempts || 0);
   const cappedAttempts = Number(studyTime?.cappedAttempts || 0);
@@ -4142,6 +4393,12 @@ function renderStudyTimeSummary(studyTime) {
   setStudyTimeTab(state.studyTimeTab);
 }
 
+function getLiveStudyTimeMs() {
+  if (!state.selectedId || state.answerResult || !state.questionTimerRunning) return 0;
+  const elapsedMs = getQuestionElapsedMs();
+  return Math.max(0, elapsedMs);
+}
+
 function setStudyTimeTab(tab) {
   state.studyTimeTab = tab === 'total' ? 'total' : 'today';
   const isTotal = state.studyTimeTab === 'total';
@@ -4154,7 +4411,14 @@ function setStudyTimeTab(tab) {
 }
 
 function formatStudyDuration(ms) {
-  const totalMinutes = Math.round(Math.max(0, Number(ms || 0)) / 60000);
+  const totalSeconds = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  if (totalSeconds < 600) {
+    const shortMinutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return seconds ? `${shortMinutes}min ${seconds}s` : `${shortMinutes}min`;
+  }
+  const totalMinutes = Math.round(totalSeconds / 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   if (hours && minutes) return `${hours}h ${minutes}min`;
