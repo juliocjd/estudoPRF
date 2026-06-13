@@ -219,7 +219,7 @@ let excludedMatterTimer = null;
 const mobileLayoutQuery = window.matchMedia('(max-width: 760px)');
 let lockedBodyScrollY = 0;
 
-boot();
+boot().catch(handleBootError);
 
 async function boot() {
   const [studyState] = await Promise.all([loadStudyState(), loadStats(), loadFilters(), loadExamProfiles()]);
@@ -234,6 +234,20 @@ async function boot() {
     await loadResumeTarget();
   } else {
     await loadQuestions();
+  }
+}
+
+function handleBootError(error) {
+  console.error(error);
+  if (els.questionMeta) els.questionMeta.textContent = 'falha ao carregar dados';
+  if (els.questionQuickStatus) els.questionQuickStatus.textContent = 'Erro na API';
+  if (els.questionTitle) els.questionTitle.textContent = 'Erro ao carregar';
+  if (els.statement) {
+    els.statement.innerHTML = `
+      <p class="empty">
+        ${escapeHtml(error?.message || 'Nao foi possivel carregar os dados do servidor.')}
+      </p>
+    `;
   }
 }
 
