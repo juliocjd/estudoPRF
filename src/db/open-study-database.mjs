@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import '../load-env.mjs';
 import { PostgresSyncDatabase } from './postgres-sync-db.mjs';
 
 const require = createRequire(import.meta.url);

@@ -967,7 +967,7 @@ function getLawCompendiumOverview() {
   const sources = db.prepare(`
     SELECT src.slug, src.source_type, src.number, src.year, src.title, src.summary,
       src.status, src.current_status, src.official_url, src.edital_origin,
-      src.validation_notes,
+      src.validation_notes, src.show_in_student_compendium, src.import_quality,
       COUNT(sec.id) AS sections,
       CASE WHEN sum.source_slug IS NULL THEN 0 ELSE 1 END AS has_summary
     FROM law_compendium_sources src
@@ -975,7 +975,7 @@ function getLawCompendiumOverview() {
     LEFT JOIN law_compendium_study_summaries sum ON sum.source_slug = src.slug
     GROUP BY src.slug, src.source_type, src.number, src.year, src.title, src.summary,
       src.status, src.current_status, src.official_url, src.edital_origin,
-      src.validation_notes, sum.source_slug
+      src.validation_notes, src.show_in_student_compendium, src.import_quality, sum.source_slug
     ORDER BY
       CASE src.status WHEN 'validated_current' THEN 0 WHEN 'historical_revoked' THEN 1 ELSE 2 END,
       src.source_type,
@@ -983,7 +983,12 @@ function getLawCompendiumOverview() {
       CAST(src.number AS INTEGER),
       src.title
   `).all();
-  const current = sources.filter((source) => source.status === 'validated_current');
+  const current = sources.filter((source) => (
+    source.status === 'validated_current'
+    && Boolean(source.show_in_student_compendium)
+    && source.import_quality === 'sections_imported'
+    && Number(source.sections || 0) > 0
+  ));
   const historical = sources.filter((source) => source.status === 'historical_revoked');
   const pending = sources.filter((source) => !['validated_current', 'historical_revoked'].includes(source.status));
   return {
@@ -1015,12 +1020,15 @@ function getLawCompendiumSource(slug, searchParams = new URLSearchParams()) {
   if (!source) {
     return { available: false, reason: 'Norma nao encontrada.' };
   }
-  if (source.status !== 'validated_current' && mode !== 'history') {
+  const publishableSource = source.status === 'validated_current'
+    && Boolean(source.show_in_student_compendium)
+    && source.import_quality === 'sections_imported';
+  if (!publishableSource && mode !== 'history') {
     return {
       available: true,
       blocked: true,
       source: lawSourceDetailPayload(source),
-      reason: 'Fonte nao validada como vigente; exibida apenas como historico/pendencia.'
+      reason: 'Fonte nao validada como vigente publicavel; exibida apenas como historico/pendencia.'
     };
   }
   const summary = db.prepare(`
@@ -1032,7 +1040,7 @@ function getLawCompendiumSource(slug, searchParams = new URLSearchParams()) {
     SELECT *
     FROM law_compendium_sections
     WHERE source_slug = ?
-      AND is_current != 0
+      AND COALESCE(is_current, TRUE) != FALSE
     ORDER BY order_index, id
   `).all(slug);
   const sectionIds = sections.map((section) => section.id);
@@ -1040,6 +1048,10 @@ function getLawCompendiumSource(slug, searchParams = new URLSearchParams()) {
     SELECT *
     FROM law_compendium_cross_references
     WHERE section_id IN (${sectionIds.map(() => '?').join(',')})
+      AND resolution_status = 'resolved'
+      AND COALESCE(display_policy, 'hide') = 'show_in_article'
+      AND COALESCE(is_self_reference, FALSE) = FALSE
+      AND resolved_section_id IS NOT NULL
     ORDER BY id
   `).all(...sectionIds) : [];
   const questionLinks = sectionIds.length ? db.prepare(`
@@ -1048,12 +1060,18 @@ function getLawCompendiumSource(slug, searchParams = new URLSearchParams()) {
     FROM law_section_question_links l
     LEFT JOIN questions q ON q.id_question = l.question_id
     WHERE l.section_id IN (${sectionIds.map(() => '?').join(',')})
+      AND COALESCE(l.display_policy, 'hide') = 'show_in_article'
+      AND COALESCE(l.link_status, '') = 'verified_exact_locator'
+      AND COALESCE(l.confidence, 0) >= 0.90
     ORDER BY l.confidence DESC, l.id
   `).all(...sectionIds) : [];
   const commentLinks = sectionIds.length ? db.prepare(`
     SELECT section_id, question_id, comment_source, excerpt, evidence, confidence
     FROM law_section_comment_links
     WHERE section_id IN (${sectionIds.map(() => '?').join(',')})
+      AND COALESCE(display_policy, 'hide') = 'show_in_article'
+      AND COALESCE(link_status, '') IN ('verified_exact_locator', 'derived_from_verified_question')
+      AND COALESCE(confidence, 0) >= 0.70
     ORDER BY confidence DESC, id
   `).all(...sectionIds) : [];
   return {
@@ -1115,6 +1133,7 @@ function lawSummaryPayload(summary) {
 }
 
 function lawSectionPayload(section, crossRefs, questionLinks, commentLinks) {
+  const sectionId = Number(section.id);
   return {
     id: section.id,
     sectionKey: section.section_key || '',
@@ -1122,16 +1141,20 @@ function lawSectionPayload(section, crossRefs, questionLinks, commentLinks) {
     hierarchyLevel: section.hierarchy_level || '',
     displayRef: section.display_ref || '',
     title: section.title || '',
-    text: section.text || '',
+    text: (section.clean_text || section.text || '').replace(/\s+§\s*$/g, ''),
     isRevoked: Boolean(section.is_revoked),
-    crossReferences: crossRefs.filter((ref) => Number(ref.section_id) === Number(section.id)).map((ref) => ({
+    crossReferences: crossRefs.filter((ref) => (
+      Number(ref.section_id) === sectionId
+      && Number(ref.resolved_section_id || 0) !== sectionId
+      && ref.display_policy === 'show_in_article'
+    )).map((ref) => ({
       refText: ref.ref_text || '',
       targetSourceSlug: ref.target_source_slug || '',
       targetLocator: ref.target_locator || '',
-      quotedTargetText: ref.quoted_target_text || '',
+      quotedTargetText: ref.target_text_excerpt || ref.quoted_target_text || '',
       status: ref.resolution_status || ''
     })),
-    questionLinks: questionLinks.filter((link) => Number(link.section_id) === Number(section.id)).slice(0, 12).map((link) => ({
+    questionLinks: questionLinks.filter((link) => Number(link.section_id) === sectionId).slice(0, 8).map((link) => ({
       questionId: link.question_id,
       linkKind: link.link_kind || '',
       evidence: link.evidence || '',
@@ -1140,7 +1163,7 @@ function lawSectionPayload(section, crossRefs, questionLinks, commentLinks) {
       assunto: link.assunto || '',
       statementText: link.statement_text || ''
     })),
-    commentLinks: commentLinks.filter((link) => Number(link.section_id) === Number(section.id)).slice(0, 8).map((link) => ({
+    commentLinks: commentLinks.filter((link) => Number(link.section_id) === sectionId).slice(0, 4).map((link) => ({
       questionId: link.question_id || null,
       commentSource: link.comment_source || '',
       excerpt: link.excerpt || '',

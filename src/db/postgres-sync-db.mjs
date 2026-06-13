@@ -18,6 +18,7 @@ export class PostgresSyncDatabase {
     this.requestPath = path.join(this.tmpDir, 'request.json');
     this.responsePath = path.join(this.tmpDir, 'response.json');
     this.worker = new Worker(WORKER_PATH, {
+      execArgv: process.execArgv.filter((arg) => !arg.startsWith('--input-type')),
       workerData: {
         databaseUrl,
         control: this.controlBuffer,
@@ -57,9 +58,10 @@ export class PostgresSyncDatabase {
       throw new Error('PostgresSyncDatabase recebeu chamada concorrente inesperada.');
     }
 
-    fs.writeFileSync(this.requestPath, JSON.stringify({ op, ...payload }), 'utf8');
+    const request = { op, ...payload };
+    fs.writeFileSync(this.requestPath, JSON.stringify(request), 'utf8');
     Atomics.store(this.control, 0, 1);
-    Atomics.notify(this.control, 0, 1);
+    this.worker.postMessage(request);
 
     while (Atomics.load(this.control, 0) === 1) {
       Atomics.wait(this.control, 0, 1);

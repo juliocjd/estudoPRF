@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260613-study-time-live">
+    <link rel="stylesheet" href="/study.css?v=20260613-law-layout-fix">
   </head>
   <body>
     <div class="app-shell">
@@ -13,6 +13,7 @@
           <strong>PRF Study</strong>
           <span>Banco local de questões</span>
         </div>
+        <div class="topbar-metrics">
         <section class="stats" id="stats" aria-label="Resumo do banco"></section>
         <section class="study-time-panel" aria-label="Tempo de estudo">
           <div class="study-time-tabs" role="tablist" aria-label="Tempo de estudo">
@@ -30,6 +31,7 @@
             </div>
           </div>
         </section>
+        </div>
       </header>
 
       <button id="mobileFilterToggle" class="button button-secondary mobile-filter-toggle" type="button" aria-expanded="false" aria-controls="filterBar">
@@ -375,6 +377,7 @@
           <div class="subjects-head">
             <strong>Legislação PRF</strong>
             <span id="lawCompendiumInfo"></span>
+            <button id="closeLawCompendium" class="button button-secondary" type="button">Voltar</button>
           </div>
           <div id="lawCompendiumStats" class="normative-stats"></div>
           <div class="law-compendium-layout">
@@ -472,6 +475,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260613-study-time-live" type="module"></script>
+    <script src="/study.js?v=20260613-law-layout-fix" type="module"></script>
   </body>
 </html>

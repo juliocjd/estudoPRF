@@ -1,4 +1,4 @@
-import fsp from 'node:fs/promises';
+import fs from 'node:fs';
 import { workerData } from 'node:worker_threads';
 import postgres from 'postgres';
 
@@ -10,20 +10,24 @@ const sql = postgres(workerData.databaseUrl, {
   idle_timeout: 20,
   connect_timeout: 30
 });
+let busy = false;
 
-while (true) {
-  Atomics.wait(control, 0, 0);
+setInterval(async () => {
+  if (busy) return;
   const state = Atomics.load(control, 0);
-  if (state === 3) break;
-  if (state !== 1) continue;
-
+  if (state === 3) {
+    await sql.end({ timeout: 5 }).catch(() => {});
+    process.exit(0);
+  }
+  if (state !== 1) return;
+  busy = true;
   let request = null;
   try {
-    request = JSON.parse(await fsp.readFile(requestPath, 'utf8'));
+    request = JSON.parse(fs.readFileSync(requestPath, 'utf8'));
     const value = await executeRequest(request);
-    await fsp.writeFile(responsePath, JSON.stringify({ ok: true, value }), 'utf8');
+    fs.writeFileSync(responsePath, JSON.stringify({ ok: true, value }), 'utf8');
   } catch (error) {
-    await fsp.writeFile(responsePath, JSON.stringify({
+    fs.writeFileSync(responsePath, JSON.stringify({
       ok: false,
       error: `${error.message || String(error)}${request?.sql ? `\nSQL: ${request.sql}` : ''}`,
       stack: error.stack || ''
@@ -32,9 +36,8 @@ while (true) {
 
   Atomics.store(control, 0, 2);
   Atomics.notify(control, 0, 1);
-}
-
-await sql.end({ timeout: 5 });
+  busy = false;
+}, 1);
 
 async function executeRequest(request) {
   if (request.op === 'all') {

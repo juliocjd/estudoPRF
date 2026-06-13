@@ -37,7 +37,13 @@ export function openLawCompendiumDatabase(args = {}) {
 export function initLawCompendiumSchema(db, client = 'sqlite') {
   if (client === 'postgres') {
     const migrationPath = path.join(ROOT_DIR, 'migrations', 'migration_law_compendium_prf_postgres_v1.sql');
-    if (fs.existsSync(migrationPath)) db.exec(fs.readFileSync(migrationPath, 'utf8'));
+    const hasSourcesTable = db.prepare(`
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+        AND table_name = 'law_compendium_sources'
+    `).get();
+    if (!hasSourcesTable && fs.existsSync(migrationPath)) db.exec(fs.readFileSync(migrationPath, 'utf8'));
     return;
   }
 

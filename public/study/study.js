@@ -113,6 +113,7 @@ const els = {
   lawCompendiumStats: document.querySelector('#lawCompendiumStats'),
   lawSourceList: document.querySelector('#lawSourceList'),
   lawSourceDetail: document.querySelector('#lawSourceDetail'),
+  closeLawCompendium: document.querySelector('#closeLawCompendium'),
   pageLabel: document.querySelector('#pageLabel'),
   questionMeta: document.querySelector('#questionMeta'),
   questionQuickStatus: document.querySelector('#questionQuickStatus'),
@@ -440,6 +441,7 @@ function bindEvents() {
   });
   els.toggleCoverage.addEventListener('click', async () => {
     closeAllDropdowns();
+    closeLawCompendiumView();
     state.coverageVisible = !state.coverageVisible;
     renderCoverageVisibility();
     if (state.coverageVisible) {
@@ -448,6 +450,7 @@ function bindEvents() {
   });
   els.toggleTheoryCoverage?.addEventListener('click', async () => {
     closeAllDropdowns();
+    closeLawCompendiumView();
     state.theoryCoverageVisible = !state.theoryCoverageVisible;
     renderTheoryCoverageVisibility();
     if (state.theoryCoverageVisible) {
@@ -456,6 +459,7 @@ function bindEvents() {
   });
   els.toggleSubjects.addEventListener('click', async () => {
     closeAllDropdowns();
+    closeLawCompendiumView();
     state.subjectsVisible = !state.subjectsVisible;
     renderSubjectsVisibility();
     if (state.subjectsVisible) {
@@ -464,6 +468,7 @@ function bindEvents() {
   });
   els.toggleNormative.addEventListener('click', async () => {
     closeAllDropdowns();
+    closeLawCompendiumView();
     state.normativeVisible = !state.normativeVisible;
     renderNormativeVisibility();
     if (state.normativeVisible) {
@@ -473,10 +478,15 @@ function bindEvents() {
   els.toggleLawCompendium?.addEventListener('click', async () => {
     closeAllDropdowns();
     state.lawCompendiumVisible = !state.lawCompendiumVisible;
+    if (state.lawCompendiumVisible) closeReportPanels();
     renderLawCompendiumVisibility();
     if (state.lawCompendiumVisible) {
       await loadLawCompendiumOverview();
     }
+  });
+
+  els.closeLawCompendium?.addEventListener('click', () => {
+    closeLawCompendiumView();
   });
 
   els.subjectsList.addEventListener('click', async (event) => {
@@ -1569,19 +1579,18 @@ async function loadLawCompendiumOverview() {
   els.lawCompendiumStats.innerHTML = [
     statMarkup(data.stats?.current || 0, 'vigentes'),
     statMarkup(data.stats?.historical || 0, 'historicas'),
-    statMarkup(data.stats?.pending || 0, 'pendentes'),
+    statMarkup(data.stats?.pending || 0, 'ocultas'),
     statMarkup(data.stats?.sections || 0, 'secoes')
   ].join('');
   renderLawSourceList(data);
-  const first = data.current?.[0] || data.pending?.[0] || data.historical?.[0];
+  const first = data.current?.[0] || data.historical?.[0];
   if (first) await openLawSource(first.slug);
 }
 
 function renderLawSourceList(data) {
   const groups = [
     ['Apostila vigente', data.current || []],
-    ['Histórico do edital', data.historical || []],
-    ['Pendentes de verificação', data.pending || []]
+    ['Histórico do edital (somente consulta)', data.historical || []]
   ];
   els.lawSourceList.innerHTML = groups.map(([title, rows]) => `
     <section class="law-source-group">
@@ -1704,7 +1713,7 @@ function lawSectionMarkup(section, isDryLaw) {
         <strong>${escapeHtml(section.displayRef || '')}</strong>
         ${section.title ? `<span>${escapeHtml(section.title)}</span>` : ''}
       </header>
-      <p>${escapeHtml(section.text || '')}</p>
+      <p>${escapeHtml(String(section.text || '').replace(/\s+§\s*$/g, ''))}</p>
       ${lawCrossRefsMarkup(section.crossReferences || [])}
       ${related}
     </article>
@@ -1716,7 +1725,7 @@ function lawCrossRefsMarkup(refs) {
   if (!resolved.length) return '';
   return resolved.map((ref) => `
     <details class="law-cross-ref">
-      <summary>Dispositivo citado: ${escapeHtml(ref.refText || ref.targetLocator || '')}</summary>
+      <summary>Remissão citada: ${escapeHtml(ref.refText || ref.targetLocator || '')}</summary>
       <p>${escapeHtml(ref.quotedTargetText || '')}</p>
     </details>
   `).join('');
@@ -1728,13 +1737,13 @@ function lawRelatedMarkup(section) {
   if (!questions.length && !comments.length) return '';
   return `
     <details class="law-related">
-      <summary>Questões e comentários relacionados</summary>
+      <summary>Questões e comentários que citam este dispositivo</summary>
       ${questions.length ? `
         <div class="law-related-block">
           <strong>Questões</strong>
           ${questions.map((question) => `
             <a href="${escapeAttr(questionLink(question.questionId))}" data-question-id="${escapeAttr(question.questionId)}">
-              #${Number(question.questionId || 0).toLocaleString('pt-BR')} - ${escapeHtml(question.assunto || question.evidence || '')}
+              #${Number(question.questionId || 0).toLocaleString('pt-BR')} - ${escapeHtml(question.evidence || question.assunto || '')}
             </a>
           `).join('')}
         </div>
@@ -4353,7 +4362,25 @@ function renderNormativeVisibility() {
 function renderLawCompendiumVisibility() {
   if (!els.lawCompendiumPanel || !els.toggleLawCompendium) return;
   els.lawCompendiumPanel.hidden = !state.lawCompendiumVisible;
+  document.body.classList.toggle('is-law-compendium-view', state.lawCompendiumVisible);
   els.toggleLawCompendium.textContent = state.lawCompendiumVisible ? 'Ocultar Legislação PRF' : 'Legislação PRF';
+}
+
+function closeReportPanels() {
+  state.coverageVisible = false;
+  state.theoryCoverageVisible = false;
+  state.subjectsVisible = false;
+  state.normativeVisible = false;
+  renderCoverageVisibility();
+  renderTheoryCoverageVisibility();
+  renderSubjectsVisibility();
+  renderNormativeVisibility();
+}
+
+function closeLawCompendiumView() {
+  if (!state.lawCompendiumVisible) return;
+  state.lawCompendiumVisible = false;
+  renderLawCompendiumVisibility();
 }
 
 function renderPager() {
