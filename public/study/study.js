@@ -22,6 +22,9 @@ const state = {
   inlineSupportRenderKey: '',
   lastSupportTrigger: null,
   questionStartedAt: Date.now(),
+  questionActiveElapsedMs: 0,
+  questionTimerStartedAt: null,
+  questionTimerRunning: false,
   timerId: null,
   sawComment: false,
   openedTheory: false,
@@ -46,11 +49,20 @@ const state = {
   normativeVisible: false,
   teachingEditMode: false,
   currentLawEditMode: false,
-  historicalCommentEditMode: false
+  historicalCommentEditMode: false,
+  studyTimeTab: 'today'
 };
 
 const els = {
   stats: document.querySelector('#stats'),
+  studyTimeTodayTab: document.querySelector('#studyTimeTodayTab'),
+  studyTimeTotalTab: document.querySelector('#studyTimeTotalTab'),
+  studyTimeTodayPanel: document.querySelector('#studyTimeTodayPanel'),
+  studyTimeTotalPanel: document.querySelector('#studyTimeTotalPanel'),
+  studyTimeToday: document.querySelector('#studyTimeToday'),
+  studyTimeTotal: document.querySelector('#studyTimeTotal'),
+  studyTimeTodayMeta: document.querySelector('#studyTimeTodayMeta'),
+  studyTimeTotalMeta: document.querySelector('#studyTimeTotalMeta'),
   mobileFilterToggle: document.querySelector('#mobileFilterToggle'),
   filterBar: document.querySelector('#filterBar'),
   studyLayout: document.querySelector('.study-layout'),
@@ -216,6 +228,12 @@ function bindEvents() {
   bindDropdowns();
   syncMobileStudyStatusDisclosure();
   mobileLayoutQuery.addEventListener?.('change', syncMobileStudyStatusDisclosure);
+  document.addEventListener('visibilitychange', syncQuestionTimerTracking);
+  window.addEventListener('blur', syncQuestionTimerTracking);
+  window.addEventListener('focus', syncQuestionTimerTracking);
+  window.addEventListener('pagehide', pauseQuestionTimer);
+  els.studyTimeTodayTab?.addEventListener('click', () => setStudyTimeTab('today'));
+  els.studyTimeTotalTab?.addEventListener('click', () => setStudyTimeTab('total'));
   updateAdvancedFiltersSummary();
 
   els.mobileFilterToggle?.addEventListener('click', () => {
@@ -706,7 +724,7 @@ function bindEvents() {
           answer: selected,
           confidence: els.confidenceSelect.value,
           errorType: els.errorTypeSelect.value,
-          elapsedMs: Date.now() - state.questionStartedAt,
+          elapsedMs: getQuestionElapsedMs(),
           studyMode: state.studyMode,
           sessionId: state.sessionId,
           sawComment: state.sawComment,
@@ -941,6 +959,7 @@ async function loadStats() {
     statMarkup(stats.repairQuestions || 0, 'revisar erros'),
     statMarkup(stats.answered || 0, 'resolvidas')
   ].join('');
+  renderStudyTimeSummary(stats.studyTime || {});
 }
 
 async function loadFilters() {
@@ -1004,15 +1023,57 @@ function startTimer() {
   if (state.timerId) {
     clearInterval(state.timerId);
   }
+  syncQuestionTimerTracking();
   renderTimer();
   state.timerId = setInterval(renderTimer, 1000);
 }
 
 function renderTimer() {
-  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - state.questionStartedAt) / 1000));
+  const elapsedSeconds = Math.max(0, Math.floor(getQuestionElapsedMs() / 1000));
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
   els.timerLabel.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function resetQuestionTimer() {
+  state.questionStartedAt = Date.now();
+  state.questionActiveElapsedMs = 0;
+  state.questionTimerStartedAt = null;
+  state.questionTimerRunning = false;
+}
+
+function shouldTrackQuestionTime() {
+  return Boolean(state.selectedId) && document.visibilityState === 'visible' && document.hasFocus();
+}
+
+function syncQuestionTimerTracking() {
+  if (shouldTrackQuestionTime()) {
+    resumeQuestionTimer();
+    return;
+  }
+  pauseQuestionTimer();
+}
+
+function resumeQuestionTimer() {
+  if (state.questionTimerRunning) return;
+  state.questionTimerStartedAt = Date.now();
+  state.questionTimerRunning = true;
+}
+
+function pauseQuestionTimer() {
+  if (!state.questionTimerRunning) return;
+  const startedAt = state.questionTimerStartedAt || Date.now();
+  state.questionActiveElapsedMs += Math.max(0, Date.now() - startedAt);
+  state.questionTimerStartedAt = null;
+  state.questionTimerRunning = false;
+  renderTimer();
+}
+
+function getQuestionElapsedMs() {
+  const activeRunMs = state.questionTimerRunning && state.questionTimerStartedAt
+    ? Date.now() - state.questionTimerStartedAt
+    : 0;
+  return Math.max(0, state.questionActiveElapsedMs + activeRunMs);
 }
 
 function renderMastery(mastery) {
@@ -1102,6 +1163,7 @@ function renderEmptyQuestion() {
     clearInterval(state.timerId);
     state.timerId = null;
   }
+  resetQuestionTimer();
   els.timerLabel.textContent = '00:00';
   els.masteryScore.textContent = '0%';
   els.masteryLabel.textContent = 'Novo';
@@ -1413,7 +1475,7 @@ async function selectQuestion(questionId, options = {}) {
   state.inlineSupportTab = 'comment';
   state.sawComment = false;
   state.openedTheory = false;
-  state.questionStartedAt = Date.now();
+  resetQuestionTimer();
   startTimer();
 
   const question = await api(`/api/questions/${questionId}`);
@@ -3876,6 +3938,46 @@ function statMarkup(value, label) {
     ? value.toLocaleString('pt-BR')
     : String(value || 0);
   return `<div class="stat"><strong>${escapeHtml(displayValue)}</strong><span>${label}</span></div>`;
+}
+
+function renderStudyTimeSummary(studyTime) {
+  if (!els.studyTimeToday || !els.studyTimeTotal) return;
+  const todayMs = Number(studyTime?.todayMs || 0);
+  const totalMs = Number(studyTime?.totalMs || 0);
+  const todayAttempts = Number(studyTime?.todayAttempts || 0);
+  const timedAttempts = Number(studyTime?.timedAttempts || 0);
+  const cappedAttempts = Number(studyTime?.cappedAttempts || 0);
+  const maxAttemptMinutes = Number(studyTime?.maxAttemptMinutes || 0);
+
+  els.studyTimeToday.textContent = formatStudyDuration(todayMs);
+  els.studyTimeTotal.textContent = formatStudyDuration(totalMs);
+  els.studyTimeTodayMeta.textContent = `${todayAttempts.toLocaleString('pt-BR')} tentativa${todayAttempts === 1 ? '' : 's'} hoje`;
+  els.studyTimeTotalMeta.textContent = [
+    `${timedAttempts.toLocaleString('pt-BR')} tentativa${timedAttempts === 1 ? '' : 's'}`,
+    cappedAttempts ? `${cappedAttempts.toLocaleString('pt-BR')} ajustada${cappedAttempts === 1 ? '' : 's'}` : '',
+    maxAttemptMinutes ? `teto ${maxAttemptMinutes}min` : ''
+  ].filter(Boolean).join(' - ');
+  setStudyTimeTab(state.studyTimeTab);
+}
+
+function setStudyTimeTab(tab) {
+  state.studyTimeTab = tab === 'total' ? 'total' : 'today';
+  const isTotal = state.studyTimeTab === 'total';
+  els.studyTimeTodayTab?.classList.toggle('is-active', !isTotal);
+  els.studyTimeTotalTab?.classList.toggle('is-active', isTotal);
+  els.studyTimeTodayTab?.setAttribute('aria-selected', String(!isTotal));
+  els.studyTimeTotalTab?.setAttribute('aria-selected', String(isTotal));
+  if (els.studyTimeTodayPanel) els.studyTimeTodayPanel.hidden = isTotal;
+  if (els.studyTimeTotalPanel) els.studyTimeTotalPanel.hidden = !isTotal;
+}
+
+function formatStudyDuration(ms) {
+  const totalMinutes = Math.round(Math.max(0, Number(ms || 0)) / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours && minutes) return `${hours}h ${minutes}min`;
+  if (hours) return `${hours}h`;
+  return `${minutes}min`;
 }
 
 function recommendationLabel(value) {

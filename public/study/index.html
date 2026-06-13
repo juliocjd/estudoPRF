@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260605-legal-theory">
+    <link rel="stylesheet" href="/study.css?v=20260613-study-time-layout">
   </head>
   <body>
     <div class="app-shell">
@@ -14,6 +14,22 @@
           <span>Banco local de questões</span>
         </div>
         <section class="stats" id="stats" aria-label="Resumo do banco"></section>
+        <section class="study-time-panel" aria-label="Tempo de estudo">
+          <div class="study-time-tabs" role="tablist" aria-label="Tempo de estudo">
+            <button id="studyTimeTodayTab" class="study-time-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="studyTimeTodayPanel">Hoje</button>
+            <button id="studyTimeTotalTab" class="study-time-tab" type="button" role="tab" aria-selected="false" aria-controls="studyTimeTotalPanel">Total</button>
+          </div>
+          <div class="study-time-content">
+            <div id="studyTimeTodayPanel" class="study-time-pane" role="tabpanel" aria-labelledby="studyTimeTodayTab">
+              <strong id="studyTimeToday">0min</strong>
+              <span id="studyTimeTodayMeta">0 questões</span>
+            </div>
+            <div id="studyTimeTotalPanel" class="study-time-pane" role="tabpanel" aria-labelledby="studyTimeTotalTab" hidden>
+              <strong id="studyTimeTotal">0min</strong>
+              <span id="studyTimeTotalMeta">0 tentativas</span>
+            </div>
+          </div>
+        </section>
       </header>
 
       <button id="mobileFilterToggle" class="button button-secondary mobile-filter-toggle" type="button" aria-expanded="false" aria-controls="filterBar">
@@ -443,6 +459,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260605-legal-theory" type="module"></script>
+    <script src="/study.js?v=20260613-study-time-layout" type="module"></script>
   </body>
 </html>

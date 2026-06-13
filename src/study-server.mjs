@@ -29,6 +29,12 @@ const PRF_BLOCK_TARGETS = new Map([
 const ADAPTIVE_ANSWER_COOLDOWN_MINUTES = 30;
 const ADAPTIVE_SERVED_COOLDOWN_MINUTES = 10;
 const SCORING_VERSION = 'scoring-v9-current-law-canonical';
+const configuredStudyTimeMaxAttemptMinutes = Number(process.env.STUDY_TIME_MAX_ATTEMPT_MINUTES || 30);
+const STUDY_TIME_MAX_ATTEMPT_MINUTES = Number.isFinite(configuredStudyTimeMaxAttemptMinutes)
+  ? Math.max(1, configuredStudyTimeMaxAttemptMinutes)
+  : 30;
+const STUDY_TIME_MAX_ATTEMPT_MS = STUDY_TIME_MAX_ATTEMPT_MINUTES * 60 * 1000;
+const STUDY_TIME_ZONE = process.env.STUDY_TIME_ZONE || 'America/Sao_Paulo';
 const THEORY_DIRECTORY_MIN_SCORE = 0.3;
 const THEORY_PAGE_MIN_SCORE = 0.12;
 const THEORY_CONTENT_FALLBACK_MIN_SCORE = 0.18;
@@ -58,6 +64,7 @@ const { db, client: activeDbClient } = openStudyDatabase({ dbPath, databaseUrl, 
 if (activeDbClient === 'sqlite') {
   initStudySchema(db);
 }
+ensureStudyTimeColumns(db);
 initHistoricalCommentEditSchema(db);
 initQuestionStudyStatusSchema(db);
 initTheoryPagesSchema(db);
@@ -96,6 +103,11 @@ async function routeRequest(request, response) {
 
   if (url.pathname === '/api/stats' && request.method === 'GET') {
     sendJson(response, 200, getStats());
+    return;
+  }
+
+  if (url.pathname === '/api/study-time/daily' && request.method === 'GET') {
+    sendJson(response, 200, getStudyTimeDaily(url.searchParams));
     return;
   }
 
@@ -377,6 +389,7 @@ function getStats() {
     GROUP BY q.materia
     ORDER BY mastery_score ASC, q.materia
   `).all();
+  const studyTime = getStudyTimeSummary();
 
   return {
     questions: db.prepare('SELECT COUNT(*) AS n FROM questions').get().n,
@@ -450,9 +463,132 @@ function getStats() {
     wrongAttempts: attempts.wrong || 0,
     correctGuessAttempts: attempts.correct_guess || 0,
     correctDoubtAttempts: attempts.correct_doubt || 0,
+    studyTime,
     errorsByType,
     masteryByMatter
   };
+}
+
+function getStudyTimeDaily(searchParams = new URLSearchParams()) {
+  const limit = clamp(Number(searchParams.get('limit') || 30), 1, 366);
+  const daily = getStudyTimeDailyRows().slice(0, limit);
+  return {
+    timeZone: STUDY_TIME_ZONE,
+    maxAttemptMinutes: STUDY_TIME_MAX_ATTEMPT_MINUTES,
+    daily
+  };
+}
+
+function getStudyTimeSummary() {
+  const rows = getStudyAnswerTimeRows();
+  const today = getLocalDateKey(new Date());
+  let totalMs = 0;
+  let rawTotalMs = 0;
+  let todayMs = 0;
+  let rawTodayMs = 0;
+  let timedAttempts = 0;
+  let todayAttempts = 0;
+  let cappedAttempts = 0;
+  let todayCappedAttempts = 0;
+
+  for (const row of rows) {
+    const rawMs = normalizeStoredElapsedMs(row.elapsed_ms);
+    if (rawMs <= 0) continue;
+    const adjustedMs = normalizeStudyElapsedMs(rawMs);
+    const day = getLocalDateKey(row.created_at || row.answered_at);
+    timedAttempts += 1;
+    rawTotalMs += rawMs;
+    totalMs += adjustedMs;
+    if (adjustedMs < rawMs) cappedAttempts += 1;
+    if (day === today) {
+      rawTodayMs += rawMs;
+      todayMs += adjustedMs;
+      todayAttempts += 1;
+      if (adjustedMs < rawMs) todayCappedAttempts += 1;
+    }
+  }
+
+  return {
+    totalMs,
+    rawTotalMs,
+    todayMs,
+    rawTodayMs,
+    timedAttempts,
+    todayAttempts,
+    cappedAttempts,
+    todayCappedAttempts,
+    maxAttemptMs: STUDY_TIME_MAX_ATTEMPT_MS,
+    maxAttemptMinutes: STUDY_TIME_MAX_ATTEMPT_MINUTES,
+    timeZone: STUDY_TIME_ZONE
+  };
+}
+
+function getStudyTimeDailyRows() {
+  const byDay = new Map();
+  for (const row of getStudyAnswerTimeRows()) {
+    const rawMs = normalizeStoredElapsedMs(row.elapsed_ms);
+    if (rawMs <= 0) continue;
+    const day = getLocalDateKey(row.created_at || row.answered_at);
+    if (!day) continue;
+    const adjustedMs = normalizeStudyElapsedMs(rawMs);
+    const current = byDay.get(day) || {
+      day,
+      totalMs: 0,
+      rawTotalMs: 0,
+      attempts: 0,
+      cappedAttempts: 0
+    };
+    current.attempts += 1;
+    current.rawTotalMs += rawMs;
+    current.totalMs += adjustedMs;
+    if (adjustedMs < rawMs) current.cappedAttempts += 1;
+    byDay.set(day, current);
+  }
+  return [...byDay.values()].sort((a, b) => String(b.day).localeCompare(String(a.day)));
+}
+
+function getStudyAnswerTimeRows() {
+  return db.prepare(`
+    SELECT elapsed_ms, created_at, answered_at
+    FROM study_answers
+    WHERE elapsed_ms IS NOT NULL
+      AND elapsed_ms > 0
+  `).all();
+}
+
+function normalizeStoredElapsedMs(value) {
+  const elapsedMs = Number(value);
+  return Number.isFinite(elapsedMs) && elapsedMs > 0 ? Math.round(elapsedMs) : 0;
+}
+
+function normalizeStudyElapsedMs(value) {
+  return Math.min(normalizeStoredElapsedMs(value), STUDY_TIME_MAX_ATTEMPT_MS);
+}
+
+function getLocalDateKey(value) {
+  const date = parseSqlDate(value);
+  if (!date) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: STUDY_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === 'year')?.value || '';
+  const month = parts.find((part) => part.type === 'month')?.value || '';
+  const day = parts.find((part) => part.type === 'day')?.value || '';
+  return year && month && day ? `${year}-${month}-${day}` : '';
+}
+
+function parseSqlDate(value) {
+  if (value instanceof Date && Number.isFinite(value.getTime())) return value;
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const normalized = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(raw)
+    ? `${raw.replace(' ', 'T')}Z`
+    : raw;
+  const date = new Date(normalized);
+  return Number.isFinite(date.getTime()) ? date : null;
 }
 
 function getFilters() {
@@ -5227,6 +5363,7 @@ function normalizeAttemptMeta(body, isCorrect) {
     confidence,
     errorType,
     elapsedMs: Number.isFinite(elapsedMs) && elapsedMs >= 0 ? Math.round(elapsedMs) : null,
+    adjustedElapsedMs: Number.isFinite(elapsedMs) && elapsedMs >= 0 ? normalizeStudyElapsedMs(elapsedMs) : 0,
     studyMode: validChoice(body?.studyMode, ['study', 'review', 'exam', 'repair', 'smart', 'adaptive', 'all'], 'study'),
     sawComment: body?.sawComment ? 1 : 0,
     openedTheory: body?.openedTheory ? 1 : 0,
@@ -5391,9 +5528,9 @@ function updateStudySession(database, question, isCorrect, attemptMeta) {
 
   database.prepare(`
     INSERT INTO study_sessions (
-      id, started_at, mode, materia, assunto, total_questions, correct_count, wrong_count
+      id, started_at, mode, materia, assunto, total_questions, correct_count, wrong_count, total_elapsed_ms
     )
-    VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, 1, ?, ?)
+    VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?, 1, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       ended_at = CURRENT_TIMESTAMP,
       mode = COALESCE(NULLIF(excluded.mode, ''), study_sessions.mode),
@@ -5401,14 +5538,16 @@ function updateStudySession(database, question, isCorrect, attemptMeta) {
       assunto = COALESCE(NULLIF(excluded.assunto, ''), study_sessions.assunto),
       total_questions = study_sessions.total_questions + 1,
       correct_count = study_sessions.correct_count + excluded.correct_count,
-      wrong_count = study_sessions.wrong_count + excluded.wrong_count
+      wrong_count = study_sessions.wrong_count + excluded.wrong_count,
+      total_elapsed_ms = COALESCE(study_sessions.total_elapsed_ms, 0) + excluded.total_elapsed_ms
   `).run(
     attemptMeta.sessionId,
     attemptMeta.studyMode,
     question.materia || '',
     question.assunto || '',
     isCorrect === 1 ? 1 : 0,
-    isCorrect === 0 ? 1 : 0
+    isCorrect === 0 ? 1 : 0,
+    attemptMeta.adjustedElapsedMs || 0
   );
 }
 
@@ -6173,6 +6312,7 @@ function initStudySchema(database) {
       total_questions INTEGER DEFAULT 0,
       correct_count INTEGER DEFAULT 0,
       wrong_count INTEGER DEFAULT 0,
+      total_elapsed_ms INTEGER DEFAULT 0,
       notes TEXT
     );
 
@@ -6556,6 +6696,10 @@ function initAdaptiveStudySchema(database) {
   ]) {
     upsert.run(...profile);
   }
+}
+
+function ensureStudyTimeColumns(database) {
+  ensureColumn(database, 'study_sessions', 'total_elapsed_ms', 'INTEGER DEFAULT 0');
 }
 
 function ensureColumn(database, tableName, columnName, definition) {
