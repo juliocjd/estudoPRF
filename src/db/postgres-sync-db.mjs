@@ -17,7 +17,7 @@ export class PostgresSyncDatabase {
     this.requestPath = path.join(this.tmpDir, 'request.json');
     this.responsePath = path.join(this.tmpDir, 'response.json');
     this.worker = new Worker(WORKER_URL, {
-      execArgv: process.execArgv.filter((arg) => !arg.startsWith('--input-type')),
+      execArgv: [],
       workerData: {
         databaseUrl,
         control: this.controlBuffer,
