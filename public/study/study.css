@@ -1660,11 +1660,11 @@ button:disabled {
 }
 
 .format-button,
-.format-swatch {
+.format-swatch,
+.historical-format-select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
   height: 32px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
@@ -1674,8 +1674,29 @@ button:disabled {
   font-weight: 900;
 }
 
+.format-button,
+.format-swatch {
+  width: 32px;
+}
+
+.historical-format-select {
+  width: auto;
+  min-width: 82px;
+  padding: 0 28px 0 9px;
+  font-weight: 800;
+}
+
+.historical-format-select.is-font-size {
+  min-width: 92px;
+}
+
+.historical-format-select.is-line-height {
+  min-width: 82px;
+}
+
 .format-button:hover,
-.format-swatch:hover {
+.format-swatch:hover,
+.historical-format-select:hover {
   border-color: var(--primary);
   background: var(--info-soft);
 }

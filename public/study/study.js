@@ -50,6 +50,7 @@ const state = {
   teachingEditMode: false,
   currentLawEditMode: false,
   historicalCommentEditMode: false,
+  historicalCommentSelection: null,
   studyTimeTab: 'today'
 };
 
@@ -620,14 +621,46 @@ function bindEvents() {
 
   els.commentBody.addEventListener('input', (event) => {
     if (event.target.closest('[data-historical-comment-editor]')) {
+      saveHistoricalCommentSelection(event.target.closest('[data-historical-comment-editor]'));
       setHistoricalCommentStatus('');
     }
   });
 
+  els.commentBody.addEventListener('keyup', (event) => {
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) saveHistoricalCommentSelection(editor);
+  });
+
+  els.commentBody.addEventListener('mouseup', (event) => {
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) saveHistoricalCommentSelection(editor);
+  });
+
+  els.commentBody.addEventListener('focusout', (event) => {
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) saveHistoricalCommentSelection(editor);
+  });
+
   els.commentBody.addEventListener('change', async (event) => {
     const colorInput = event.target.closest('[data-historical-comment-color]');
-    if (!colorInput) return;
-    await handleHistoricalCommentColor(colorInput, event);
+    if (colorInput) {
+      await handleHistoricalCommentColor(colorInput, event);
+      return;
+    }
+    const fontSizeSelect = event.target.closest('[data-historical-comment-font-size]');
+    if (fontSizeSelect) {
+      handleHistoricalCommentStyleSelect(fontSizeSelect, event, 'fontSize');
+      return;
+    }
+    const fontFamilySelect = event.target.closest('[data-historical-comment-font-family]');
+    if (fontFamilySelect) {
+      handleHistoricalCommentStyleSelect(fontFamilySelect, event, 'fontFamily');
+      return;
+    }
+    const lineHeightSelect = event.target.closest('[data-historical-comment-line-height]');
+    if (lineHeightSelect) {
+      handleHistoricalCommentStyleSelect(lineHeightSelect, event, 'lineHeight');
+    }
   });
 
   els.closeSupport.addEventListener('click', () => closeSupportPanel());
@@ -673,10 +706,49 @@ function bindEvents() {
     }
   });
 
+  els.inlineSupportBody?.addEventListener('input', (event) => {
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) {
+      saveHistoricalCommentSelection(editor);
+      setHistoricalCommentStatus('');
+    }
+  });
+
+  els.inlineSupportBody?.addEventListener('keyup', (event) => {
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) saveHistoricalCommentSelection(editor);
+  });
+
+  els.inlineSupportBody?.addEventListener('mouseup', (event) => {
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) saveHistoricalCommentSelection(editor);
+  });
+
+  els.inlineSupportBody?.addEventListener('focusout', (event) => {
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) saveHistoricalCommentSelection(editor);
+  });
+
   els.inlineSupportBody?.addEventListener('change', async (event) => {
     const colorInput = event.target.closest('[data-historical-comment-color]');
-    if (!colorInput) return;
-    await handleHistoricalCommentColor(colorInput, event);
+    if (colorInput) {
+      await handleHistoricalCommentColor(colorInput, event);
+      return;
+    }
+    const fontSizeSelect = event.target.closest('[data-historical-comment-font-size]');
+    if (fontSizeSelect) {
+      handleHistoricalCommentStyleSelect(fontSizeSelect, event, 'fontSize');
+      return;
+    }
+    const fontFamilySelect = event.target.closest('[data-historical-comment-font-family]');
+    if (fontFamilySelect) {
+      handleHistoricalCommentStyleSelect(fontFamilySelect, event, 'fontFamily');
+      return;
+    }
+    const lineHeightSelect = event.target.closest('[data-historical-comment-line-height]');
+    if (lineHeightSelect) {
+      handleHistoricalCommentStyleSelect(lineHeightSelect, event, 'lineHeight');
+    }
   });
 
   document.addEventListener('keydown', (event) => {
@@ -1719,6 +1791,29 @@ function renderHistoricalCommentPanel(question) {
 }
 
 function historicalCommentToolbar({ editing }) {
+  const fontFamilies = [
+    ['Arial, Helvetica, sans-serif', 'Arial'],
+    ['Georgia, serif', 'Georgia'],
+    ['Times New Roman, Times, serif', 'Times'],
+    ['Verdana, Geneva, sans-serif', 'Verdana'],
+    ['Courier New, Courier, monospace', 'Mono']
+  ];
+  const fontSizes = [
+    ['12px', '12'],
+    ['14px', '14'],
+    ['16px', '16'],
+    ['18px', '18'],
+    ['20px', '20'],
+    ['24px', '24'],
+    ['28px', '28']
+  ];
+  const lineHeights = [
+    ['1.2', '1.2'],
+    ['1.4', '1.4'],
+    ['1.6', '1.6'],
+    ['1.8', '1.8'],
+    ['2', '2.0']
+  ];
   const colorButtons = [
     ['#0f172a', 'Preto'],
     ['#1d4ed8', 'Azul'],
@@ -1747,6 +1842,19 @@ function historicalCommentToolbar({ editing }) {
         <span class="format-divider"></span>
         <button class="format-button" type="button" title="Reduzir recuo" data-action="historical-comment-format" data-command="outdent"><span class="format-indent is-outdent"></span></button>
         <button class="format-button" type="button" title="Aumentar recuo" data-action="historical-comment-format" data-command="indent"><span class="format-indent is-indent"></span></button>
+        <span class="format-divider"></span>
+        <select class="historical-format-select is-font-family" aria-label="Fonte" title="Fonte" data-historical-comment-font-family>
+          <option value="">Fonte</option>
+          ${fontFamilies.map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`).join('')}
+        </select>
+        <select class="historical-format-select is-font-size" aria-label="Tamanho da fonte" title="Tamanho da fonte" data-historical-comment-font-size>
+          <option value="">Tamanho</option>
+          ${fontSizes.map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`).join('')}
+        </select>
+        <select class="historical-format-select is-line-height" aria-label="Espaçamento entre linhas" title="Espaçamento entre linhas" data-historical-comment-line-height>
+          <option value="">Linhas</option>
+          ${lineHeights.map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`).join('')}
+        </select>
         <span class="format-divider"></span>
         ${colorButtons.map(([color, label]) => `
           <button
@@ -1809,14 +1917,88 @@ async function handleHistoricalCommentColor(input, event) {
   applyHistoricalCommentFormat({ dataset: { command: 'foreColor', value: input.value || '#0f172a' } });
 }
 
+function handleHistoricalCommentStyleSelect(select, event, styleName) {
+  event.preventDefault();
+  if (!canEditHistoricalComment()) return;
+  const value = select.value || '';
+  if (!value) return;
+  applyHistoricalCommentStyle(select, styleName, value);
+  select.value = '';
+}
+
 function applyHistoricalCommentFormat(button) {
   const command = button.dataset.command || '';
   if (!command) return;
   const editor = findHistoricalCommentEditor(button);
   if (!editor) return;
   editor.focus();
+  restoreHistoricalCommentSelection(editor);
   document.execCommand(command, false, button.dataset.value || null);
+  saveHistoricalCommentSelection(editor);
   setHistoricalCommentStatus('');
+}
+
+function applyHistoricalCommentStyle(source, styleName, value) {
+  const editor = findHistoricalCommentEditor(source);
+  if (!editor) return;
+  editor.focus();
+  restoreHistoricalCommentSelection(editor);
+
+  const selection = document.getSelection();
+  if (!selection || !selection.rangeCount) return;
+  const range = selection.getRangeAt(0);
+  if (!rangeIntersectsEditor(range, editor) || range.collapsed) {
+    setHistoricalCommentStatus('Selecione um trecho do texto para aplicar a formatação.', true);
+    return;
+  }
+
+  const span = document.createElement('span');
+  if (styleName === 'fontSize') {
+    span.style.fontSize = value;
+  } else if (styleName === 'fontFamily') {
+    span.style.fontFamily = value;
+  } else if (styleName === 'lineHeight') {
+    span.style.lineHeight = value;
+  } else {
+    return;
+  }
+
+  span.appendChild(range.extractContents());
+  range.insertNode(span);
+  selection.removeAllRanges();
+  const nextRange = document.createRange();
+  nextRange.selectNodeContents(span);
+  selection.addRange(nextRange);
+  saveHistoricalCommentSelection(editor);
+  setHistoricalCommentStatus('');
+}
+
+function saveHistoricalCommentSelection(editor) {
+  const selection = document.getSelection();
+  if (!selection || !selection.rangeCount || !editor) return;
+  const range = selection.getRangeAt(0);
+  if (!rangeIntersectsEditor(range, editor)) return;
+  state.historicalCommentSelection = range.cloneRange();
+}
+
+function restoreHistoricalCommentSelection(editor) {
+  const range = state.historicalCommentSelection;
+  if (!range || !editor || !rangeIntersectsEditor(range, editor)) return false;
+  const selection = document.getSelection();
+  if (!selection) return false;
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return true;
+}
+
+function rangeIntersectsEditor(range, editor) {
+  if (!range || !editor) return false;
+  try {
+    return editor.contains(range.commonAncestorContainer)
+      || range.intersectsNode(editor);
+  } catch {
+    return false;
+  }
 }
 
 function findHistoricalCommentEditor(source) {
