@@ -298,6 +298,8 @@ function extractExplicitItemAnswer(question) {
 function extractDeclaredAlternativeAnswer(text) {
   const normalized = normalizeSearchText(text);
   const patterns = [
+    /\bresposta\s+mais\s+correta\s*(?:[:\-]?\s*)?(?:letra|alternativa)?\s*([a-e])\b/,
+    /\balternativa\s+mais\s+correta\s*(?:[:\-]?\s*)?(?:letra|alternativa)?\s*([a-e])\b/,
     /\bgabarito\s*(?:oficial\s*)?(?:[:\-]?\s*)?(?:letra|alternativa)\s+([a-e])\b/,
     /\bgabarito\s*(?:oficial\s*)?[:\-]\s*([a-e])\b/,
     /\bresposta\s*(?:correta\s*)?(?:[:\-]?\s*)?(?:letra|alternativa)\s+([a-e])\b/,
