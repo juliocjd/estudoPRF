@@ -1565,7 +1565,7 @@ async function loadTheoryCoverage() {
   ].join('');
   const rows = data.bySubject || [];
   els.theoryCoverageTable.innerHTML = rows.length
-    ? rows.slice(0, 40).map((row) => theoryCoverageRowMarkup(row)).join('')
+    ? `${theoryCoverageLegendMarkup()}${theoryCoverageHeaderMarkup()}${rows.slice(0, 40).map((row) => theoryCoverageRowMarkup(row)).join('')}`
     : '<p class="empty">Nenhuma lacuna de teoria encontrada.</p>';
 }
 
@@ -1599,7 +1599,7 @@ async function loadNormativeReview() {
     statMarkup(stats.reviewed, 'revisadas')
   ].join('');
   els.normativeTable.innerHTML = list.rows?.length
-    ? list.rows.map((row) => normativeRowMarkup(row)).join('')
+    ? `${normativeLegendMarkup()}${normativeHeaderMarkup()}${list.rows.map((row) => normativeRowMarkup(row)).join('')}`
     : '<p class="empty">Nenhuma análise normativa encontrada para os filtros.</p>';
 }
 
@@ -4752,11 +4752,7 @@ function coverageLegendMarkup() {
     ['Domínio', 'média do seu desempenho.'],
     ['Revisão', 'questões vencidas para revisar hoje.']
   ];
-  return `
-    <div class="coverage-legend">
-      ${items.map(([label, description]) => `<span><strong>${escapeHtml(label)}:</strong> ${escapeHtml(description)}</span>`).join('')}
-    </div>
-  `;
+  return legendMarkup(items);
 }
 
 function theoryCoverageRowMarkup(row) {
@@ -4779,6 +4775,39 @@ function theoryCoverageRowMarkup(row) {
       <span></span>
     </div>
   `;
+}
+
+function theoryCoverageHeaderMarkup() {
+  const columns = [
+    ['Assunto', 'Matéria e assunto analisados na camada de teoria.'],
+    ['Cobertas', 'Questões do assunto com teoria rápida específica ou apoio validado.'],
+    ['Total', 'Total de questões consideradas nesse assunto.'],
+    ['Lacunas', 'Questões ainda sem apoio teórico específico.'],
+    ['Cobertura', 'Percentual de questões do assunto com apoio teórico.'],
+    ['Erros', 'Tentativas erradas registradas nesse assunto.']
+  ];
+  return `
+    <div class="coverage-row coverage-header theory-coverage-header" role="row">
+      ${columns.map(([label, description]) => `
+        <span title="${escapeAttr(description)}">
+          <strong>${escapeHtml(label)}</strong>
+        </span>
+      `).join('')}
+      <span></span>
+      <span></span>
+    </div>
+  `;
+}
+
+function theoryCoverageLegendMarkup() {
+  const items = [
+    ['Cobertas', 'questões com apoio teórico específico.'],
+    ['Total', 'questões analisadas no assunto.'],
+    ['Lacunas', 'questões sem teoria específica.'],
+    ['Cobertura', 'percentual coberto.'],
+    ['Erros', 'erros já registrados no assunto.']
+  ];
+  return legendMarkup(items);
 }
 
 function normativeRowMarkup(row) {
@@ -4809,6 +4838,46 @@ function normativeRowMarkup(row) {
       ${questionId
         ? `<a class="button button-secondary" href="${escapeAttr(href)}" data-question-id="${escapeAttr(questionId)}">Abrir</a>`
         : '<span class="empty">ID indisponivel</span>'}
+    </div>
+  `;
+}
+
+function normativeHeaderMarkup() {
+  const columns = [
+    ['Questão', 'ID, assunto, matéria e prévia do enunciado.'],
+    ['Histórico', 'Gabarito original ou histórico do banco.'],
+    ['Atual', 'Gabarito atualizado provável ou confirmado.'],
+    ['Recomendação', 'Como a questão deve ser usada no estudo atual.'],
+    ['Segurança', 'Nível de segurança da análise normativa.'],
+    ['Detalhes', 'Banca, ano, tipo, mudança de gabarito, comentário e status de revisão.'],
+    ['Ação', 'Abre a questão para conferência.']
+  ];
+  return `
+    <div class="normative-row normative-header" role="row">
+      ${columns.map(([label, description]) => `
+        <span title="${escapeAttr(description)}">
+          <strong>${escapeHtml(label)}</strong>
+        </span>
+      `).join('')}
+    </div>
+  `;
+}
+
+function normativeLegendMarkup() {
+  const items = [
+    ['Histórico', 'gabarito original do banco.'],
+    ['Atual', 'gabarito pela legislação vigente quando houver segurança.'],
+    ['Recomendação', 'orienta estudar, revisar manualmente ou descartar.'],
+    ['Segurança', 'confiabilidade da análise.'],
+    ['Detalhes', 'metadados e status de revisão.']
+  ];
+  return legendMarkup(items);
+}
+
+function legendMarkup(items) {
+  return `
+    <div class="coverage-legend">
+      ${items.map(([label, description]) => `<span><strong>${escapeHtml(label)}:</strong> ${escapeHtml(description)}</span>`).join('')}
     </div>
   `;
 }

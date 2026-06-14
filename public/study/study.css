@@ -1459,6 +1459,30 @@ button:disabled {
   font-weight: 700;
 }
 
+.normative-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom-color: var(--border-strong);
+  background: var(--surface-muted);
+}
+
+.normative-header > span {
+  min-width: 0;
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.normative-header > span:not(:first-child) {
+  text-align: left;
+}
+
+.normative-header strong {
+  font-size: 11px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
 .normative-row-main {
   display: grid;
   gap: 3px;
