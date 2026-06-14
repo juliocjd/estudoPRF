@@ -695,6 +695,9 @@ function bindEvents() {
       await resetNormativeTeachingEdit();
     }
   });
+  els.supportTeachingBody.addEventListener('change', (event) => {
+    syncCurrentLawAutoScoreControl(event.target);
+  });
 
   els.commentBody.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-action]');
@@ -813,6 +816,9 @@ function bindEvents() {
   });
 
   els.inlineSupportBody?.addEventListener('change', async (event) => {
+    if (syncCurrentLawAutoScoreControl(event.target)) {
+      return;
+    }
     const colorInput = event.target.closest('[data-historical-comment-color]');
     if (colorInput) {
       await handleHistoricalCommentColor(colorInput, event);
@@ -2600,6 +2606,10 @@ function renderCurrentLawAnswerPanel(question) {
 
 function currentLawEditFormMarkup(question, answer) {
   const status = answer.status || answer.currentLawStatus || 'needs_audit';
+  const historicalAnswer = answer.historicalAnswer || question.answering?.historicalAnswer || question.comment?.historicalAnswer || '';
+  const expectedFormat = question.metadata?.tipo === 'CERTO_ERRADO'
+    ? 'Use CERTO ou ERRADO.'
+    : 'Use A, B, C, D ou E.';
   return `
     <form class="teaching-edit-form" data-current-law-edit-form>
       <div class="teaching-edit-toolbar">
@@ -2612,6 +2622,7 @@ function currentLawEditFormMarkup(question, answer) {
           <button class="button button-secondary" type="button" data-action="current-law-cancel-edit">Cancelar</button>
         </div>
       </div>
+      <p class="normative-note">Gabarito historico: ${escapeHtml(currentAnswerLabel(historicalAnswer))}. ${escapeHtml(expectedFormat)}</p>
       <div class="normative-summary-grid">
         <label class="teaching-edit-field">
           <span>Status</span>
@@ -2648,6 +2659,17 @@ function currentLawEditFormMarkup(question, answer) {
 
 function currentLawStatusOption(value, label, current) {
   return `<option value="${escapeAttr(value)}" ${value === current ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+}
+
+function syncCurrentLawAutoScoreControl(target) {
+  const select = target?.closest?.('select[name="currentLawStatus"]');
+  if (!select) return false;
+  const form = select.closest('[data-current-law-edit-form]');
+  const checkbox = form?.querySelector('input[name="canAutoScore"]');
+  if (checkbox) {
+    checkbox.checked = select.value === 'verified';
+  }
+  return true;
 }
 
 async function saveCurrentLawAnswerEdit() {
@@ -3225,6 +3247,8 @@ function questionQuickStatus(question) {
 }
 
 function canRevealCurrentLawAnswer(question = state.currentQuestion) {
+  if (!question) return false;
+  if (question.metadata?.desatualizada) return true;
   return canRevealExplanation(question);
 }
 
@@ -4273,9 +4297,11 @@ function openSupportPanel(tab = 'comment', options = {}) {
   if (tab === 'appliedTheory' && !hasAppliedTheorySupport(state.currentQuestion)) {
     tab = hasQuickTheorySupport(state.currentQuestion) ? 'quickTheory' : 'comment';
   }
-  const tabCanReveal = tab === 'appliedTheory'
-    ? canRevealAppliedTheory(state.currentQuestion)
-    : canRevealExplanation(state.currentQuestion);
+  const tabCanReveal = tab === 'teaching'
+    ? canRevealCurrentLawAnswer(state.currentQuestion)
+    : tab === 'appliedTheory'
+      ? canRevealAppliedTheory(state.currentQuestion)
+      : canRevealExplanation(state.currentQuestion);
   if (supportTabRequiresAnswer(tab) && !tabCanReveal) {
     els.answerHint.textContent = 'Responda para liberar a explicação';
     return;
