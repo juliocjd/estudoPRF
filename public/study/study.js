@@ -2425,6 +2425,16 @@ function setHistoricalCommentStatus(message, isError = false) {
 function renderNormativeAlert(question) {
   const update = question.normativeUpdate;
   const currentLaw = question.currentLawAnswer;
+  if (currentLaw?.exists && !question.metadata?.desatualizada) {
+    if (!hasAnsweredCurrentPrompt(question)) {
+      els.normativeAlert.hidden = true;
+      els.normativeAlert.innerHTML = '';
+      return;
+    }
+    renderCurrentLawAlert(currentLaw);
+    return;
+  }
+
   if (question.metadata?.desatualizada) {
     if (!canRevealCurrentLawAnswer(question)) {
       els.normativeAlert.className = 'normative-alert is-info';
@@ -2438,29 +2448,7 @@ function renderNormativeAlert(question) {
       return;
     }
 
-    const status = currentLaw?.status || currentLaw?.currentLawStatus || 'needs_audit';
-    const canAutoScore = currentLaw?.canAutoScore ?? currentLaw?.canAutoScoreCurrentLaw;
-    const tone = status === 'discard'
-      ? 'is-danger'
-      : status === 'needs_audit' || status === 'no_valid_alternative'
-        ? 'is-warning'
-        : 'is-info';
-    const detail = status === 'verified' && canAutoScore
-      ? `Gabarito atual: ${currentAnswerLabel(currentLaw.currentAnswer)}`
-      : status === 'no_valid_alternative'
-        ? 'Sem alternativa compativel pela legislacao atual.'
-        : status === 'discard'
-          ? 'Fora da fila principal pela legislacao atual.'
-          : 'Precisa auditoria; nao pontuar pela legislacao atual.';
-    els.normativeAlert.className = `normative-alert ${tone}`;
-    els.normativeAlert.innerHTML = `
-      <div>
-        <strong>Resposta pela legislacao atual</strong>
-        <span>${escapeHtml(detail)}</span>
-      </div>
-      <button class="button button-primary" type="button" data-action="show-teaching">Ver resposta atual</button>
-    `;
-    els.normativeAlert.hidden = false;
+    renderCurrentLawAlert(currentLaw);
     return;
   }
   if (!update?.exists && !question.metadata?.desatualizada) {
@@ -2487,6 +2475,32 @@ function renderNormativeAlert(question) {
     </div>
     ${question.normativeTeachingComment?.exists ? '<button class="button button-primary" type="button" data-action="show-teaching">Ver comentário atualizado</button>' : ''}
     ${update?.exists ? '<button class="button button-secondary" type="button" data-action="show-normative">Ver análise normativa</button>' : ''}
+  `;
+  els.normativeAlert.hidden = false;
+}
+
+function renderCurrentLawAlert(currentLaw) {
+  const status = currentLaw?.status || currentLaw?.currentLawStatus || 'needs_audit';
+  const canAutoScore = currentLaw?.canAutoScore ?? currentLaw?.canAutoScoreCurrentLaw;
+  const tone = status === 'discard'
+    ? 'is-danger'
+    : status === 'needs_audit' || status === 'no_valid_alternative'
+      ? 'is-warning'
+      : 'is-info';
+  const detail = status === 'verified' && canAutoScore
+    ? `Gabarito atual: ${currentAnswerLabel(currentLaw.currentAnswer)}`
+    : status === 'no_valid_alternative'
+      ? 'Sem alternativa compativel pela legislacao atual.'
+      : status === 'discard'
+        ? 'Fora da fila principal pela legislacao atual.'
+        : 'Precisa auditoria; nao pontuar pela legislacao atual.';
+  els.normativeAlert.className = `normative-alert ${tone}`;
+  els.normativeAlert.innerHTML = `
+    <div>
+      <strong>Resposta pela legislacao atual</strong>
+      <span>${escapeHtml(detail)}</span>
+    </div>
+    <button class="button button-primary" type="button" data-action="show-teaching">Ver resposta atual</button>
   `;
   els.normativeAlert.hidden = false;
 }
