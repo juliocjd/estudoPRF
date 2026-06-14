@@ -398,11 +398,17 @@ function matchesExpectedAnswer(attempt, alternatives, expected) {
   const text = normalizeAnswer(attempt.answer_text);
   const alternative = alternatives.find((item) => normalizeAnswer(item.letter) === letter);
   const alternativeText = normalizeAnswer(alternative?.text || text);
+  if (/^[A-E]$/.test(expectedAnswer)) {
+    return expectedAnswer === letter;
+  }
+  if (expectedAnswer === 'CERTO' || expectedAnswer === 'ERRADO') {
+    return expectedAnswer === alternativeText
+      || (expectedAnswer === 'CERTO' && letter === 'C')
+      || (expectedAnswer === 'ERRADO' && letter === 'E');
+  }
   return expectedAnswer === letter
     || expectedAnswer === text
-    || expectedAnswer === alternativeText
-    || (expectedAnswer === 'CERTO' && (letter === 'C' || alternativeText === 'CERTO'))
-    || (expectedAnswer === 'ERRADO' && (letter === 'E' || alternativeText === 'ERRADO'));
+    || expectedAnswer === alternativeText;
 }
 
 function changed(before, after) {

@@ -7178,9 +7178,15 @@ function matchesExpectedAnswer(alternative, expected) {
   const normalizedExpected = normalizeAnswer(expected);
   const normalizedLetter = normalizeAnswer(alternative.letter);
   const normalizedText = normalizeAnswer(alternative.text);
+  if (/^[A-E]$/.test(normalizedExpected)) {
+    return normalizedExpected === normalizedLetter;
+  }
+  if (normalizedExpected === 'CERTO' || normalizedExpected === 'ERRADO') {
+    return normalizedExpected === normalizedText
+      || matchesCertoErradoAlias(normalizedExpected, normalizedLetter);
+  }
   return normalizedExpected === normalizedLetter
-    || normalizedExpected === normalizedText
-    || matchesCertoErradoAlias(normalizedExpected, normalizedText);
+    || normalizedExpected === normalizedText;
 }
 
 function matchesCertoErradoAlias(answer, text) {
