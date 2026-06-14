@@ -2712,6 +2712,18 @@ async function saveCurrentLawAnswerEdit() {
     });
     if (result.error) throw new Error(result.error);
     state.currentQuestion.currentLawAnswer = result.currentLawAnswer;
+    if (result.metadata) {
+      state.currentQuestion.metadata = {
+        ...state.currentQuestion.metadata,
+        ...result.metadata
+      };
+    }
+    if (result.answering) {
+      state.currentQuestion.answering = {
+        ...state.currentQuestion.answering,
+        ...result.answering
+      };
+    }
     if (result.normativeTeachingComment) {
       state.currentQuestion.normativeTeachingComment = result.normativeTeachingComment;
     }

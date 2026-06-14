@@ -5024,8 +5024,15 @@ function saveCurrentLawAnswerEdit(questionId, body) {
   if (!question) {
     return { error: 'Questao nao encontrada.' };
   }
-  if (!dbBoolean(question.desatualizada)) {
-    return { error: 'Resposta atual so deve ser editada para questoes desatualizadas.' };
+  const previous = getCurrentLawAnswer(questionId);
+  const hasNormativeAuditContext = Boolean(
+    dbBoolean(question.desatualizada)
+    || previous.exists
+    || getNormativeUpdate(questionId).exists
+    || getNormativeTeachingComment(questionId).exists
+  );
+  if (!hasNormativeAuditContext) {
+    return { error: 'Resposta atual so deve ser editada para questoes com auditoria normativa.' };
   }
 
   const alternatives = db.prepare(`
@@ -5034,7 +5041,6 @@ function saveCurrentLawAnswerEdit(questionId, body) {
     WHERE question_id = ?
     ORDER BY position
   `).all(questionId);
-  const previous = getCurrentLawAnswer(questionId);
   const status = validChoice(body?.currentLawStatus || body?.status, [
     'verified',
     'needs_audit',
@@ -5127,13 +5133,30 @@ function saveCurrentLawAnswerEdit(questionId, body) {
     limitText(body?.teachingCommentMd, 60000)
   );
 
+  const updatedQuestion = db.prepare(`
+    SELECT
+      q.desatualizada,
+      ${currentLawStudyAnswerSql('q', 'c')} AS study_answer
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    WHERE q.id_question = ?
+    LIMIT 1
+  `).get(questionId);
+  const updatedCurrentLawAnswer = getCurrentLawAnswer(questionId);
+
   return {
     ok: true,
-    currentLawAnswer: getCurrentLawAnswer(questionId),
+    metadata: {
+      desatualizada: Boolean(updatedQuestion?.desatualizada)
+    },
+    answering: {
+      studyAnswer: updatedQuestion?.study_answer || ''
+    },
+    currentLawAnswer: updatedCurrentLawAnswer,
     normativeTeachingComment: applyCurrentLawTeachingOverride(
       getNormativeTeachingComment(questionId),
-      getCurrentLawAnswer(questionId),
-      true
+      updatedCurrentLawAnswer,
+      Boolean(updatedQuestion?.desatualizada)
     )
   };
 }
