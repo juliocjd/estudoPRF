@@ -1534,7 +1534,7 @@ async function loadExamCoverage() {
     .map((alert) => `<p>${escapeHtml(alert)}</p>`)
     .join('');
   els.coverageTable.innerHTML = rows.length
-    ? rows.map((row) => coverageRowMarkup(row)).join('')
+    ? `${coverageLegendMarkup()}${coverageHeaderMarkup()}${rows.map((row) => coverageRowMarkup(row)).join('')}`
     : '<p class="empty">Nenhum mapeamento encontrado para este perfil.</p>';
 }
 
@@ -4716,6 +4716,45 @@ function coverageRowMarkup(row) {
       <span>${Number(row.valid_with_answer || 0).toLocaleString('pt-BR')}</span>
       <span>${Math.round(Number(row.mastery_score || 0) * 100)}%</span>
       <span>${Number(row.due_reviews || 0).toLocaleString('pt-BR')}</span>
+    </div>
+  `;
+}
+
+function coverageHeaderMarkup() {
+  const columns = [
+    ['Disciplina', 'Matéria ou bloco do perfil de prova. A linha também mostra o status estratégico.'],
+    ['Peso', 'Percentual esperado dessa disciplina no perfil selecionado.'],
+    ['Itens', 'Quantidade estimada de itens da disciplina na prova.'],
+    ['Base', 'Total de questões mapeadas no banco para essa disciplina.'],
+    ['Válidas', 'Questões aproveitáveis para estudo, sem anuladas nem desatualizadas.'],
+    ['Com gabarito', 'Questões válidas que possuem gabarito utilizável pelo sistema.'],
+    ['Domínio', 'Média de domínio calculada pelas suas tentativas nessa disciplina.'],
+    ['Revisão', 'Quantidade de questões dessa disciplina vencidas para revisar hoje.']
+  ];
+  return `
+    <div class="coverage-row coverage-header" role="row">
+      ${columns.map(([label, description]) => `
+        <span title="${escapeAttr(description)}">
+          <strong>${escapeHtml(label)}</strong>
+        </span>
+      `).join('')}
+    </div>
+  `;
+}
+
+function coverageLegendMarkup() {
+  const items = [
+    ['Peso', 'percentual esperado no perfil.'],
+    ['Itens', 'quantidade estimada na prova.'],
+    ['Base', 'questões mapeadas no banco.'],
+    ['Válidas', 'questões aproveitáveis para estudo.'],
+    ['Com gabarito', 'questões válidas com resposta utilizável.'],
+    ['Domínio', 'média do seu desempenho.'],
+    ['Revisão', 'questões vencidas para revisar hoje.']
+  ];
+  return `
+    <div class="coverage-legend">
+      ${items.map(([label, description]) => `<span><strong>${escapeHtml(label)}:</strong> ${escapeHtml(description)}</span>`).join('')}
     </div>
   `;
 }
