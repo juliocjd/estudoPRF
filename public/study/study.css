@@ -584,17 +584,19 @@ button:disabled {
   align-items: start;
 }
 
+.is-report-view .study-layout,
 .is-law-compendium-view .study-layout {
   display: none;
 }
 
-.is-law-compendium-view .law-compendium-panel {
+.is-report-view .report-panel {
   min-height: calc(100vh - 210px);
 }
 
 .question-card,
 .inline-support-card,
 .answer-panel,
+.report-panel,
 .subjects-panel,
 .coverage-panel,
 .normative-panel {
@@ -1266,6 +1268,35 @@ button:disabled {
   display: grid;
   gap: 14px;
   padding: 20px;
+}
+
+.report-panel {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 20px;
+}
+
+.report-panel .subjects-head {
+  align-items: center;
+}
+
+.subjects-head > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.report-intro {
+  margin: 0;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: var(--info-soft);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .subjects-list {
@@ -3275,5 +3306,32 @@ button:disabled {
   .answer-actions {
     margin: 0 -12px -12px;
     padding-inline: 12px;
+  }
+}
+
+.is-report-view .report-panel:not([hidden]) {
+  display: grid !important;
+}
+
+.is-report-view .study-layout {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .report-panel {
+    padding: 14px;
+  }
+
+  .report-panel .subjects-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .report-panel .subjects-head .button {
+    width: 100%;
+  }
+
+  .report-intro {
+    font-size: 12.5px;
   }
 }

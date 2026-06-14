@@ -292,37 +292,53 @@
           </form>
         </section>
 
-        <section class="subjects-panel" id="subjectsPanel" hidden>
+        <section class="subjects-panel report-panel" id="subjectsPanel" hidden>
           <div class="subjects-head">
-            <strong>Ranking de assuntos</strong>
-            <span id="subjectsInfo"></span>
+            <div>
+              <strong>Ranking de assuntos</strong>
+              <span id="subjectsInfo"></span>
+            </div>
+            <button id="closeSubjectsReport" class="button button-secondary" type="button">Voltar</button>
           </div>
+          <p class="report-intro">Mostra os assuntos por desempenho e prioridade de revisão, combinando tentativas, erros, domínio e fila de estudo para indicar onde seu tempo tende a render mais.</p>
           <div class="subjects-list" id="subjectsList"></div>
         </section>
 
-        <section class="coverage-panel" id="coveragePanel" hidden>
+        <section class="coverage-panel report-panel" id="coveragePanel" hidden>
           <div class="subjects-head">
-            <strong>Base x Prova PRF</strong>
-            <span id="coverageInfo"></span>
+            <div>
+              <strong>Base x Prova PRF</strong>
+              <span id="coverageInfo"></span>
+            </div>
+            <button id="closeCoverageReport" class="button button-secondary" type="button">Voltar</button>
           </div>
+          <p class="report-intro">Compara o peso esperado de cada disciplina no perfil de prova com a quantidade de questões válidas, questões com gabarito e tentativas já feitas.</p>
           <div id="coverageAlerts" class="coverage-alerts"></div>
           <div class="coverage-table" id="coverageTable"></div>
         </section>
 
-        <section class="coverage-panel theory-coverage-panel" id="theoryCoveragePanel" hidden>
+        <section class="coverage-panel theory-coverage-panel report-panel" id="theoryCoveragePanel" hidden>
           <div class="subjects-head">
-            <strong>Cobertura de teoria</strong>
-            <span id="theoryCoverageInfo"></span>
+            <div>
+              <strong>Cobertura de teoria</strong>
+              <span id="theoryCoverageInfo"></span>
+            </div>
+            <button id="closeTheoryCoverageReport" class="button button-secondary" type="button">Voltar</button>
           </div>
+          <p class="report-intro">Audita se as questões têm apoio teórico confiável: teoria específica, microcards, artigos, vínculos com fontes, panoramas e lacunas sem suporte.</p>
           <div id="theoryCoverageStats" class="normative-stats"></div>
           <div class="coverage-table" id="theoryCoverageTable"></div>
         </section>
 
-        <section class="normative-panel" id="normativePanel" hidden>
+        <section class="normative-panel report-panel" id="normativePanel" hidden>
           <div class="subjects-head">
-            <strong>Revisão normativa</strong>
-            <span id="normativeInfo"></span>
+            <div>
+              <strong>Revisão normativa</strong>
+              <span id="normativeInfo"></span>
+            </div>
+            <button id="closeNormativeReport" class="button button-secondary" type="button">Voltar</button>
           </div>
+          <p class="report-intro">Lista questões impactadas por mudança normativa, separando o que pode ser adaptado, o que exige revisão manual, o que deve ser descartado e onde o gabarito mudou.</p>
           <div id="normativeStats" class="normative-stats"></div>
           <div class="normative-filters">
             <label class="field">
@@ -373,12 +389,15 @@
           <div id="normativeTable" class="normative-table"></div>
         </section>
 
-        <section class="law-compendium-panel" id="lawCompendiumPanel" hidden>
+        <section class="law-compendium-panel report-panel" id="lawCompendiumPanel" hidden>
           <div class="subjects-head">
-            <strong>Legislação PRF</strong>
-            <span id="lawCompendiumInfo"></span>
+            <div>
+              <strong>Legislação PRF</strong>
+              <span id="lawCompendiumInfo"></span>
+            </div>
             <button id="closeLawCompendium" class="button button-secondary" type="button">Voltar</button>
           </div>
+          <p class="report-intro">Reúne a apostila da lei com normas vigentes validadas, histórico separado, dispositivos estruturados e vínculos com questões e comentários quando houver referência segura.</p>
           <div id="lawCompendiumStats" class="normative-stats"></div>
           <div class="law-compendium-layout">
             <aside class="law-source-list" id="lawSourceList" aria-label="Normas da apostila"></aside>
@@ -475,6 +494,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260613-law-layout-fix" type="module"></script>
+    <script src="/study.js?v=20260613-report-layout" type="module"></script>
   </body>
 </html>

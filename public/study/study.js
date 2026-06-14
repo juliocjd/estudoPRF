@@ -108,6 +108,10 @@ const els = {
   toggleSubjects: document.querySelector('#toggleSubjects'),
   toggleNormative: document.querySelector('#toggleNormative'),
   toggleLawCompendium: document.querySelector('#toggleLawCompendium'),
+  closeSubjectsReport: document.querySelector('#closeSubjectsReport'),
+  closeCoverageReport: document.querySelector('#closeCoverageReport'),
+  closeTheoryCoverageReport: document.querySelector('#closeTheoryCoverageReport'),
+  closeNormativeReport: document.querySelector('#closeNormativeReport'),
   lawCompendiumPanel: document.querySelector('#lawCompendiumPanel'),
   lawCompendiumInfo: document.querySelector('#lawCompendiumInfo'),
   lawCompendiumStats: document.querySelector('#lawCompendiumStats'),
@@ -455,8 +459,10 @@ function bindEvents() {
   });
   els.toggleCoverage.addEventListener('click', async () => {
     closeAllDropdowns();
+    const shouldOpen = !state.coverageVisible;
+    closeReportPanels();
     closeLawCompendiumView();
-    state.coverageVisible = !state.coverageVisible;
+    state.coverageVisible = shouldOpen;
     renderCoverageVisibility();
     if (state.coverageVisible) {
       await loadExamCoverage();
@@ -464,8 +470,10 @@ function bindEvents() {
   });
   els.toggleTheoryCoverage?.addEventListener('click', async () => {
     closeAllDropdowns();
+    const shouldOpen = !state.theoryCoverageVisible;
+    closeReportPanels();
     closeLawCompendiumView();
-    state.theoryCoverageVisible = !state.theoryCoverageVisible;
+    state.theoryCoverageVisible = shouldOpen;
     renderTheoryCoverageVisibility();
     if (state.theoryCoverageVisible) {
       await loadTheoryCoverage();
@@ -473,8 +481,10 @@ function bindEvents() {
   });
   els.toggleSubjects.addEventListener('click', async () => {
     closeAllDropdowns();
+    const shouldOpen = !state.subjectsVisible;
+    closeReportPanels();
     closeLawCompendiumView();
-    state.subjectsVisible = !state.subjectsVisible;
+    state.subjectsVisible = shouldOpen;
     renderSubjectsVisibility();
     if (state.subjectsVisible) {
       await loadSubjectsRanking();
@@ -482,8 +492,10 @@ function bindEvents() {
   });
   els.toggleNormative.addEventListener('click', async () => {
     closeAllDropdowns();
+    const shouldOpen = !state.normativeVisible;
+    closeReportPanels();
     closeLawCompendiumView();
-    state.normativeVisible = !state.normativeVisible;
+    state.normativeVisible = shouldOpen;
     renderNormativeVisibility();
     if (state.normativeVisible) {
       await loadNormativeReview();
@@ -501,6 +513,22 @@ function bindEvents() {
 
   els.closeLawCompendium?.addEventListener('click', () => {
     closeLawCompendiumView();
+  });
+  els.closeSubjectsReport?.addEventListener('click', () => {
+    state.subjectsVisible = false;
+    renderSubjectsVisibility();
+  });
+  els.closeCoverageReport?.addEventListener('click', () => {
+    state.coverageVisible = false;
+    renderCoverageVisibility();
+  });
+  els.closeTheoryCoverageReport?.addEventListener('click', () => {
+    state.theoryCoverageVisible = false;
+    renderTheoryCoverageVisibility();
+  });
+  els.closeNormativeReport?.addEventListener('click', () => {
+    state.normativeVisible = false;
+    renderNormativeVisibility();
   });
 
   els.subjectsList.addEventListener('click', async (event) => {
@@ -4406,22 +4434,26 @@ function renderSupportVisibility() {
 function renderSubjectsVisibility() {
   els.subjectsPanel.hidden = !state.subjectsVisible;
   els.toggleSubjects.textContent = state.subjectsVisible ? 'Ocultar ranking' : 'Ranking de assuntos';
+  updateReportViewState();
 }
 
 function renderCoverageVisibility() {
   els.coveragePanel.hidden = !state.coverageVisible;
   els.toggleCoverage.textContent = state.coverageVisible ? 'Ocultar base' : 'Base x Prova';
+  updateReportViewState();
 }
 
 function renderTheoryCoverageVisibility() {
   if (!els.theoryCoveragePanel || !els.toggleTheoryCoverage) return;
   els.theoryCoveragePanel.hidden = !state.theoryCoverageVisible;
   els.toggleTheoryCoverage.textContent = state.theoryCoverageVisible ? 'Ocultar cobertura de teoria' : 'Cobertura de teoria';
+  updateReportViewState();
 }
 
 function renderNormativeVisibility() {
   els.normativePanel.hidden = !state.normativeVisible;
   els.toggleNormative.textContent = state.normativeVisible ? 'Ocultar revisão normativa' : 'Revisão normativa';
+  updateReportViewState();
 }
 
 function renderLawCompendiumVisibility() {
@@ -4429,6 +4461,18 @@ function renderLawCompendiumVisibility() {
   els.lawCompendiumPanel.hidden = !state.lawCompendiumVisible;
   document.body.classList.toggle('is-law-compendium-view', state.lawCompendiumVisible);
   els.toggleLawCompendium.textContent = state.lawCompendiumVisible ? 'Ocultar Legislação PRF' : 'Legislação PRF';
+  updateReportViewState();
+}
+
+function updateReportViewState() {
+  const hasOpenReport = Boolean(
+    state.coverageVisible
+    || state.theoryCoverageVisible
+    || state.subjectsVisible
+    || state.normativeVisible
+    || state.lawCompendiumVisible
+  );
+  document.body.classList.toggle('is-report-view', hasOpenReport);
 }
 
 function closeReportPanels() {
