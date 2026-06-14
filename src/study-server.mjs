@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { openStudyDatabase } from './db/open-study-database.mjs';
 import { safeJsonParse } from './normative-teaching-utils.mjs';
 import { initLawCompendiumSchema as initLawCompendiumSchemaShared, safeJson as parseLawJson } from '../scripts/law-compendium-utils.mjs';
+import { loadEnvFiles } from '../scripts/lib/env.mjs';
+
+loadEnvFiles();
 
 const CURRENT_FILE = fileURLToPath(import.meta.url);
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -172,6 +175,11 @@ async function routeRequest(request, response) {
     return;
   }
 
+  if (url.pathname === '/api/contran-prf-2021/resolve' && request.method === 'GET') {
+    sendJson(response, 200, getContranPrf2021Resolution(url.searchParams));
+    return;
+  }
+
   if (url.pathname === '/api/law-compendium/overview' && request.method === 'GET') {
     sendJson(response, 200, getLawCompendiumOverview());
     return;
@@ -180,6 +188,28 @@ async function routeRequest(request, response) {
   const lawCompendiumSourceMatch = url.pathname.match(/^\/api\/law-compendium\/sources\/([^/]+)$/);
   if (lawCompendiumSourceMatch && request.method === 'GET') {
     sendJson(response, 200, getLawCompendiumSource(decodeURIComponent(lawCompendiumSourceMatch[1]), url.searchParams));
+    return;
+  }
+
+  const lawSectionMaterialsMatch = url.pathname.match(/^\/api\/law-compendium\/sections\/(\d+)\/materials$/);
+  if (lawSectionMaterialsMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const result = saveLawSectionMaterial(Number(lawSectionMaterialsMatch[1]), body);
+    sendJson(response, result?.error ? 400 : 200, result);
+    return;
+  }
+
+  const lawSectionMaterialMatch = url.pathname.match(/^\/api\/law-compendium\/materials\/(\d+)$/);
+  if (lawSectionMaterialMatch && request.method === 'PUT') {
+    const body = await readJsonBody(request);
+    const result = updateLawSectionMaterial(Number(lawSectionMaterialMatch[1]), body);
+    sendJson(response, result?.error ? 400 : 200, result);
+    return;
+  }
+
+  if (lawSectionMaterialMatch && request.method === 'DELETE') {
+    const result = deleteLawSectionMaterial(Number(lawSectionMaterialMatch[1]));
+    sendJson(response, result?.error ? 400 : 200, result);
     return;
   }
 
@@ -963,6 +993,84 @@ function hasLawCompendiumTables() {
     && Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'law_compendium_sections'").get());
 }
 
+function hasLawSectionMaterialsTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'law_section_materials'").get());
+}
+
+function hasContranPrf2021MapTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contran_prf_2021_current_map'").get());
+}
+
+function getContranPrf2021Resolution(searchParams = new URLSearchParams()) {
+  if (!hasContranPrf2021MapTable()) {
+    return { available: false, reason: 'Mapa CONTRAN PRF 2021 ainda nao importado.' };
+  }
+  const parsed = parseContranReference(
+    searchParams.get('ref') || searchParams.get('q') || `${searchParams.get('number') || ''}/${searchParams.get('year') || ''}`
+  );
+  if (!parsed) {
+    return { available: true, found: false, reason: 'Informe uma referencia no formato numero/ano.' };
+  }
+  const row = db.prepare(`
+    SELECT
+      source_organ,
+      source_number::text AS source_number_text,
+      source_year::text AS source_year_text,
+      source_title_hint,
+      edital_scope,
+      target_organ,
+      target_number::text AS target_number_text,
+      target_year::text AS target_year_text,
+      target_title,
+      target_official_url,
+      relation,
+      scope_policy,
+      old_norm_allowed_only_as_alias,
+      show_in_current_study_filter,
+      notes,
+      confidence
+    FROM resolve_contran_prf_2021_norm(?, ?, ?)
+    LIMIT 1
+  `).get(parsed.number, parsed.year, searchParams.get('organ') || 'CONTRAN');
+  if (!row) {
+    return { available: true, found: false, searched: parsed };
+  }
+  return {
+    available: true,
+    found: true,
+    searched: parsed,
+    result: {
+      sourceOrgan: row.source_organ || '',
+      sourceNumber: row.source_number_text || '',
+      sourceYear: row.source_year_text || '',
+      sourceTitleHint: row.source_title_hint || '',
+      editalScope: row.edital_scope || '',
+      targetOrgan: row.target_organ || '',
+      targetNumber: row.target_number_text || '',
+      targetYear: row.target_year_text || '',
+      targetTitle: row.target_title || '',
+      targetOfficialUrl: row.target_official_url || '',
+      relation: row.relation || '',
+      scopePolicy: parseLawJson(row.scope_policy, {}),
+      oldNormAllowedOnlyAsAlias: Boolean(row.old_norm_allowed_only_as_alias),
+      showInCurrentStudyFilter: Boolean(row.show_in_current_study_filter),
+      notes: row.notes || '',
+      confidence: row.confidence || ''
+    }
+  };
+}
+
+function parseContranReference(value) {
+  const match = String(value || '').match(/(\d{1,4}(?:\.\d{3})?)\s*\/\s*(\d{2,4})/);
+  if (!match) return null;
+  let year = match[2];
+  if (year.length === 2) year = Number(year) > 80 ? `19${year}` : `20${year}`;
+  return {
+    number: match[1].replace(/^0+(?=\d)/, '') || match[1],
+    year
+  };
+}
+
 function getLawCompendiumOverview() {
   if (!hasLawCompendiumTables()) {
     return { available: false, reason: 'Apostila da Lei ainda nao criada.' };
@@ -1088,13 +1196,20 @@ function getLawCompendiumSource(slug, searchParams = new URLSearchParams()) {
       AND COALESCE(confidence, 0) >= 0.70
     ORDER BY confidence DESC, id
   `).all(...sectionIds) : [];
+  const materials = sectionIds.length && hasLawSectionMaterialsTable() ? db.prepare(`
+    SELECT *
+    FROM law_section_materials
+    WHERE section_id IN (${sectionIds.map(() => '?').join(',')})
+       OR (source_slug = ? AND section_key IN (${sections.map(() => '?').join(',')}))
+    ORDER BY sort_order, id
+  `).all(...sectionIds, slug, ...sections.map((section) => section.section_key || '')) : [];
   return {
     available: true,
     blocked: false,
     mode,
     source: lawSourceDetailPayload(source),
     summary: summary ? lawSummaryPayload(summary) : null,
-    sections: sections.map((section) => lawSectionPayload(section, crossRefs, questionLinks, commentLinks, relatedQuestionLinks))
+    sections: sections.map((section) => lawSectionPayload(section, crossRefs, questionLinks, commentLinks, relatedQuestionLinks, materials))
   };
 }
 
@@ -1146,7 +1261,7 @@ function lawSummaryPayload(summary) {
   };
 }
 
-function lawSectionPayload(section, crossRefs, questionLinks, commentLinks, relatedQuestionLinks = []) {
+function lawSectionPayload(section, crossRefs, questionLinks, commentLinks, relatedQuestionLinks = [], materials = []) {
   const sectionId = Number(section.id);
   return {
     id: section.id,
@@ -1192,8 +1307,164 @@ function lawSectionPayload(section, crossRefs, questionLinks, commentLinks, rela
       excerpt: link.excerpt || '',
       evidence: link.evidence || '',
       confidence: link.confidence || 0
-    }))
+    })),
+    materials: materials.filter((material) => (
+      Number(material.section_id) === sectionId
+      || (
+        material.source_slug
+        && material.section_key
+        && material.source_slug === section.source_slug
+        && material.section_key === section.section_key
+      )
+    )).map(lawSectionMaterialPayload)
   };
+}
+
+function lawSectionMaterialPayload(material) {
+  return {
+    id: material.id,
+    sectionId: material.section_id,
+    materialType: material.material_type || '',
+    bodyText: material.body_text || '',
+    bodyHtml: material.body_html || '',
+    imageDataUrl: material.image_data_url || '',
+    imageMimeType: material.image_mime_type || '',
+    imageName: material.image_name || '',
+    caption: material.caption || '',
+    sortOrder: Number(material.sort_order || 0),
+    createdAt: material.created_at || '',
+    updatedAt: material.updated_at || ''
+  };
+}
+
+function saveLawSectionMaterial(sectionId, body = {}) {
+  if (!hasLawCompendiumTables() || !hasLawSectionMaterialsTable()) {
+    return { error: 'Tabela de materiais da legislacao indisponivel.' };
+  }
+  const section = db.prepare(`
+    SELECT id, source_slug, section_key
+    FROM law_compendium_sections
+    WHERE id = ?
+    LIMIT 1
+  `).get(sectionId);
+  if (!section) return { error: 'Dispositivo legal nao encontrado.' };
+
+  const materialType = String(body.materialType || body.type || '').trim();
+  const caption = clampText(body.caption, 500);
+  const nextOrder = Number(db.prepare(`
+    SELECT COALESCE(MAX(sort_order), 0) + 10 AS next_order
+    FROM law_section_materials
+    WHERE section_id = ?
+  `).get(sectionId)?.next_order || 10);
+
+  if (materialType === 'text') {
+    const bodyHtml = sanitizeStoredHtml(clampText(body.bodyHtml || body.html || body.bodyText || body.text, 60000)).trim();
+    const bodyText = htmlToPlainText(bodyHtml).slice(0, 20000);
+    if (!bodyHtml && !bodyText) return { error: 'Informe o texto a incluir.' };
+    const result = db.prepare(`
+      INSERT INTO law_section_materials (
+        section_id, source_slug, section_key, material_type, body_text, body_html, caption, sort_order, created_at, updated_at
+      )
+      VALUES (?, ?, ?, 'text', ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING id
+    `).get(sectionId, section.source_slug || '', section.section_key || '', bodyText, bodyHtml, caption, nextOrder);
+    return { ok: true, material: getLawSectionMaterialById(Number(result?.id || 0)) };
+  }
+
+  if (materialType === 'image') {
+    const imageDataUrl = String(body.imageDataUrl || '').trim();
+    const image = parseAllowedImageDataUrl(imageDataUrl);
+    if (!image) return { error: 'Envie uma imagem PNG, JPEG, WebP ou GIF valida.' };
+    const maxImageBytes = 3 * 1024 * 1024;
+    if (image.bytes > maxImageBytes) return { error: 'Imagem muito grande. Limite: 3 MB.' };
+    const imageName = clampText(body.imageName || '', 240);
+    const result = db.prepare(`
+      INSERT INTO law_section_materials (
+        section_id, source_slug, section_key, material_type, image_data_url, image_mime_type,
+        image_name, caption, sort_order, created_at, updated_at
+      )
+      VALUES (?, ?, ?, 'image', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING id
+    `).get(
+      sectionId,
+      section.source_slug || '',
+      section.section_key || '',
+      imageDataUrl,
+      image.mimeType,
+      imageName,
+      caption,
+      nextOrder
+    );
+    return { ok: true, material: getLawSectionMaterialById(Number(result?.id || 0)) };
+  }
+
+  return { error: 'Tipo de material invalido.' };
+}
+
+function updateLawSectionMaterial(materialId, body = {}) {
+  if (!hasLawSectionMaterialsTable()) return { error: 'Tabela de materiais da legislacao indisponivel.' };
+  const existing = db.prepare(`
+    SELECT *
+    FROM law_section_materials
+    WHERE id = ?
+    LIMIT 1
+  `).get(materialId);
+  if (!existing) return { error: 'Material nao encontrado.' };
+
+  const caption = clampText(body.caption ?? existing.caption ?? '', 500);
+  if (existing.material_type === 'text') {
+    const bodyHtml = sanitizeStoredHtml(clampText(body.bodyHtml || body.html || body.bodyText || body.text, 60000)).trim();
+    const bodyText = htmlToPlainText(bodyHtml).slice(0, 20000);
+    if (!bodyHtml && !bodyText) return { error: 'Informe o texto a incluir.' };
+    db.prepare(`
+      UPDATE law_section_materials
+      SET body_text = ?,
+          body_html = ?,
+          caption = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(bodyText, bodyHtml, caption, materialId);
+    return { ok: true, material: getLawSectionMaterialById(materialId) };
+  }
+
+  db.prepare(`
+    UPDATE law_section_materials
+    SET caption = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(caption, materialId);
+  return { ok: true, material: getLawSectionMaterialById(materialId) };
+}
+
+function deleteLawSectionMaterial(materialId) {
+  if (!hasLawSectionMaterialsTable()) return { error: 'Tabela de materiais da legislacao indisponivel.' };
+  const existing = getLawSectionMaterialById(materialId);
+  if (!existing) return { error: 'Material nao encontrado.' };
+  db.prepare('DELETE FROM law_section_materials WHERE id = ?').run(materialId);
+  return { ok: true, deletedId: materialId };
+}
+
+function getLawSectionMaterialById(materialId) {
+  if (!materialId) return null;
+  const material = db.prepare(`
+    SELECT *
+    FROM law_section_materials
+    WHERE id = ?
+    LIMIT 1
+  `).get(materialId);
+  return material ? lawSectionMaterialPayload(material) : null;
+}
+
+function clampText(value, maxLength) {
+  return String(value || '').replace(/\u0000/g, '').slice(0, maxLength);
+}
+
+function parseAllowedImageDataUrl(value) {
+  const match = String(value || '').match(/^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) return null;
+  const mimeType = match[1] === 'image/jpg' ? 'image/jpeg' : match[1];
+  const bytes = Math.floor((match[2].length * 3) / 4);
+  return { mimeType, bytes };
 }
 
 function getLegalDashboard() {

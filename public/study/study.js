@@ -51,6 +51,9 @@ const state = {
   lawCompendiumMode: 'beginner',
   activeLawSourceSlug: '',
   lawCompendiumOverview: null,
+  activeLawSourceData: null,
+  lawMaterialEditId: null,
+  lawMaterialSelection: null,
   teachingEditMode: false,
   currentLawEditMode: false,
   historicalCommentEditMode: false,
@@ -632,6 +635,17 @@ function bindEvents() {
   });
 
   els.lawSourceDetail?.addEventListener('click', async (event) => {
+    const actionButton = event.target.closest('[data-action]');
+    if (actionButton && String(actionButton.dataset.action || '').startsWith('law-material-')) {
+      await handleLawSectionMaterialAction(actionButton, event);
+      return;
+    }
+    const deleteMaterial = event.target.closest('[data-law-material-delete]');
+    if (deleteMaterial) {
+      event.preventDefault();
+      await deleteLawSectionMaterial(deleteMaterial);
+      return;
+    }
     const trigger = event.target.closest('[data-question-id]');
     if (!trigger) return;
     event.preventDefault();
@@ -641,6 +655,60 @@ function bindEvents() {
     state.lawCompendiumVisible = false;
     renderLawCompendiumVisibility();
     await openQuestionDirect(questionId, { fallbackHref: trigger.href });
+  });
+
+  els.lawSourceDetail?.addEventListener('submit', async (event) => {
+    const form = event.target.closest('[data-law-material-form]');
+    if (!form) return;
+    event.preventDefault();
+    await submitLawSectionMaterial(form);
+  });
+
+  els.lawSourceDetail?.addEventListener('change', (event) => {
+    const colorInput = event.target.closest('[data-law-material-color]');
+    if (colorInput) {
+      handleLawMaterialColor(colorInput, event);
+      return;
+    }
+    const fontSizeSelect = event.target.closest('[data-law-material-font-size]');
+    if (fontSizeSelect) {
+      handleLawMaterialStyleSelect(fontSizeSelect, event, 'fontSize');
+      return;
+    }
+    const fontFamilySelect = event.target.closest('[data-law-material-font-family]');
+    if (fontFamilySelect) {
+      handleLawMaterialStyleSelect(fontFamilySelect, event, 'fontFamily');
+      return;
+    }
+    const lineHeightSelect = event.target.closest('[data-law-material-line-height]');
+    if (lineHeightSelect) {
+      handleLawMaterialStyleSelect(lineHeightSelect, event, 'lineHeight');
+      return;
+    }
+    const select = event.target.closest('[data-law-material-type]');
+    if (!select) return;
+    const form = select.closest('[data-law-material-form]');
+    updateLawMaterialFormMode(form);
+  });
+
+  els.lawSourceDetail?.addEventListener('input', (event) => {
+    const editor = event.target.closest('[data-law-material-editor]');
+    if (editor) saveLawMaterialSelection(editor);
+  });
+
+  els.lawSourceDetail?.addEventListener('keyup', (event) => {
+    const editor = event.target.closest('[data-law-material-editor]');
+    if (editor) saveLawMaterialSelection(editor);
+  });
+
+  els.lawSourceDetail?.addEventListener('mouseup', (event) => {
+    const editor = event.target.closest('[data-law-material-editor]');
+    if (editor) saveLawMaterialSelection(editor);
+  });
+
+  els.lawSourceDetail?.addEventListener('focusout', (event) => {
+    const editor = event.target.closest('[data-law-material-editor]');
+    if (editor) saveLawMaterialSelection(editor);
   });
 
   els.supportSimilarBody.addEventListener('click', async (event) => {
@@ -1669,6 +1737,9 @@ function lawSourceButtonMarkup(row) {
 async function openLawSource(slug) {
   if (!slug) return;
   state.activeLawSourceSlug = slug;
+  state.activeLawSourceData = null;
+  state.lawMaterialEditId = null;
+  state.lawMaterialSelection = null;
   renderLawSourceList(state.lawCompendiumOverview || { current: [], historical: [], pending: [] });
   els.lawSourceDetail.innerHTML = '<p class="empty">Carregando norma...</p>';
   const row = findLawSourceInOverview(slug);
@@ -1684,12 +1755,15 @@ function findLawSourceInOverview(slug) {
 }
 
 function renderLawSourceDetail(data) {
+  state.activeLawSourceData = data?.available && !data?.blocked ? data : null;
   if (!data.available) {
+    state.activeLawSourceData = null;
     els.lawSourceDetail.innerHTML = `<p class="empty">${escapeHtml(data.reason || 'Norma indisponivel.')}</p>`;
     return;
   }
   const source = data.source || {};
   if (data.blocked) {
+    state.activeLawSourceData = null;
     els.lawSourceDetail.innerHTML = `
       <div class="law-source-head">
         <div>
@@ -1766,12 +1840,469 @@ function lawSectionMarkup(section, isDryLaw) {
   }
   const related = !isDryLaw ? lawRelatedMarkup(section) : '';
   return `
-    <article class="law-section is-${escapeAttr(hierarchyLevel)}">
+    <article class="law-section is-${escapeAttr(hierarchyLevel)}" data-law-section-id="${escapeAttr(section.id || '')}">
       <p>${escapeHtml(lawSectionBodyText(section))}</p>
+      ${lawSectionMaterialsMarkup(section.materials || [])}
       ${lawCrossRefsMarkup(section.crossReferences || [])}
       ${related}
+      ${lawSectionMaterialFormMarkup(section)}
     </article>
   `;
+}
+
+function lawSectionMaterialsMarkup(materials = []) {
+  const rows = (materials || []).filter(Boolean);
+  return `
+    <div class="law-materials" data-law-material-list aria-label="Materiais incluidos"${rows.length ? '' : ' hidden'}>
+      ${rows.map((material) => {
+        const caption = material.caption ? `<span>${escapeHtml(material.caption)}</span>` : '';
+        if (material.materialType === 'image' && material.imageDataUrl) {
+          return `
+            <figure class="law-material is-image">
+              <img src="${escapeAttr(material.imageDataUrl)}" alt="${escapeAttr(material.caption || material.imageName || 'Imagem adicionada')}">
+              <figcaption>
+                ${caption || `<span>${escapeHtml(material.imageName || 'Imagem adicionada')}</span>`}
+                <button class="button button-ghost" type="button" data-action="law-material-delete" data-material-id="${escapeAttr(material.id)}">Excluir</button>
+              </figcaption>
+            </figure>
+          `;
+        }
+        if (Number(state.lawMaterialEditId || 0) === Number(material.id || 0)) {
+          return `
+            <div class="law-material is-text is-editing" data-law-material-card data-law-material-id="${escapeAttr(material.id)}">
+              ${lawMaterialFormatToolbar({ saveAction: 'law-material-save-edit', cancelAction: 'law-material-cancel-edit' })}
+              <div
+                class="historical-comment-editor law-material-rich-editor"
+                data-law-material-editor
+                contenteditable="true"
+                spellcheck="true"
+                aria-label="Editor do material de texto"
+              >${lawMaterialTextHtml(material)}</div>
+              <label class="field">
+                <span>Legenda</span>
+                <input name="caption" type="text" maxlength="500" value="${escapeAttr(material.caption || '')}" data-law-material-caption>
+              </label>
+            </div>
+          `;
+        }
+        return `
+          <div class="law-material is-text" data-law-material-card data-law-material-id="${escapeAttr(material.id)}">
+            <div class="law-material-content">${lawMaterialTextHtml(material)}</div>
+            <div class="law-material-foot">
+              ${caption}
+              <span class="law-material-buttons">
+                <button class="button button-secondary" type="button" data-action="law-material-edit" data-material-id="${escapeAttr(material.id)}">Editar</button>
+                <button class="button button-ghost" type="button" data-action="law-material-delete" data-material-id="${escapeAttr(material.id)}">Excluir</button>
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function lawMaterialTextHtml(material) {
+  if (material.bodyHtml) return material.bodyHtml;
+  return paragraphsMarkup(material.bodyText || '');
+}
+
+function lawSectionMaterialFormMarkup(section) {
+  const sectionId = Number(section.id || 0);
+  if (!sectionId) return '';
+  return `
+    <details class="law-material-editor">
+      <summary>Adicionar texto/imagem</summary>
+      <form class="law-material-form" data-law-material-form data-section-id="${escapeAttr(sectionId)}">
+        <label class="field compact-field">
+          <span>Tipo</span>
+          <select name="materialType" data-law-material-type>
+            <option value="text">Texto</option>
+            <option value="image">Imagem</option>
+          </select>
+        </label>
+        <label class="field law-material-text-field">
+          <span>Texto</span>
+          ${lawMaterialFormatToolbar({ saveAction: '', cancelAction: '' })}
+          <div
+            class="historical-comment-editor law-material-rich-editor"
+            data-law-material-editor
+            contenteditable="true"
+            spellcheck="true"
+            aria-label="Editor do material de texto"
+          ><p></p></div>
+        </label>
+        <label class="field law-material-image-field" hidden>
+          <span>Imagem</span>
+          <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+        </label>
+        <label class="field">
+          <span>Legenda</span>
+          <input name="caption" type="text" maxlength="500" placeholder="Opcional">
+        </label>
+        <div class="law-material-actions">
+          <button class="button button-primary" type="submit">Salvar</button>
+          <span data-law-material-status></span>
+        </div>
+      </form>
+    </details>
+  `;
+}
+
+function paragraphsMarkup(value) {
+  const paragraphs = String(value || '')
+    .split(/\n{2,}/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!paragraphs.length) return '';
+  return paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`).join('');
+}
+
+function lawMaterialFormatToolbar({ saveAction = '', cancelAction = '' } = {}) {
+  const fontFamilies = [
+    ['Arial, Helvetica, sans-serif', 'Arial'],
+    ['Georgia, serif', 'Georgia'],
+    ['Times New Roman, Times, serif', 'Times'],
+    ['Verdana, Geneva, sans-serif', 'Verdana'],
+    ['Courier New, Courier, monospace', 'Mono']
+  ];
+  const fontSizes = [
+    ['12px', '12'],
+    ['14px', '14'],
+    ['16px', '16'],
+    ['18px', '18'],
+    ['20px', '20'],
+    ['24px', '24'],
+    ['28px', '28']
+  ];
+  const lineHeights = [
+    ['1.2', '1.2'],
+    ['1.4', '1.4'],
+    ['1.6', '1.6'],
+    ['1.8', '1.8'],
+    ['2', '2.0']
+  ];
+  const colorButtons = [
+    ['#0f172a', 'Preto'],
+    ['#1d4ed8', 'Azul'],
+    ['#15803d', 'Verde'],
+    ['#b45309', 'Âmbar'],
+    ['#dc2626', 'Vermelho']
+  ];
+  return `
+    <div class="historical-comment-toolbar is-editing law-material-toolbar" data-law-material-toolbar>
+      <div class="historical-format-tools" aria-label="Formatação do material de texto">
+        <button class="format-button" type="button" title="Negrito" data-action="law-material-format" data-command="bold"><strong>B</strong></button>
+        <button class="format-button" type="button" title="Itálico" data-action="law-material-format" data-command="italic"><em>I</em></button>
+        <button class="format-button" type="button" title="Sublinhado" data-action="law-material-format" data-command="underline"><span class="format-underline">U</span></button>
+        <button class="format-button" type="button" title="Tachado" data-action="law-material-format" data-command="strikeThrough"><s>S</s></button>
+        <span class="format-divider"></span>
+        <button class="format-button" type="button" title="Alinhar à esquerda" data-action="law-material-format" data-command="justifyLeft"><span class="format-align is-left"></span></button>
+        <button class="format-button" type="button" title="Centralizar" data-action="law-material-format" data-command="justifyCenter"><span class="format-align is-center"></span></button>
+        <button class="format-button" type="button" title="Alinhar à direita" data-action="law-material-format" data-command="justifyRight"><span class="format-align is-right"></span></button>
+        <span class="format-divider"></span>
+        <button class="format-button" type="button" title="Reduzir recuo" data-action="law-material-format" data-command="outdent"><span class="format-indent is-outdent"></span></button>
+        <button class="format-button" type="button" title="Aumentar recuo" data-action="law-material-format" data-command="indent"><span class="format-indent is-indent"></span></button>
+        <span class="format-divider"></span>
+        <select class="historical-format-select is-font-family" aria-label="Fonte" title="Fonte" data-law-material-font-family>
+          <option value="">Fonte</option>
+          ${fontFamilies.map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`).join('')}
+        </select>
+        <select class="historical-format-select is-font-size" aria-label="Tamanho da fonte" title="Tamanho da fonte" data-law-material-font-size>
+          <option value="">Tamanho</option>
+          ${fontSizes.map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`).join('')}
+        </select>
+        <select class="historical-format-select is-line-height" aria-label="Espaçamento entre linhas" title="Espaçamento entre linhas" data-law-material-line-height>
+          <option value="">Linhas</option>
+          ${lineHeights.map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`).join('')}
+        </select>
+        <span class="format-divider"></span>
+        ${colorButtons.map(([color, label]) => `
+          <button
+            class="format-swatch"
+            type="button"
+            title="${escapeAttr(label)}"
+            style="--swatch-color: ${escapeAttr(color)}"
+            data-action="law-material-format"
+            data-command="foreColor"
+            data-value="${escapeAttr(color)}"
+          ></button>
+        `).join('')}
+      </div>
+      ${saveAction ? `
+        <div class="historical-edit-actions">
+          <button class="button button-primary" type="button" data-action="${escapeAttr(saveAction)}">Salvar</button>
+          <button class="button button-secondary" type="button" data-action="${escapeAttr(cancelAction)}">Cancelar</button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+function updateLawMaterialFormMode(form) {
+  if (!form) return;
+  const type = form.elements.materialType?.value || 'text';
+  const textField = form.querySelector('.law-material-text-field');
+  const imageField = form.querySelector('.law-material-image-field');
+  if (textField) textField.hidden = type !== 'text';
+  if (imageField) imageField.hidden = type !== 'image';
+}
+
+async function submitLawSectionMaterial(form) {
+  const sectionId = Number(form.dataset.sectionId || 0);
+  if (!sectionId) return;
+  const status = form.querySelector('[data-law-material-status]');
+  const submit = form.querySelector('button[type="submit"]');
+  const type = form.elements.materialType?.value || 'text';
+  const payload = {
+    materialType: type,
+    caption: form.elements.caption?.value || ''
+  };
+  try {
+    if (submit) submit.disabled = true;
+    if (status) status.textContent = 'Salvando...';
+    if (type === 'text') {
+      const editor = form.querySelector('[data-law-material-editor]');
+      payload.bodyHtml = editor?.innerHTML || '';
+    } else if (type === 'image') {
+      const file = form.elements.imageFile?.files?.[0];
+      if (!file) throw new Error('Selecione uma imagem.');
+      if (!/^image\/(?:png|jpeg|webp|gif)$/i.test(file.type || '')) {
+        throw new Error('Use PNG, JPEG, WebP ou GIF.');
+      }
+      if (file.size > 3 * 1024 * 1024) {
+        throw new Error('Imagem muito grande. Limite: 3 MB.');
+      }
+      payload.imageDataUrl = await readFileAsDataUrl(file);
+      payload.imageName = file.name || '';
+    }
+    const result = await api(`/api/law-compendium/sections/${sectionId}/materials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    if (result.material) {
+      upsertLawMaterialInState(sectionId, result.material);
+      state.lawMaterialSelection = null;
+      rerenderLawSection(sectionId);
+    }
+  } catch (error) {
+    if (status) status.textContent = error.message || 'Erro ao salvar.';
+  } finally {
+    if (submit) submit.disabled = false;
+  }
+}
+
+async function deleteLawSectionMaterial(button) {
+  const materialId = Number(button?.dataset?.materialId || button?.dataset?.lawMaterialDelete || 0);
+  if (!materialId) return;
+  if (!window.confirm('Excluir este material?')) return;
+  button.disabled = true;
+  try {
+    const { sectionId } = findLawMaterialInState(materialId) || {};
+    await api(`/api/law-compendium/materials/${materialId}`, { method: 'DELETE' });
+    if (sectionId) {
+      removeLawMaterialFromState(sectionId, materialId);
+      rerenderLawSection(sectionId);
+    }
+  } catch (error) {
+    window.alert(error.message || 'Erro ao excluir material.');
+    button.disabled = false;
+  }
+}
+
+async function handleLawSectionMaterialAction(button, event) {
+  const action = button.dataset.action || '';
+  if (!action.startsWith('law-material-')) return;
+  event.preventDefault();
+
+  if (action === 'law-material-format') {
+    applyLawMaterialFormat(button);
+    return;
+  }
+
+  if (action === 'law-material-edit') {
+    const materialId = Number(button.dataset.materialId || 0);
+    const found = findLawMaterialInState(materialId);
+    if (!found) return;
+    state.lawMaterialEditId = materialId;
+    rerenderLawSection(found.sectionId);
+    window.requestAnimationFrame(() => {
+      const editor = els.lawSourceDetail?.querySelector(`[data-law-material-id="${CSS.escape(String(materialId))}"] [data-law-material-editor]`);
+      editor?.focus();
+    });
+    return;
+  }
+
+  if (action === 'law-material-cancel-edit') {
+    const card = button.closest('[data-law-material-card]');
+    const materialId = Number(card?.dataset?.lawMaterialId || 0);
+    const found = findLawMaterialInState(materialId);
+    state.lawMaterialEditId = null;
+    state.lawMaterialSelection = null;
+    if (found) rerenderLawSection(found.sectionId);
+    return;
+  }
+
+  if (action === 'law-material-save-edit') {
+    await saveLawSectionMaterialEdit(button);
+    return;
+  }
+
+  if (action === 'law-material-delete') {
+    await deleteLawSectionMaterial(button);
+  }
+}
+
+function handleLawMaterialColor(input, event) {
+  event.preventDefault();
+  applyLawMaterialFormat({
+    dataset: { command: 'foreColor', value: input.value || '#0f172a' },
+    closest: input.closest?.bind(input)
+  });
+}
+
+function handleLawMaterialStyleSelect(select, event, styleName) {
+  event.preventDefault();
+  const value = select.value || '';
+  if (!value) return;
+  applyLawMaterialStyle(select, styleName, value);
+  select.value = '';
+}
+
+function applyLawMaterialFormat(button) {
+  const command = button.dataset.command || '';
+  if (!command) return;
+  const editor = findLawMaterialEditor(button);
+  if (!editor) return;
+  editor.focus();
+  restoreLawMaterialSelection(editor);
+  document.execCommand(command, false, button.dataset.value || null);
+  saveLawMaterialSelection(editor);
+}
+
+function applyLawMaterialStyle(source, styleName, value) {
+  const editor = findLawMaterialEditor(source);
+  if (!editor) return;
+  editor.focus();
+  restoreLawMaterialSelection(editor);
+  const selection = document.getSelection();
+  if (!selection || !selection.rangeCount) return;
+  const range = selection.getRangeAt(0);
+  if (!rangeIntersectsEditor(range, editor) || range.collapsed) return;
+
+  const span = document.createElement('span');
+  if (styleName === 'fontSize') {
+    span.style.fontSize = value;
+  } else if (styleName === 'fontFamily') {
+    span.style.fontFamily = value;
+  } else if (styleName === 'lineHeight') {
+    span.style.lineHeight = value;
+  } else {
+    return;
+  }
+
+  span.appendChild(range.extractContents());
+  range.insertNode(span);
+  selection.removeAllRanges();
+  const nextRange = document.createRange();
+  nextRange.selectNodeContents(span);
+  selection.addRange(nextRange);
+  saveLawMaterialSelection(editor);
+}
+
+function saveLawMaterialSelection(editor) {
+  const selection = document.getSelection();
+  if (!selection || !selection.rangeCount || !editor) return;
+  const range = selection.getRangeAt(0);
+  if (!rangeIntersectsEditor(range, editor)) return;
+  state.lawMaterialSelection = range.cloneRange();
+}
+
+function restoreLawMaterialSelection(editor) {
+  const range = state.lawMaterialSelection;
+  if (!range || !editor || !rangeIntersectsEditor(range, editor)) return false;
+  const selection = document.getSelection();
+  if (!selection) return false;
+  selection.removeAllRanges();
+  selection.addRange(range);
+  return true;
+}
+
+function findLawMaterialEditor(source) {
+  const root = source?.closest?.('[data-law-material-card], [data-law-material-form]') || document;
+  return root.querySelector?.('[data-law-material-editor]');
+}
+
+async function saveLawSectionMaterialEdit(button) {
+  const card = button.closest('[data-law-material-card]');
+  const materialId = Number(card?.dataset?.lawMaterialId || 0);
+  const found = findLawMaterialInState(materialId);
+  if (!materialId || !found) return;
+  const editor = card.querySelector('[data-law-material-editor]');
+  const caption = card.querySelector('[data-law-material-caption]')?.value || '';
+  button.disabled = true;
+  try {
+    const result = await api(`/api/law-compendium/materials/${materialId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify({ bodyHtml: editor?.innerHTML || '', caption })
+    });
+    if (result.material) {
+      upsertLawMaterialInState(found.sectionId, result.material);
+      state.lawMaterialEditId = null;
+      state.lawMaterialSelection = null;
+      rerenderLawSection(found.sectionId);
+    }
+  } catch (error) {
+    window.alert(error.message || 'Erro ao salvar material.');
+    button.disabled = false;
+  }
+}
+
+function findLawMaterialInState(materialId) {
+  const targetId = Number(materialId || 0);
+  for (const section of state.activeLawSourceData?.sections || []) {
+    const material = (section.materials || []).find((item) => Number(item.id) === targetId);
+    if (material) return { section, sectionId: Number(section.id || 0), material };
+  }
+  return null;
+}
+
+function upsertLawMaterialInState(sectionId, material) {
+  const section = (state.activeLawSourceData?.sections || []).find((item) => Number(item.id) === Number(sectionId));
+  if (!section) return;
+  const materials = [...(section.materials || [])];
+  const index = materials.findIndex((item) => Number(item.id) === Number(material.id));
+  if (index >= 0) {
+    materials[index] = material;
+  } else {
+    materials.push(material);
+  }
+  section.materials = materials.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || Number(a.id || 0) - Number(b.id || 0));
+}
+
+function removeLawMaterialFromState(sectionId, materialId) {
+  const section = (state.activeLawSourceData?.sections || []).find((item) => Number(item.id) === Number(sectionId));
+  if (!section) return;
+  section.materials = (section.materials || []).filter((item) => Number(item.id) !== Number(materialId));
+}
+
+function rerenderLawSection(sectionId) {
+  const section = (state.activeLawSourceData?.sections || []).find((item) => Number(item.id) === Number(sectionId));
+  if (!section) return;
+  const current = els.lawSourceDetail?.querySelector(`[data-law-section-id="${CSS.escape(String(sectionId))}"]`);
+  if (!current) return;
+  current.outerHTML = lawSectionMarkup(section, state.lawCompendiumMode === 'dry');
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Nao foi possivel ler a imagem.'));
+    reader.readAsDataURL(file);
+  });
 }
 
 function lawSectionBodyText(section) {

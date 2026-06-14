@@ -1674,6 +1674,116 @@ button:disabled {
   line-height: 1.62;
 }
 
+.law-materials {
+  display: grid;
+  gap: 8px;
+}
+
+.law-material {
+  display: grid;
+  gap: 8px;
+  border-left: 3px solid var(--success);
+  padding: 8px 10px;
+  background: var(--success-soft);
+}
+
+.law-material.is-text p + p {
+  margin-top: 8px;
+}
+
+.law-material.is-image {
+  margin: 0;
+}
+
+.law-material.is-image img {
+  display: block;
+  width: min(100%, 820px);
+  max-height: 520px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.law-material figcaption,
+.law-material-foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.law-material-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.law-material-content {
+  display: grid;
+  gap: 8px;
+}
+
+.law-material-content p,
+.law-material-rich-editor p {
+  margin: 0;
+}
+
+.law-material.is-editing {
+  background: var(--surface-muted);
+}
+
+.law-material-toolbar {
+  align-items: flex-start;
+}
+
+.law-material-rich-editor {
+  min-height: 128px;
+  max-height: min(44vh, 420px);
+  padding: 10px;
+}
+
+.law-material-editor {
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface-muted);
+}
+
+.law-material-editor summary {
+  cursor: pointer;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.law-material-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.law-material-form textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.law-material-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.law-material-actions span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .law-divider {
   display: grid;
   gap: 3px;

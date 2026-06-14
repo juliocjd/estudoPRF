@@ -60,6 +60,15 @@
     "generate-question-applied-theory-cards": "node --no-warnings scripts/generate-question-applied-theory-cards.mjs --db questoes-prf.sqlite --materia \"Legislação de Trânsito e Transportes\" --require-exact-anchor",
     "validate-question-applied-theory-cards": "node --no-warnings scripts/validate-question-applied-theory-cards.mjs --db questoes-prf.sqlite",
     "diagnose-question-applied-theory-exact-anchors": "node --no-warnings scripts/diagnose-question-applied-theory-exact-anchors.mjs --db questoes-prf.sqlite --md data/diagnostico_question_applied_theory_exact_anchors_v6.md --json data/diagnostico_question_applied_theory_exact_anchors_v6.json",
+    "contran:validate-map": "node scripts/validate-contran-prf-2021-current-map.mjs --strict-official",
+    "contran:test-db": "node scripts/test-db-connection.mjs",
+    "contran:migrate": "node scripts/apply-migration.mjs",
+    "contran:import-map": "node scripts/import-contran-prf-2021-current-map.mjs",
+    "contran:import-map:dry-run": "node scripts/import-contran-prf-2021-current-map.mjs --dry-run",
+    "contran:diagnose": "node scripts/diagnose-contran-prf-current-targets.mjs",
+    "contran:report": "node scripts/export-contran-report.mjs --from-db",
+    "contran:resolve": "node scripts/resolve-contran-reference.mjs",
+    "contran:all": "npm run contran:validate-map && npm run contran:migrate && npm run contran:import-map && npm run contran:diagnose && npm run contran:report",
     "index-theory-pages": "node --no-warnings scripts/index-theory-pages.mjs --db questoes-prf.sqlite --pdfs pdfs",
     "index-theory-pages-progress": "node --no-warnings scripts/index-theory-pages-progress.mjs --db questoes-prf.sqlite --pdfs pdfs",
     "pg:export": "node --no-warnings scripts/export-sqlite-postgres.mjs --db questoes-prf.sqlite --out postgres-export",
@@ -76,6 +85,7 @@
   "dependencies": {
     "pdfjs-dist": "^6.0.227",
     "playwright": "^1.52.0",
+    "pg": "^8.16.3",
     "postgres": "^3.4.9"
   }
 }
