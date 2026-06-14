@@ -1546,45 +1546,77 @@ function getNormativeUpdateStats() {
     };
   }
   const hasTeaching = hasNormativeTeachingTable();
+  const currentLawJoin = normativeReviewCurrentLawJoin('q');
+  const openCondition = normativeReviewOpenCondition('q', 'qcla');
 
   return {
     exists: true,
-    total: db.prepare('SELECT COUNT(*) AS n FROM question_normative_updates').get().n || 0,
+    total: db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_normative_updates qnu
+      JOIN questions q ON q.id_question = qnu.question_id
+      ${currentLawJoin}
+      WHERE ${openCondition}
+    `).get().n || 0,
     byRecommendation: normativeGroupedCounts('recomendacao'),
     bySecurity: normativeGroupedCounts('nivel_seguranca'),
     byChangedAnswer: normativeGroupedCounts('mudanca_gabarito'),
     changedAnswer: db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_updates qnu
-      WHERE LOWER(COALESCE(qnu.mudanca_gabarito, '')) LIKE 'sim%'
+      JOIN questions q ON q.id_question = qnu.question_id
+      ${currentLawJoin}
+      WHERE ${openCondition}
+        AND LOWER(COALESCE(qnu.mudanca_gabarito, '')) LIKE 'sim%'
     `).get().n || 0,
     manualReview: db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_updates qnu
-      WHERE ${normativeManualCondition('qnu')}
+      JOIN questions q ON q.id_question = qnu.question_id
+      ${currentLawJoin}
+      WHERE ${openCondition}
+        AND ${normativeManualCondition('qnu')}
     `).get().n || 0,
     discardable: db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_updates qnu
-      WHERE ${normativeDiscardCondition('qnu')}
+      JOIN questions q ON q.id_question = qnu.question_id
+      ${currentLawJoin}
+      WHERE ${openCondition}
+        AND ${normativeDiscardCondition('qnu')}
     `).get().n || 0,
     adaptable: db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_updates qnu
-      WHERE LOWER(COALESCE(qnu.recomendacao, '')) LIKE '%adaptar%'
+      JOIN questions q ON q.id_question = qnu.question_id
+      ${currentLawJoin}
+      WHERE ${openCondition}
+        AND LOWER(COALESCE(qnu.recomendacao, '')) LIKE '%adaptar%'
     `).get().n || 0,
     reviewed: db.prepare(`
       SELECT COUNT(*) AS n
-      FROM question_normative_updates
-      WHERE COALESCE(review_status, 'pending') != 'pending'
+      FROM question_normative_updates qnu
+      JOIN questions q ON q.id_question = qnu.question_id
+      ${currentLawJoin}
+      WHERE ${openCondition}
+        AND COALESCE(qnu.review_status, 'pending') != 'pending'
     `).get().n || 0,
     teachingComments: hasTeaching ? db.prepare('SELECT COUNT(*) AS n FROM question_normative_teaching_comments').get().n || 0 : 0,
     teachingMissing: hasTeaching ? db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_updates qnu
+      JOIN questions q ON q.id_question = qnu.question_id
       LEFT JOIN question_normative_teaching_comments qntc ON qntc.question_id = qnu.question_id
-      WHERE qntc.question_id IS NULL
-    `).get().n || 0 : db.prepare('SELECT COUNT(*) AS n FROM question_normative_updates').get().n || 0,
+      ${currentLawJoin}
+      WHERE ${openCondition}
+        AND qntc.question_id IS NULL
+    `).get().n || 0 : db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_normative_updates qnu
+      JOIN questions q ON q.id_question = qnu.question_id
+      ${currentLawJoin}
+      WHERE ${openCondition}
+    `).get().n || 0,
     teachingCurrentAnswer: hasTeaching ? db.prepare(`
       SELECT COUNT(*) AS n
       FROM question_normative_teaching_comments
@@ -1774,11 +1806,28 @@ function getNormativeTeachingComments(searchParams) {
   return { total, limit, offset, rows };
 }
 
+function normativeReviewCurrentLawJoin(questionAlias = 'q') {
+  return hasCurrentLawAnswerTable()
+    ? `LEFT JOIN question_current_law_answers qcla ON qcla.question_id = ${questionAlias}.id_question`
+    : '';
+}
+
+function normativeReviewOpenCondition(questionAlias = 'q', currentLawAlias = 'qcla') {
+  const conditions = [`COALESCE(${questionAlias}.desatualizada, 0) = 1`];
+  if (hasCurrentLawAnswerTable()) {
+    conditions.push(`NOT (${currentLawVerifiedRowSql(currentLawAlias)})`);
+  }
+  return conditions.join(' AND ');
+}
+
 function normativeGroupedCounts(column) {
   return db.prepare(`
-    SELECT COALESCE(NULLIF(${column}, ''), 'sem valor') AS value, COUNT(*) AS total
-    FROM question_normative_updates
-    GROUP BY COALESCE(NULLIF(${column}, ''), 'sem valor')
+    SELECT COALESCE(NULLIF(qnu.${column}, ''), 'sem valor') AS value, COUNT(*) AS total
+    FROM question_normative_updates qnu
+    JOIN questions q ON q.id_question = qnu.question_id
+    ${normativeReviewCurrentLawJoin('q')}
+    WHERE ${normativeReviewOpenCondition('q', 'qcla')}
+    GROUP BY COALESCE(NULLIF(qnu.${column}, ''), 'sem valor')
     ORDER BY total DESC, value
   `).all();
 }
@@ -1802,6 +1851,8 @@ function getNormativeUpdates(searchParams) {
   const reviewStatus = String(searchParams.get('reviewStatus') || '').trim();
   const teachingStatus = String(searchParams.get('teachingStatus') || '').trim();
   const hasTeaching = hasNormativeTeachingTable();
+  const currentLawJoin = normativeReviewCurrentLawJoin('q');
+  where.push(normativeReviewOpenCondition('q', 'qcla'));
 
   if (q) {
     where.push(`(
@@ -1893,6 +1944,7 @@ function getNormativeUpdates(searchParams) {
     FROM question_normative_updates qnu
     JOIN questions q ON q.id_question = qnu.question_id
     ${teachingJoin}
+    ${currentLawJoin}
     ${whereSql}
   `).get(...values).n || 0;
 
@@ -1918,6 +1970,7 @@ function getNormativeUpdates(searchParams) {
     FROM question_normative_updates qnu
     JOIN questions q ON q.id_question = qnu.question_id
     ${teachingJoin}
+    ${currentLawJoin}
     ${whereSql}
     ORDER BY
       CASE WHEN ${normativeManualCondition('qnu')} THEN 0 ELSE 1 END,
@@ -2464,8 +2517,10 @@ function currentLawVerifiedAnswerSql(questionAlias) {
 
 function currentLawStudyAnswerSql(questionAlias, commentAlias) {
   const historicalAnswerSql = bestAnswerSql(questionAlias, commentAlias);
+  const currentAnswerSql = currentLawVerifiedAnswerSql(questionAlias);
   return `CASE
-    WHEN COALESCE(${questionAlias}.desatualizada, 0) = 1 THEN COALESCE(NULLIF(${currentLawVerifiedAnswerSql(questionAlias)}, ''), '')
+    WHEN COALESCE(NULLIF(${currentAnswerSql}, ''), '') != '' THEN ${currentAnswerSql}
+    WHEN COALESCE(${questionAlias}.desatualizada, 0) = 1 THEN ''
     ELSE ${historicalAnswerSql}
   END`;
 }
@@ -4540,21 +4595,6 @@ function getCurrentLawAnswer(questionId) {
 function resolveCurrentLawCorrection(question, currentLawAnswer, alternatives = []) {
   const historicalExpected = normalizeExpectedAnswerForScoring(question, alternatives, question.expected_answer);
   const isCanceled = Boolean(Number(question.anulada || 0));
-  if (!Number(question.desatualizada)) {
-    const canScore = !isCanceled && Boolean(historicalExpected.answer);
-    return {
-      mode: 'historical',
-      canScore,
-      expectedAnswer: historicalExpected.answer,
-      answerSource: historicalExpected.answer ? getBestAnswerSource(question) : 'missing',
-      currentLawStatus: 'not_applicable',
-      nonScoringReason: canScore ? '' : (isCanceled ? 'canceled' : historicalExpected.reason),
-      shouldAppearInStudyNow: canScore,
-      shouldAppearInViewAll: true,
-      scoringVersion: SCORING_VERSION
-    };
-  }
-
   if (currentLawAnswer?.exists
     && (currentLawAnswer.status || currentLawAnswer.currentLawStatus) === 'verified'
     && (currentLawAnswer.canAutoScore || currentLawAnswer.canAutoScoreCurrentLaw)
@@ -4568,6 +4608,21 @@ function resolveCurrentLawCorrection(question, currentLawAnswer, alternatives = 
       answerSource: currentExpected.answer ? 'current_law_verified' : 'invalid_current_law_answer',
       currentLawStatus: currentLawAnswer.status || currentLawAnswer.currentLawStatus || 'verified',
       nonScoringReason: canScore ? '' : (isCanceled ? 'canceled' : currentExpected.reason),
+      shouldAppearInStudyNow: canScore,
+      shouldAppearInViewAll: true,
+      scoringVersion: SCORING_VERSION
+    };
+  }
+
+  if (!Number(question.desatualizada)) {
+    const canScore = !isCanceled && Boolean(historicalExpected.answer);
+    return {
+      mode: 'historical',
+      canScore,
+      expectedAnswer: historicalExpected.answer,
+      answerSource: historicalExpected.answer ? getBestAnswerSource(question) : 'missing',
+      currentLawStatus: 'not_applicable',
+      nonScoringReason: canScore ? '' : (isCanceled ? 'canceled' : historicalExpected.reason),
       shouldAppearInStudyNow: canScore,
       shouldAppearInViewAll: true,
       scoringVersion: SCORING_VERSION

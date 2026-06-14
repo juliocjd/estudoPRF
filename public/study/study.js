@@ -1595,7 +1595,7 @@ async function loadNormativeReview() {
   populateNormativeSelect(els.normativeSecurityFilter, stats.bySecurity, 'Todos');
   populateNormativeSelect(els.normativeChangedFilter, stats.byChangedAnswer, 'Todas');
   els.normativeStats.innerHTML = [
-    statMarkup(stats.total, 'importadas'),
+    statMarkup(stats.total, 'pendentes'),
     statMarkup(stats.adaptable, 'adaptáveis'),
     statMarkup(stats.manualReview, 'revisão manual'),
     statMarkup(stats.discardable, 'descartáveis'),
