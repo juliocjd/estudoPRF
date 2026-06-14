@@ -276,6 +276,9 @@ function extractExplicitCommentAnswer(question) {
 }
 
 function extractExplicitAlternativeAnswer(question) {
+  const declared = extractDeclaredAlternativeAnswer(question.comment_text);
+  if (declared) return declared;
+
   const targetStatus = asksForWrongAnswer(question.statement_text) ? 'ERRADA' : 'CORRETA';
   const statuses = extractAlternativeStatuses(question.comment_text);
   const matches = statuses.filter((item) => item.status === targetStatus);
@@ -284,9 +287,40 @@ function extractExplicitAlternativeAnswer(question) {
 }
 
 function extractExplicitItemAnswer(question) {
+  const declared = extractDeclaredItemAnswer(question.comment_text);
+  if (declared) return declared;
+
   const statuses = extractItemStatuses(question.comment_text);
   const unique = [...new Set(statuses)];
   return unique.length === 1 ? unique[0] : '';
+}
+
+function extractDeclaredAlternativeAnswer(text) {
+  const normalized = normalizeSearchText(text);
+  const patterns = [
+    /\bgabarito\s*(?:oficial\s*)?(?:[:\-]?\s*)?(?:letra|alternativa)\s+([a-e])\b/,
+    /\bgabarito\s*(?:oficial\s*)?[:\-]\s*([a-e])\b/,
+    /\bresposta\s*(?:correta\s*)?(?:[:\-]?\s*)?(?:letra|alternativa)\s+([a-e])\b/,
+    /\bresposta\s*(?:correta\s*)?[:\-]\s*([a-e])\b/
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match) return normalizeAnswer(match[1]);
+  }
+  return '';
+}
+
+function extractDeclaredItemAnswer(text) {
+  const normalized = normalizeSearchText(text);
+  const patterns = [
+    /\bgabarito\s*(?:oficial\s*)?[:\-]?\s*(certo|correto|errado|incorreto)\b/,
+    /\bresposta\s*(?:correta\s*)?[:\-]?\s*(certo|correto|errado|incorreto)\b/
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match) return wrongStatus(match[1]) ? 'ERRADO' : 'CERTO';
+  }
+  return '';
 }
 
 function extractItemStatuses(text) {

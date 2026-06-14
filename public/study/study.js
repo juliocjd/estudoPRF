@@ -2440,8 +2440,8 @@ function renderNormativeAlert(question) {
       els.normativeAlert.className = 'normative-alert is-info';
       els.normativeAlert.innerHTML = `
         <div>
-          <strong>Resposta pela legislacao atual</strong>
-          <span>Disponivel apos registrar sua resposta.</span>
+          <strong>Questao corrigida pela legislacao atual</strong>
+          <span>Responda para ver o gabarito atual.</span>
         </div>
       `;
       els.normativeAlert.hidden = false;
@@ -2503,6 +2503,15 @@ function renderCurrentLawAlert(currentLaw) {
     <button class="button button-primary" type="button" data-action="show-teaching">Ver resposta atual</button>
   `;
   els.normativeAlert.hidden = false;
+}
+
+function isCurrentLawVerifiedForScoring(currentLaw) {
+  return Boolean(
+    currentLaw?.exists
+    && (currentLaw.status || currentLaw.currentLawStatus) === 'verified'
+    && (currentLaw.canAutoScore || currentLaw.canAutoScoreCurrentLaw)
+    && currentLaw.currentAnswer
+  );
 }
 
 function renderNormativeTeachingPanel(question) {
@@ -3274,7 +3283,11 @@ function questionQuickStatus(question) {
 
 function canRevealCurrentLawAnswer(question = state.currentQuestion) {
   if (!question) return false;
-  if (question.metadata?.desatualizada) return true;
+  if (question.metadata?.desatualizada) {
+    return isCurrentLawVerifiedForScoring(question.currentLawAnswer)
+      ? hasAnsweredCurrentPrompt(question)
+      : true;
+  }
   return canRevealExplanation(question);
 }
 
