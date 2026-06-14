@@ -3295,7 +3295,7 @@ function updateAnswerActions() {
       return;
     }
 
-    els.answerHint.textContent = 'Resposta registrada sem gabarito';
+    els.answerHint.textContent = nonScoringAnswerTitle(result);
     els.submitAnswer.textContent = 'Próxima questão';
     els.submitAnswer.dataset.action = 'next';
     els.submitAnswer.disabled = false;
@@ -3905,12 +3905,23 @@ function renderAnswerResultBox() {
     `;
   } else {
     els.answerResult.className = 'answer-result';
+    const title = nonScoringAnswerTitle(result);
     els.answerResult.innerHTML = `
       <span class="answer-result-icon" aria-hidden="true">?</span>
-      <span>Resposta registrada. ${resolution}${normative}</span>
+      <span><strong>${escapeHtml(title)}</strong>. ${resolution}${normative}</span>
     `;
   }
   els.answerResult.hidden = false;
+}
+
+function nonScoringAnswerTitle(result) {
+  if (result?.correctionMode === 'non_scoring') {
+    const reason = result.nonScoringReason || '';
+    if (reason === 'needs_audit') return 'Resposta registrada sem gabarito atual validado';
+    if (reason === 'no_valid_alternative') return 'Resposta registrada sem alternativa atual compatível';
+    if (reason === 'discard') return 'Resposta registrada sem pontuação';
+  }
+  return 'Resposta registrada sem gabarito';
 }
 
 function normativeAnswerWarning(result) {
@@ -3922,7 +3933,11 @@ function normativeAnswerWarning(result) {
       : reason === 'discard'
         ? 'Questao fora da fila principal pela legislacao atual. Tentativa registrada sem pontuacao.'
         : reason === 'needs_audit'
-          ? 'Questao pendente de auditoria. O gabarito historico nao foi usado para pontuar.'
+          ? [
+              'Questao pendente de auditoria pela legislacao atual.',
+              currentLaw?.historicalAnswer ? `Gabarito historico cadastrado: ${displayCurrentAnswerLabel(currentLaw.historicalAnswer)}.` : '',
+              'O gabarito historico nao foi usado para pontuar.'
+            ].filter(Boolean).join(' ')
           : `Correcao feita pela legislacao atual. Gabarito atual: ${displayCurrentAnswerLabel(result.expectedAnswer || currentLaw?.currentAnswer || '')}.`;
     return `<span class="answer-result-note">${escapeHtml(text)}</span>`;
   }
