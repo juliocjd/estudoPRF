@@ -1083,10 +1083,11 @@ function getContranPrf2021Map() {
       m.source_number
   `).all();
   const aliasMap = getContranPrf2021LegalAliasMap();
+  const questionCounts = getContranPrf2021ResolutionQuestionCounts();
   return {
     available: true,
     total: rows.length,
-    rows: rows.map((row) => normalizeContranPrf2021Row(row, aliasMap))
+    rows: rows.map((row) => normalizeContranPrf2021Row(row, aliasMap, questionCounts))
   };
 }
 
@@ -1154,7 +1155,7 @@ function resolveContranPrf2021ParsedReference(parsed, organ = 'CONTRAN') {
   };
 }
 
-function normalizeContranPrf2021Row(row, aliasMap = null) {
+function normalizeContranPrf2021Row(row, aliasMap = null, questionCounts = null) {
   const targetKey = `${row.target_organ || ''}:${row.target_number_text || ''}/${row.target_year_text || ''}`;
   const sourceAliases = [
     ...parseLawJson(row.source_aliases_text, []),
@@ -1180,6 +1181,8 @@ function normalizeContranPrf2021Row(row, aliasMap = null) {
     targetOfficialUrl: row.target_official_url || '',
     relation: row.relation || '',
     scopePolicy,
+    sourceQuestionStats: serializeContranQuestionStats(questionCounts?.get(`${row.source_number_text}/${row.source_year_text}`)),
+    targetQuestionStats: serializeContranQuestionStats(questionCounts?.get(`${row.target_number_text}/${row.target_year_text}`)),
     annexLinks: normalizeContranAnnexLinks(scopePolicy.annex_urls || scopePolicy.annexLinks),
     annexesExcluded,
     fichasExcluded,
@@ -1188,6 +1191,94 @@ function normalizeContranPrf2021Row(row, aliasMap = null) {
     showInCurrentStudyFilter: Boolean(row.show_in_current_study_filter),
     notes: row.notes || '',
     confidence: row.confidence || ''
+  };
+}
+
+function getContranPrf2021ResolutionQuestionCounts() {
+  const counts = new Map();
+  if (!hasLegalKnowledgeTables()) return counts;
+  const sourceRefsExpression = activeDbClient === 'postgres'
+    ? 'c.source_refs::text'
+    : 'CAST(c.source_refs AS TEXT)';
+  const trueValue = activeDbClient === 'postgres' ? true : 1;
+  const falseValue = activeDbClient === 'postgres' ? false : 0;
+  let rows = [];
+  try {
+    rows = db.prepare(`
+      SELECT
+        q.id_question,
+        q.orgao_sigla,
+        q.orgao_nome,
+        q.cargo,
+        q.concurso_ano,
+        q.assunto AS question_assunto,
+        l.card_key,
+        c.title,
+        c.assunto AS card_assunto,
+        c.microtema,
+        ${sourceRefsExpression} AS source_refs_text
+      FROM question_legal_links l
+      JOIN questions q ON q.id_question = l.question_id
+      LEFT JOIN legal_topic_cards c ON c.card_key = l.card_key
+      WHERE l.relation_type = 'specific_high_precision'
+        AND l.auto_show_as_primary = ?
+        AND COALESCE(l.needs_human_review, ?) = ?
+    `).all(trueValue, falseValue, falseValue);
+  } catch {
+    return counts;
+  }
+
+  for (const row of rows) {
+    const refs = detectContranQuestionResolutionRefs([
+      row.card_key,
+      row.question_assunto,
+      row.title,
+      row.card_assunto,
+      row.microtema,
+      row.source_refs_text
+    ].filter(Boolean).join(' | '));
+    if (!refs.length) continue;
+    const isPrf = /\bPRF\b|Rodovi.ria Federal/i.test(`${row.orgao_sigla || ''} ${row.orgao_nome || ''} ${row.cargo || ''}`);
+    const isPrf2021 = isPrf && Number(row.concurso_ano || 0) === 2021;
+    for (const ref of refs) {
+      if (!counts.has(ref)) {
+        counts.set(ref, {
+          allTrafficQuestionIds: new Set(),
+          prfQuestionIds: new Set(),
+          prf2021QuestionIds: new Set(),
+          cardKeys: new Set()
+        });
+      }
+      const stats = counts.get(ref);
+      stats.allTrafficQuestionIds.add(Number(row.id_question));
+      if (isPrf) stats.prfQuestionIds.add(Number(row.id_question));
+      if (isPrf2021) stats.prf2021QuestionIds.add(Number(row.id_question));
+      if (row.card_key) stats.cardKeys.add(String(row.card_key));
+    }
+  }
+  return counts;
+}
+
+function detectContranQuestionResolutionRefs(value) {
+  const refs = [];
+  const seen = new Set();
+  const pattern = /\b(?:Res(?:olu[cç][aã]o|\.)\s*)?CONTRAN\b[^0-9]{0,30}(\d{1,4}(?:\.\d{3})?)\s*\/\s*(\d{4})\b/gi;
+  for (const match of String(value || '').matchAll(pattern)) {
+    const number = String(match[1] || '').replace(/^0+(?=\d)/, '') || String(match[1] || '');
+    const ref = `${number}/${match[2]}`;
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    refs.push(ref);
+  }
+  return refs;
+}
+
+function serializeContranQuestionStats(stats) {
+  return {
+    allTrafficQuestions: stats?.allTrafficQuestionIds?.size || 0,
+    prfQuestions: stats?.prfQuestionIds?.size || 0,
+    prf2021Questions: stats?.prf2021QuestionIds?.size || 0,
+    linkedCards: stats?.cardKeys?.size || 0
   };
 }
 
@@ -1696,6 +1787,33 @@ function parseAllowedImageDataUrl(value) {
   const mimeType = match[1] === 'image/jpg' ? 'image/jpeg' : match[1];
   const bytes = Math.floor((match[2].length * 3) / 4);
   return { mimeType, bytes };
+}
+
+function validateHistoricalCommentImages(html) {
+  const imageSrcPattern = /<img\b[^>]*\bsrc\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/gi;
+  let imageCount = 0;
+  let totalBytes = 0;
+  for (const match of String(html || '').matchAll(imageSrcPattern)) {
+    const src = String(match[2] || match[3] || match[4] || '').trim();
+    if (!src) continue;
+    if (!src.startsWith('data:')) continue;
+    imageCount += 1;
+    const image = parseAllowedImageDataUrl(src);
+    if (!image) {
+      return { error: 'A explicacao historica contem imagem invalida. Use PNG, JPEG, WebP ou GIF.' };
+    }
+    if (image.bytes > 3 * 1024 * 1024) {
+      return { error: 'Imagem muito grande. Limite: 3 MB por imagem.' };
+    }
+    totalBytes += image.bytes;
+  }
+  if (imageCount > 20) {
+    return { error: 'Limite de 20 imagens por explicacao historica.' };
+  }
+  if (totalBytes > 10 * 1024 * 1024) {
+    return { error: 'Imagens muito grandes no total. Limite: 10 MB por explicacao historica.' };
+  }
+  return { ok: true };
 }
 
 function getLegalDashboard() {
@@ -5804,7 +5922,16 @@ function saveHistoricalCommentEdit(questionId, body) {
     return { error: 'Questao nao encontrada' };
   }
 
-  const html = sanitizeStoredHtml(limitText(body?.html, 300000)).trim();
+  const rawHtml = String(body?.html || '');
+  const maxHistoricalHtmlChars = 14 * 1024 * 1024;
+  if (rawHtml.length > maxHistoricalHtmlChars) {
+    return { error: 'Explicacao historica muito grande. Reduza a quantidade ou o tamanho das imagens.' };
+  }
+  const html = sanitizeStoredHtml(rawHtml).trim();
+  const imageValidation = validateHistoricalCommentImages(html);
+  if (imageValidation.error) {
+    return imageValidation;
+  }
   const text = htmlToPlainText(html).slice(0, 200000);
   if (!html && !text) {
     return { error: 'A explicacao historica nao pode ficar vazia.' };

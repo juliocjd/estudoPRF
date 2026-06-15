@@ -862,9 +862,12 @@ function bindEvents() {
     }
   });
 
-  els.commentBody.addEventListener('paste', (event) => {
+  els.commentBody.addEventListener('paste', async (event) => {
     const editor = event.target.closest('[data-historical-comment-editor]');
-    if (editor) scheduleHistoricalTablePreparation(editor);
+    if (editor) {
+      if (await handleHistoricalCommentPaste(editor, event)) return;
+      scheduleHistoricalTablePreparation(editor);
+    }
   });
 
   els.commentBody.addEventListener('keyup', (event) => {
@@ -883,6 +886,11 @@ function bindEvents() {
   });
 
   els.commentBody.addEventListener('change', async (event) => {
+    const imageInput = event.target.closest('[data-historical-comment-image-input]');
+    if (imageInput) {
+      await handleHistoricalCommentImageInput(imageInput, event);
+      return;
+    }
     const colorInput = event.target.closest('[data-historical-comment-color]');
     if (colorInput) {
       await handleHistoricalCommentColor(colorInput, event);
@@ -956,9 +964,12 @@ function bindEvents() {
     }
   });
 
-  els.inlineSupportBody?.addEventListener('paste', (event) => {
+  els.inlineSupportBody?.addEventListener('paste', async (event) => {
     const editor = event.target.closest('[data-historical-comment-editor]');
-    if (editor) scheduleHistoricalTablePreparation(editor);
+    if (editor) {
+      if (await handleHistoricalCommentPaste(editor, event)) return;
+      scheduleHistoricalTablePreparation(editor);
+    }
   });
 
   els.inlineSupportBody?.addEventListener('keyup', (event) => {
@@ -978,6 +989,11 @@ function bindEvents() {
 
   els.inlineSupportBody?.addEventListener('change', async (event) => {
     if (syncCurrentLawAutoScoreControl(event.target)) {
+      return;
+    }
+    const imageInput = event.target.closest('[data-historical-comment-image-input]');
+    if (imageInput) {
+      await handleHistoricalCommentImageInput(imageInput, event);
       return;
     }
     const colorInput = event.target.closest('[data-historical-comment-color]');
@@ -2825,6 +2841,9 @@ function historicalCommentToolbar({ editing }) {
         <button class="format-button" type="button" title="Reduzir recuo" data-action="historical-comment-format" data-command="outdent"><span class="format-indent is-outdent"></span></button>
         <button class="format-button" type="button" title="Aumentar recuo" data-action="historical-comment-format" data-command="indent"><span class="format-indent is-indent"></span></button>
         <span class="format-divider"></span>
+        <button class="format-button" type="button" title="Inserir imagem" data-action="historical-comment-image"><span class="format-image-icon"></span></button>
+        <input class="historical-image-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple data-historical-comment-image-input>
+        <span class="format-divider"></span>
         <select class="historical-format-select is-font-family" aria-label="Fonte" title="Fonte" data-historical-comment-font-family>
           <option value="">Fonte</option>
           ${fontFamilies.map(([value, label]) => `<option value="${escapeAttr(value)}">${escapeHtml(label)}</option>`).join('')}
@@ -2885,6 +2904,11 @@ async function handleHistoricalCommentAction(button, event) {
 
   if (action === 'historical-comment-format') {
     applyHistoricalCommentFormat(button);
+    return;
+  }
+
+  if (action === 'historical-comment-image') {
+    triggerHistoricalCommentImagePicker(button);
     return;
   }
 
@@ -2953,6 +2977,98 @@ function applyHistoricalCommentStyle(source, styleName, value) {
   selection.addRange(nextRange);
   saveHistoricalCommentSelection(editor);
   setHistoricalCommentStatus('');
+}
+
+function triggerHistoricalCommentImagePicker(button) {
+  const editor = findHistoricalCommentEditor(button);
+  const card = button.closest('[data-historical-comment-card]');
+  const input = card?.querySelector('[data-historical-comment-image-input]');
+  if (!editor || !input) return;
+  saveHistoricalCommentSelection(editor);
+  input.value = '';
+  input.click();
+}
+
+async function handleHistoricalCommentImageInput(input, event) {
+  event.preventDefault();
+  if (!canEditHistoricalComment()) return;
+  const files = Array.from(input.files || []);
+  input.value = '';
+  if (!files.length) return;
+  const editor = findHistoricalCommentEditor(input);
+  await insertHistoricalCommentImages(editor, files);
+}
+
+async function handleHistoricalCommentPaste(editor, event) {
+  const files = Array.from(event.clipboardData?.files || [])
+    .filter((file) => /^image\/(?:png|jpeg|webp|gif)$/i.test(file.type || ''));
+  if (!files.length) return false;
+  event.preventDefault();
+  await insertHistoricalCommentImages(editor, files);
+  return true;
+}
+
+async function insertHistoricalCommentImages(editor, files) {
+  if (!editor) return;
+  const validFiles = [];
+  for (const file of files) {
+    if (!/^image\/(?:png|jpeg|webp|gif)$/i.test(file.type || '')) {
+      setHistoricalCommentStatus('Use imagens PNG, JPEG, WebP ou GIF.', true);
+      continue;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      setHistoricalCommentStatus('Imagem muito grande. Limite: 3 MB por imagem.', true);
+      continue;
+    }
+    validFiles.push(file);
+  }
+  if (!validFiles.length) return;
+
+  editor.focus();
+  restoreHistoricalCommentSelection(editor);
+  for (const file of validFiles) {
+    const dataUrl = await readFileAsDataUrl(file);
+    insertHistoricalCommentImageNode(editor, dataUrl, file.name || 'Imagem adicionada');
+  }
+  saveHistoricalCommentSelection(editor);
+  setHistoricalCommentStatus(`${validFiles.length} imagem${validFiles.length === 1 ? '' : 's'} inserida${validFiles.length === 1 ? '' : 's'}.`);
+}
+
+function insertHistoricalCommentImageNode(editor, dataUrl, imageName) {
+  const figure = document.createElement('figure');
+  figure.className = 'historical-comment-image';
+
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.alt = imageName || 'Imagem adicionada';
+  figure.appendChild(img);
+
+  const paragraph = document.createElement('p');
+  paragraph.appendChild(document.createElement('br'));
+
+  const selection = document.getSelection();
+  if (selection?.rangeCount) {
+    const range = selection.getRangeAt(0);
+    if (rangeIntersectsEditor(range, editor)) {
+      range.deleteContents();
+      range.insertNode(paragraph);
+      range.insertNode(figure);
+      selection.removeAllRanges();
+      const nextRange = document.createRange();
+      nextRange.setStart(paragraph, 0);
+      nextRange.collapse(true);
+      selection.addRange(nextRange);
+      return;
+    }
+  }
+
+  editor.appendChild(figure);
+  editor.appendChild(paragraph);
+  const nextRange = document.createRange();
+  nextRange.setStart(paragraph, 0);
+  nextRange.collapse(true);
+  selection?.removeAllRanges();
+  selection?.addRange(nextRange);
 }
 
 function saveHistoricalCommentSelection(editor) {
@@ -5453,6 +5569,7 @@ function renderContranCurrentNormCard(group) {
   const relation = [...group.relationKinds].filter(Boolean).join(', ');
   const scopes = [...group.scopes].filter(Boolean);
   const notes = [...group.notes].filter(Boolean);
+  const questionStats = contranGroupQuestionStats(group);
   const annexLinks = collectContranAnnexLinks(group.sources);
   const exclusionNotices = group.sources
     .map((item) => {
@@ -5473,6 +5590,8 @@ function renderContranCurrentNormCard(group) {
       <div class="contran-current-meta">
         <span><strong>${sourceRefs.length}</strong> ${sourceRefs.length === 1 ? 'item' : 'itens'} do edital</span>
         <span>${escapeHtml(relation || 'status não informado')}</span>
+        <span><strong>${Number(questionStats.prfQuestions || 0).toLocaleString('pt-BR')}</strong> questões PRF</span>
+        <span><strong>${Number(questionStats.prf2021Questions || 0).toLocaleString('pt-BR')}</strong> PRF 2021</span>
       </div>
       ${annexLinks.length ? renderContranAnnexLinks(annexLinks) : ''}
       ${exclusionNotices.length ? `
@@ -5484,6 +5603,7 @@ function renderContranCurrentNormCard(group) {
       <dl class="contran-norm-fields">
         <div><dt>Resoluções do edital PRF 2021</dt><dd>${sourceRefs.map((ref) => `<button class="contran-ref-chip" type="button" data-action="contran-map-search" data-ref="${escapeAttr(ref)}">${escapeHtml(ref)}</button>`).join(' ')}</dd></div>
         <div><dt>Escopo</dt><dd>${escapeHtml(scopes.join('; ') || 'texto integral')}</dd></div>
+        <div><dt>Questões vinculadas</dt><dd>${escapeHtml(contranQuestionStatsLabel(questionStats))}</dd></div>
         <div><dt>Do que trata</dt><dd>${escapeHtml(group.targetTitle || group.sources[0]?.sourceTitleHint || 'Sem descrição cadastrada.')}</dd></div>
         <div><dt>Observações</dt><dd>${escapeHtml(notes.join(' ') || 'Sem observações específicas.')}</dd></div>
       </dl>
@@ -5521,6 +5641,7 @@ function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
   const aliases = normalizeContranAliases(item.sourceAliases);
   const annexLinks = normalizeContranAnnexLinks(item.annexLinks);
   const exclusionNotice = contranExcludedNotice(item);
+  const questionStats = contranItemQuestionStats(item);
   const title = item.relation === 'permanece_vigente'
     ? 'Norma do edital permanece vigente'
     : 'Atualização normativa CONTRAN';
@@ -5532,6 +5653,7 @@ function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
           <span>${escapeHtml(sourceRef)} → ${escapeHtml(targetRef || 'sem alvo')}</span>
         </div>
         <small>${escapeHtml([relationLabel, scope].filter(Boolean).join(' · '))}</small>
+        <small>${escapeHtml(contranQuestionStatsLabel(questionStats))}</small>
         ${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ''}
         ${exclusionNotice ? `<p class="contran-scope-warning is-compact">${escapeHtml(exclusionNotice)}</p>` : ''}
       </article>
@@ -5553,6 +5675,7 @@ function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
       <dl class="contran-norm-fields">
         <div><dt>Status</dt><dd>${escapeHtml(relationLabel)}</dd></div>
         <div><dt>Escopo</dt><dd>${escapeHtml(scope || 'texto integral')}</dd></div>
+        <div><dt>Questões vinculadas</dt><dd>${escapeHtml(contranQuestionStatsLabel(questionStats))}</dd></div>
         <div><dt>Observações</dt><dd>${escapeHtml(item.notes || item.sourceTitleHint || 'Sem observações específicas.')}</dd></div>
         <div><dt>Aliases</dt><dd>${escapeHtml(aliases.length ? aliases.join(', ') : 'Sem aliases cadastrados.')}</dd></div>
       </dl>
@@ -5651,6 +5774,52 @@ function normalizeContranAliases(aliases) {
     if (typeof alias === 'string') return alias;
     return formatContranRef(alias.number || alias.old_number || alias.source_number, alias.year || alias.old_year || alias.source_year);
   }).filter(Boolean);
+}
+
+function emptyContranQuestionStats() {
+  return {
+    allTrafficQuestions: 0,
+    prfQuestions: 0,
+    prf2021Questions: 0,
+    linkedCards: 0
+  };
+}
+
+function mergeContranQuestionStatsByMax(items = []) {
+  return items.reduce((merged, item) => ({
+    allTrafficQuestions: Math.max(merged.allTrafficQuestions, Number(item?.allTrafficQuestions || 0)),
+    prfQuestions: Math.max(merged.prfQuestions, Number(item?.prfQuestions || 0)),
+    prf2021Questions: Math.max(merged.prf2021Questions, Number(item?.prf2021Questions || 0)),
+    linkedCards: Math.max(merged.linkedCards, Number(item?.linkedCards || 0))
+  }), emptyContranQuestionStats());
+}
+
+function contranItemQuestionStats(item = {}) {
+  return mergeContranQuestionStatsByMax([
+    item.targetQuestionStats,
+    item.sourceQuestionStats
+  ]);
+}
+
+function contranGroupQuestionStats(group = {}) {
+  return mergeContranQuestionStatsByMax((group.sources || []).flatMap((item) => [
+    item.targetQuestionStats,
+    item.sourceQuestionStats
+  ]));
+}
+
+function contranQuestionStatsLabel(stats = {}) {
+  const prf = Number(stats.prfQuestions || 0);
+  const prf2021 = Number(stats.prf2021Questions || 0);
+  const allTraffic = Number(stats.allTrafficQuestions || 0);
+  const parts = [
+    `${prf.toLocaleString('pt-BR')} ${prf === 1 ? 'questão' : 'questões'} PRF`,
+    `${prf2021.toLocaleString('pt-BR')} no concurso PRF 2021`
+  ];
+  if (allTraffic > prf) {
+    parts.push(`${allTraffic.toLocaleString('pt-BR')} em toda a base de trânsito`);
+  }
+  return parts.join(' · ');
 }
 
 function normalizeContranAnnexLinks(links) {

@@ -2271,6 +2271,41 @@ button:disabled {
     linear-gradient(135deg, transparent 35%, currentColor 35% 55%, transparent 55%) 0 8px / 7px 7px no-repeat;
 }
 
+.format-image-icon {
+  position: relative;
+  width: 18px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+}
+
+.format-image-icon::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.format-image-icon::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  height: 6px;
+  background:
+    linear-gradient(135deg, transparent 0 35%, currentColor 36% 55%, transparent 56%) left bottom / 9px 7px no-repeat,
+    linear-gradient(45deg, transparent 0 35%, currentColor 36% 55%, transparent 56%) right bottom / 10px 7px no-repeat;
+}
+
+.historical-image-input {
+  display: none;
+}
+
 .format-swatch::before {
   content: "";
   width: 18px;
@@ -2347,6 +2382,24 @@ button:disabled {
 .historical-comment-editor:focus {
   border-color: var(--primary);
   outline: 3px solid rgba(37, 99, 235, 0.16);
+}
+
+.historical-comment-image {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  max-width: 100%;
+  margin: 10px 0;
+}
+
+.historical-comment-image img,
+.historical-comment-editor img,
+.historical-comment-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 .historical-comment-option {
