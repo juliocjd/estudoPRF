@@ -78,7 +78,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexo I",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9932023Anexo.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_993_2023",
@@ -720,7 +726,7 @@
         "number": "940",
         "year": 2022,
         "title": "Uso de capacete de segurança para motocicleta, motoneta, ciclomotor, triciclo motorizado e quadriciclo motorizado",
-        "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-Senatran/resolucoes-contran",
+        "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9402022.pdf",
         "status": "current"
       },
       "relation": "substituida_ou_consolidada",
@@ -728,7 +734,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexo - dispositivo retrorrefletivo de seguranca",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9402022ANEXO.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_940_2022",
@@ -924,7 +936,7 @@
         "number": "985",
         "year": 2022,
         "title": "Manual Brasileiro de Fiscalização de Trânsito — MBFT",
-        "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-Senatran/resolucoes-contran",
+        "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9852022.pdf",
         "status": "current"
       },
       "relation": "substituida_ou_consolidada",
@@ -932,7 +944,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": true,
         "include_only_current_equivalent": "MBFT sem fichas de enquadramento; preservar apenas parte normativa/intro/regras gerais que substitui o edital",
-        "do_not_import_excluded_annexes_or_fichas": true
+        "do_not_import_excluded_annexes_or_fichas": true,
+        "annex_urls": [
+          {
+            "label": "Anexo/Manual MBFT",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/mbvt20222.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_985_2022",
@@ -1298,7 +1316,7 @@
         "number": "809",
         "year": 2020,
         "title": "Requisitos para emissão do CRV, CLA e comprovante de transferência de propriedade em meio digital",
-        "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-Senatran/resolucoes-contran",
+        "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao8092020.pdf",
         "status": "current"
       },
       "relation": "permanece_vigente",
@@ -1430,7 +1448,7 @@
       "number": "809",
       "year": 2020,
       "title": "Requisitos para emissão do CRV, CLA e comprovante de transferência de propriedade em meio digital",
-      "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-Senatran/resolucoes-contran",
+      "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao8092020.pdf",
       "status": "current",
       "target_key": "809/2020"
     },
@@ -1502,9 +1520,15 @@
       "number": "940",
       "year": 2022,
       "title": "Uso de capacete de segurança para motocicleta, motoneta, ciclomotor, triciclo motorizado e quadriciclo motorizado",
-      "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-Senatran/resolucoes-contran",
+      "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9402022.pdf",
       "status": "current",
-      "target_key": "940/2022"
+      "target_key": "940/2022",
+      "annex_urls": [
+        {
+          "label": "Anexo - dispositivo retrorrefletivo de seguranca",
+          "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9402022ANEXO.pdf"
+        }
+      ]
     },
     {
       "organ": "CONTRAN",
@@ -1583,9 +1607,15 @@
       "number": "985",
       "year": 2022,
       "title": "Manual Brasileiro de Fiscalização de Trânsito — MBFT",
-      "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-Senatran/resolucoes-contran",
+      "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9852022.pdf",
       "status": "current",
-      "target_key": "985/2022"
+      "target_key": "985/2022",
+      "annex_urls": [
+        {
+          "label": "Anexo/Manual MBFT",
+          "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/mbvt20222.pdf"
+        }
+      ]
     },
     {
       "organ": "CONTRAN",
@@ -1603,7 +1633,13 @@
       "title": "Equipamentos obrigatórios para a frota de veículos em circulação e índice de regulamentações de segurança veicular",
       "official_url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9932023.pdf",
       "status": "current",
-      "target_key": "993/2023"
+      "target_key": "993/2023",
+      "annex_urls": [
+        {
+          "label": "Anexo I",
+          "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9932023Anexo.pdf"
+        }
+      ]
     },
     {
       "organ": "CONTRAN",

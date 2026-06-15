@@ -1160,12 +1160,18 @@ function normalizeContranPrf2021Row(row, aliasMap = null) {
     ...parseLawJson(row.source_aliases_text, []),
     ...(aliasMap ? (aliasMap.get(targetKey) || []) : getContranPrf2021LegalAliases(row.target_organ, row.target_number_text, row.target_year_text))
   ].filter((alias) => String(alias) !== `${row.source_number_text}/${row.source_year_text}`);
+  const scopePolicy = parseLawJson(row.scope_policy_text, {});
+  const editalScope = row.edital_scope || '';
+  const annexesExcluded = Boolean(scopePolicy.exclude_annexes_from_original_edital)
+    || /\bexceto\s+os?\s+anexos?\b/i.test(editalScope);
+  const fichasExcluded = Boolean(scopePolicy.exclude_fichas_from_original_edital)
+    || /\bexceto\s+as?\s+fichas?\b/i.test(editalScope);
   return {
     sourceOrgan: row.source_organ || '',
     sourceNumber: row.source_number_text || '',
     sourceYear: row.source_year_text || '',
     sourceTitleHint: row.source_title_hint || '',
-    editalScope: row.edital_scope || '',
+    editalScope,
     sourceAliases,
     targetOrgan: row.target_organ || '',
     targetNumber: row.target_number_text || '',
@@ -1173,12 +1179,40 @@ function normalizeContranPrf2021Row(row, aliasMap = null) {
     targetTitle: row.target_title || '',
     targetOfficialUrl: row.target_official_url || '',
     relation: row.relation || '',
-    scopePolicy: parseLawJson(row.scope_policy_text, {}),
+    scopePolicy,
+    annexLinks: normalizeContranAnnexLinks(scopePolicy.annex_urls || scopePolicy.annexLinks),
+    annexesExcluded,
+    fichasExcluded,
+    excludedContentNotice: buildContranExcludedContentNotice({ annexesExcluded, fichasExcluded, scopePolicy }),
     oldNormAllowedOnlyAsAlias: Boolean(row.old_norm_allowed_only_as_alias),
     showInCurrentStudyFilter: Boolean(row.show_in_current_study_filter),
     notes: row.notes || '',
     confidence: row.confidence || ''
   };
+}
+
+function normalizeContranAnnexLinks(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === 'string') return { label: 'Anexo oficial', url: item };
+      return {
+        label: String(item?.label || 'Anexo oficial').trim(),
+        url: String(item?.url || '').trim()
+      };
+    })
+    .filter((item) => item.url);
+}
+
+function buildContranExcludedContentNotice({ annexesExcluded, fichasExcluded, scopePolicy }) {
+  const parts = [];
+  if (annexesExcluded) parts.push('anexos excluídos pelo edital PRF 2021');
+  if (fichasExcluded) parts.push('fichas excluídas pelo edital PRF 2021');
+  if (!parts.length) return '';
+  const equivalent = scopePolicy.include_only_current_equivalent
+    ? ` Recorte aplicável: ${scopePolicy.include_only_current_equivalent}.`
+    : '';
+  return `${parts.join(' e ')}. Não use esse conteúdo excluído para o item original do edital.${equivalent}`;
 }
 
 function getContranPrf2021LegalAliasMap() {

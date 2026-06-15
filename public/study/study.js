@@ -5453,6 +5453,14 @@ function renderContranCurrentNormCard(group) {
   const relation = [...group.relationKinds].filter(Boolean).join(', ');
   const scopes = [...group.scopes].filter(Boolean);
   const notes = [...group.notes].filter(Boolean);
+  const annexLinks = collectContranAnnexLinks(group.sources);
+  const exclusionNotices = group.sources
+    .map((item) => {
+      const notice = contranExcludedNotice(item);
+      const ref = formatContranRef(item.sourceNumber, item.sourceYear);
+      return notice ? `${ref}: ${notice}` : '';
+    })
+    .filter(Boolean);
   return `
     <article class="contran-current-card">
       <div class="contran-current-head">
@@ -5466,6 +5474,13 @@ function renderContranCurrentNormCard(group) {
         <span><strong>${sourceRefs.length}</strong> ${sourceRefs.length === 1 ? 'item' : 'itens'} do edital</span>
         <span>${escapeHtml(relation || 'status não informado')}</span>
       </div>
+      ${annexLinks.length ? renderContranAnnexLinks(annexLinks) : ''}
+      ${exclusionNotices.length ? `
+        <div class="contran-scope-warning">
+          <strong>Conteúdo excluído pelo edital</strong>
+          <span>${escapeHtml(exclusionNotices.join(' '))}</span>
+        </div>
+      ` : ''}
       <dl class="contran-norm-fields">
         <div><dt>Resoluções do edital PRF 2021</dt><dd>${sourceRefs.map((ref) => `<button class="contran-ref-chip" type="button" data-action="contran-map-search" data-ref="${escapeAttr(ref)}">${escapeHtml(ref)}</button>`).join(' ')}</dd></div>
         <div><dt>Escopo</dt><dd>${escapeHtml(scopes.join('; ') || 'texto integral')}</dd></div>
@@ -5491,6 +5506,7 @@ function filterContranMapRows(rows, query) {
       item.editalScope,
       item.notes,
       contranRelationLabel(item.relation),
+      (item.annexLinks || []).map((link) => `${link.label || ''} ${link.url || ''}`).join(' '),
       normalizeContranAliases(item.sourceAliases).join(' ')
     ].join(' '));
     return haystack.includes(normalizedQuery);
@@ -5503,6 +5519,8 @@ function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
   const relationLabel = contranRelationLabel(item.relation);
   const scope = contranScopeLabel(item);
   const aliases = normalizeContranAliases(item.sourceAliases);
+  const annexLinks = normalizeContranAnnexLinks(item.annexLinks);
+  const exclusionNotice = contranExcludedNotice(item);
   const title = item.relation === 'permanece_vigente'
     ? 'Norma do edital permanece vigente'
     : 'Atualização normativa CONTRAN';
@@ -5515,6 +5533,7 @@ function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
         </div>
         <small>${escapeHtml([relationLabel, scope].filter(Boolean).join(' · '))}</small>
         ${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ''}
+        ${exclusionNotice ? `<p class="contran-scope-warning is-compact">${escapeHtml(exclusionNotice)}</p>` : ''}
       </article>
     `;
   }
@@ -5537,6 +5556,13 @@ function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
         <div><dt>Observações</dt><dd>${escapeHtml(item.notes || item.sourceTitleHint || 'Sem observações específicas.')}</dd></div>
         <div><dt>Aliases</dt><dd>${escapeHtml(aliases.length ? aliases.join(', ') : 'Sem aliases cadastrados.')}</dd></div>
       </dl>
+      ${annexLinks.length ? renderContranAnnexLinks(annexLinks) : ''}
+      ${exclusionNotice ? `
+        <div class="contran-scope-warning">
+          <strong>Conteúdo excluído pelo edital</strong>
+          <span>${escapeHtml(exclusionNotice)}</span>
+        </div>
+      ` : ''}
       ${item.targetOfficialUrl ? `<a class="button button-secondary" href="${escapeAttr(item.targetOfficialUrl)}" target="_blank" rel="noreferrer">Abrir norma oficial</a>` : ''}
     </article>
   `;
@@ -5625,6 +5651,57 @@ function normalizeContranAliases(aliases) {
     if (typeof alias === 'string') return alias;
     return formatContranRef(alias.number || alias.old_number || alias.source_number, alias.year || alias.old_year || alias.source_year);
   }).filter(Boolean);
+}
+
+function normalizeContranAnnexLinks(links) {
+  if (!Array.isArray(links)) return [];
+  return links
+    .map((link) => {
+      if (typeof link === 'string') return { label: 'Anexo oficial', url: link };
+      return {
+        label: String(link?.label || 'Anexo oficial').trim(),
+        url: String(link?.url || '').trim()
+      };
+    })
+    .filter((link) => link.url);
+}
+
+function collectContranAnnexLinks(items = []) {
+  const seen = new Set();
+  const links = [];
+  items.forEach((item) => {
+    normalizeContranAnnexLinks(item.annexLinks).forEach((link) => {
+      const key = `${link.label}|${link.url}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      links.push(link);
+    });
+  });
+  return links;
+}
+
+function renderContranAnnexLinks(links = []) {
+  const normalized = normalizeContranAnnexLinks(links);
+  if (!normalized.length) return '';
+  return `
+    <div class="contran-annex-links">
+      <span>Anexos oficiais</span>
+      <div>
+        ${normalized.map((link) => `<a class="contran-annex-link" href="${escapeAttr(link.url)}" target="_blank" rel="noreferrer">${escapeHtml(link.label)}</a>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function contranExcludedNotice(item = {}) {
+  if (item.excludedContentNotice) return item.excludedContentNotice;
+  const policy = item.scopePolicy || {};
+  const parts = [];
+  if (item.annexesExcluded || policy.exclude_annexes_from_original_edital) parts.push('anexos excluídos pelo edital PRF 2021');
+  if (item.fichasExcluded || policy.exclude_fichas_from_original_edital) parts.push('fichas excluídas pelo edital PRF 2021');
+  if (!parts.length) return '';
+  const equivalent = policy.include_only_current_equivalent ? ` Recorte aplicável: ${policy.include_only_current_equivalent}.` : '';
+  return `${parts.join(' e ')}. Não use esse conteúdo excluído para o item original do edital.${equivalent}`;
 }
 
 function renderPager() {
