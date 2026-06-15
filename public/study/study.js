@@ -61,6 +61,7 @@ const state = {
   historicalCommentSelection: null,
   historicalTableResize: null,
   contranMapLastQuery: '',
+  contranMapRows: [],
   studyTimeTab: 'today',
   studyTimeSummary: null
 };
@@ -246,11 +247,12 @@ async function boot() {
   if (isContranMapRoute()) {
     state.contranMapVisible = true;
     renderContranMapVisibility();
-    renderContranMapEmptyState();
     const initialRef = new URL(window.location.href).searchParams.get('ref') || '';
     if (initialRef) {
       if (els.contranMapInput) els.contranMapInput.value = initialRef;
       await searchContranMap(initialRef, { updateUrl: false });
+    } else {
+      await loadContranMapList();
     }
     return;
   }
@@ -535,7 +537,7 @@ function bindEvents() {
     state.contranMapVisible = shouldOpen;
     renderContranMapVisibility();
     if (state.contranMapVisible) {
-      renderContranMapEmptyState();
+      await loadContranMapList();
       updateContranMapUrl();
       els.contranMapInput?.focus();
     }
@@ -590,6 +592,12 @@ function bindEvents() {
     if (openMap) {
       if (els.contranMapInput) els.contranMapInput.value = openMap.dataset.ref || '';
       await searchContranMap(openMap.dataset.ref || '');
+      return;
+    }
+    const showAll = event.target.closest('[data-action="contran-map-show-all"]');
+    if (showAll) {
+      if (els.contranMapInput) els.contranMapInput.value = '';
+      await loadContranMapList();
     }
   });
   els.contranNormAlert?.addEventListener('click', async (event) => {
@@ -5357,43 +5365,136 @@ function updateContranMapUrl() {
   }
 }
 
-function renderContranMapEmptyState() {
+async function loadContranMapList() {
   if (!els.contranMapStatus || !els.contranMapResults) return;
-  els.contranMapInfo.textContent = 'consulte por número/ano';
-  els.contranMapStatus.textContent = 'Digite uma resolução antiga do edital PRF 2021 ou use um exemplo.';
+  state.contranMapLastQuery = '';
+  els.contranMapInfo.textContent = 'carregando mapa';
+  els.contranMapStatus.textContent = 'Carregando todos os mapeamentos CONTRAN PRF 2021...';
   els.contranMapResults.innerHTML = '';
+  const data = await api('/api/contran-prf-2021/map');
+  const rows = data.rows || [];
+  state.contranMapRows = rows;
+  renderContranCurrentNormList(rows, {
+    status: rows.length
+      ? 'Lista das normas vigentes correspondentes ao edital PRF 2021. Use a busca para localizar uma resolução antiga, norma atual ou tema.'
+      : (data.reason || 'Nenhum mapeamento carregado.')
+  });
+  updateContranMapUrl();
+}
+
+async function ensureContranMapRows() {
+  if (state.contranMapRows.length) return state.contranMapRows;
+  const data = await api('/api/contran-prf-2021/map');
+  state.contranMapRows = data.rows || [];
+  return state.contranMapRows;
+}
+
+function renderContranCurrentNormList(rows, options = {}) {
+  const groups = buildContranCurrentNormGroups(rows);
+  els.contranMapInfo.textContent = `${groups.length.toLocaleString('pt-BR')} norma${groups.length === 1 ? '' : 's'} vigente${groups.length === 1 ? '' : 's'} · ${rows.length.toLocaleString('pt-BR')} mapeamento${rows.length === 1 ? '' : 's'}`;
+  els.contranMapStatus.textContent = options.status || (groups.length
+    ? 'Normas atuais carregadas.'
+    : 'Nenhum mapeamento carregado.');
+  els.contranMapResults.innerHTML = groups.length
+    ? groups.map(renderContranCurrentNormCard).join('')
+    : renderContranNotFoundCard(options.emptyLabel || 'a busca informada');
 }
 
 async function searchContranMap(query, options = {}) {
-  const refs = detectContranPrf2021References(query);
-  state.contranMapLastQuery = refs[0] || String(query || '').trim();
-  if (!refs.length) {
-    els.contranMapInfo.textContent = 'referência inválida';
-    els.contranMapStatus.textContent = 'Informe uma referência no formato número/ano, por exemplo 806/2020.';
-    els.contranMapResults.innerHTML = renderContranNotFoundCard(String(query || '').trim());
-    if (options.updateUrl !== false) updateContranMapUrl();
+  const rawQuery = String(query || '').trim();
+  state.contranMapLastQuery = rawQuery;
+  if (!rawQuery) {
+    await loadContranMapList();
     return;
   }
-  els.contranMapInfo.textContent = 'buscando';
-  els.contranMapStatus.textContent = 'Consultando mapa CONTRAN PRF 2021...';
-  const data = await api('/api/contran-prf-2021/resolve-batch', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refs })
+  els.contranMapInfo.textContent = 'filtrando';
+  els.contranMapStatus.textContent = 'Filtrando normas vigentes do mapa CONTRAN PRF 2021...';
+  const rows = await ensureContranMapRows();
+  const filtered = filterContranMapRows(rows, rawQuery);
+  renderContranCurrentNormList(filtered, {
+    status: filtered.length
+      ? `Resultado para "${rawQuery}".`
+      : `Nenhuma norma vigente correspondente encontrada para "${rawQuery}".`,
+    emptyLabel: rawQuery
   });
-  const found = data.found || [];
-  const notFound = data.notFound || [];
-  els.contranMapInfo.textContent = found.length
-    ? `${found.length} mapeamento${found.length === 1 ? '' : 's'} encontrado${found.length === 1 ? '' : 's'}`
-    : 'sem mapeamento';
-  els.contranMapStatus.textContent = found.length
-    ? 'Correspondência normativa encontrada no mapa implantado.'
-    : 'Nenhuma correspondência foi encontrada para a referência informada.';
-  els.contranMapResults.innerHTML = [
-    ...found.map((item) => renderContranPrf2021NormCard(item.result, { mode: 'full' })),
-    ...notFound.map((item) => renderContranNotFoundCard(`${item.searched?.number || ''}/${item.searched?.year || ''}`))
-  ].join('');
   if (options.updateUrl !== false) updateContranMapUrl();
+}
+
+function buildContranCurrentNormGroups(rows = []) {
+  const groups = new Map();
+  rows.forEach((item) => {
+    const targetRef = formatContranRef(item.targetNumber, item.targetYear);
+    const key = `${item.targetOrgan || 'CONTRAN'}:${targetRef}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        targetOrgan: item.targetOrgan || 'CONTRAN',
+        targetRef,
+        targetTitle: item.targetTitle || '',
+        targetOfficialUrl: item.targetOfficialUrl || '',
+        relationKinds: new Set(),
+        scopes: new Set(),
+        notes: new Set(),
+        sources: []
+      });
+    }
+    const group = groups.get(key);
+    group.relationKinds.add(contranRelationLabel(item.relation));
+    group.scopes.add(contranScopeLabel(item));
+    if (item.notes) group.notes.add(item.notes);
+    group.sources.push(item);
+  });
+  return [...groups.values()].sort((a, b) => compareContranRef(a.targetRef, b.targetRef));
+}
+
+function renderContranCurrentNormCard(group) {
+  const sourceRefs = group.sources
+    .map((item) => formatContranRef(item.sourceNumber, item.sourceYear))
+    .filter(Boolean);
+  const relation = [...group.relationKinds].filter(Boolean).join(', ');
+  const scopes = [...group.scopes].filter(Boolean);
+  const notes = [...group.notes].filter(Boolean);
+  return `
+    <article class="contran-current-card">
+      <div class="contran-current-head">
+        <div>
+          <strong>Resolução CONTRAN ${escapeHtml(group.targetRef)}</strong>
+          <span>${escapeHtml(group.targetTitle || 'Sem título informado')}</span>
+        </div>
+        ${group.targetOfficialUrl ? `<a class="button button-secondary" href="${escapeAttr(group.targetOfficialUrl)}" target="_blank" rel="noreferrer">Abrir norma</a>` : ''}
+      </div>
+      <div class="contran-current-meta">
+        <span><strong>${sourceRefs.length}</strong> ${sourceRefs.length === 1 ? 'item' : 'itens'} do edital</span>
+        <span>${escapeHtml(relation || 'status não informado')}</span>
+      </div>
+      <dl class="contran-norm-fields">
+        <div><dt>Resoluções do edital PRF 2021</dt><dd>${sourceRefs.map((ref) => `<button class="contran-ref-chip" type="button" data-action="contran-map-search" data-ref="${escapeAttr(ref)}">${escapeHtml(ref)}</button>`).join(' ')}</dd></div>
+        <div><dt>Escopo</dt><dd>${escapeHtml(scopes.join('; ') || 'texto integral')}</dd></div>
+        <div><dt>Do que trata</dt><dd>${escapeHtml(group.targetTitle || group.sources[0]?.sourceTitleHint || 'Sem descrição cadastrada.')}</dd></div>
+        <div><dt>Observações</dt><dd>${escapeHtml(notes.join(' ') || 'Sem observações específicas.')}</dd></div>
+      </dl>
+    </article>
+  `;
+}
+
+function filterContranMapRows(rows, query) {
+  const normalizedQuery = normalizeContranSearchText(query);
+  const refs = new Set(detectContranPrf2021References(query));
+  return rows.filter((item) => {
+    const sourceRef = formatContranRef(item.sourceNumber, item.sourceYear);
+    const targetRef = formatContranRef(item.targetNumber, item.targetYear);
+    if (refs.has(sourceRef) || refs.has(targetRef)) return true;
+    const haystack = normalizeContranSearchText([
+      sourceRef,
+      targetRef,
+      item.targetTitle,
+      item.sourceTitleHint,
+      item.editalScope,
+      item.notes,
+      contranRelationLabel(item.relation),
+      normalizeContranAliases(item.sourceAliases).join(' ')
+    ].join(' '));
+    return haystack.includes(normalizedQuery);
+  });
 }
 
 function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
@@ -5476,6 +5577,29 @@ function detectContranPrf2021References(text) {
 
 function formatContranRef(number, year) {
   return number && year ? `${number}/${year}` : '';
+}
+
+function compareContranRef(a, b) {
+  const parse = (ref) => {
+    const [number, year] = String(ref || '').split('/');
+    return {
+      year: Number(year || 0),
+      number: Number(String(number || '').replace(/\./g, '')) || 0,
+      raw: String(ref || '')
+    };
+  };
+  const left = parse(a);
+  const right = parse(b);
+  return (left.year - right.year) || (left.number - right.number) || left.raw.localeCompare(right.raw, 'pt-BR');
+}
+
+function normalizeContranSearchText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function contranRelationLabel(relation) {
