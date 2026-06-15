@@ -44,7 +44,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexo",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9112022ANEXO.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_911_2022",
@@ -81,7 +87,7 @@
         "do_not_import_excluded_annexes_or_fichas": false,
         "annex_urls": [
           {
-            "label": "Anexo I",
+            "label": "Anexos",
             "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9932023Anexo.pdf"
           }
         ]
@@ -118,7 +124,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexos",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/resolucao9682022anexos.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_968_2022",
@@ -256,7 +268,45 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Vol. I - Sinalização Vertical de Regulamentação (Anexo I)",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/arquivos-senatran/docs/copy_of___01___MBST_Vol._I___Sin._Vert._Regulamentacao_F.pdf"
+          },
+          {
+            "label": "Vol. II - Sinalização Vertical de Advertência (Anexo II)",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/arquivos-senatran/docs/copy_of___02___MBST_Vol._II___Sin._Vert._Advertencia.pdf"
+          },
+          {
+            "label": "Vol. III - Sinalização Vertical de Indicação (Anexo III)",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/arquivos-senatran/docs/copy_of___03___MBST_Vol._III___Sin._Vert._Indicacao.pdf"
+          },
+          {
+            "label": "Vol. IV - Sinalização Horizontal (Anexo IV)",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/arquivos-senatran/docs/copy_of___04___MBST_Vol._IV___Sinalizacao_Horizontal.pdf"
+          },
+          {
+            "label": "Vol. V - Sinalização Semafórica (Anexo V)",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/arquivos-senatran/docs/copy_of___05___MBST_Vol._V___Sinalizacao_Semaforica.pdf"
+          },
+          {
+            "label": "Vol. VI - Dispositivos Auxiliares (Anexo VI)",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/arquivos-senatran/docs/copy_of___06___MBST_Vol._VI___Dispositivos_Auxiliares.pdf"
+          },
+          {
+            "label": "Vol. VII - Sinalização Temporária (Anexo VII)",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/arquivos-senatran/docs/copy_of___07___MBST_Vol._VII___Sinalizacao_Temporaria.pdf"
+          },
+          {
+            "label": "Vol. VIII - Sinalização Cicloviária (Anexo VIII)",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/arquivos-senatran/docs/copy_of___08___MBST_Vol._VIII___Sinalizacao_Cicloviaria.pdf"
+          },
+          {
+            "label": "Vol. IX - Sinalização de Cruzamentos Rodoferroviários (Anexo IX)",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/arquivos-senatran/docs/copy_of___09___MBST_Vol._IX___Cruzamentos_Rodoferroviarios.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_973_2022",
@@ -360,7 +410,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexos",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9602022ANEXOS.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_960_2022",
@@ -394,7 +450,17 @@
         "exclude_annexes_from_original_edital": true,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": true
+        "do_not_import_excluded_annexes_or_fichas": true,
+        "annex_urls": [
+          {
+            "label": "Anexos I ao XVI",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/resolucao9702022anexos_i-xvi.pdf"
+          },
+          {
+            "label": "Anexos XVII ao XXI",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/resolucao9702022anexos_xvii-xxi.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_970_2022",
@@ -428,7 +494,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexos",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9602022ANEXOS.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_960_2022",
@@ -462,7 +534,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexos",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9602022ANEXOS.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_960_2022",
@@ -496,7 +574,17 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexos I ao XVI",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/resolucao9702022anexos_i-xvi.pdf"
+          },
+          {
+            "label": "Anexos XVII ao XXI",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/resolucao9702022anexos_xvii-xxi.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_970_2022",
@@ -564,7 +652,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexos",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9162022ANEXO.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_916_2022",
@@ -598,7 +692,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexos",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9552022ANEXO.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_955_2022",
@@ -737,7 +837,7 @@
         "do_not_import_excluded_annexes_or_fichas": false,
         "annex_urls": [
           {
-            "label": "Anexo - dispositivo retrorrefletivo de seguranca",
+            "label": "Anexos",
             "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9402022ANEXO.pdf"
           }
         ]
@@ -910,7 +1010,13 @@
         "exclude_annexes_from_original_edital": true,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": true
+        "do_not_import_excluded_annexes_or_fichas": true,
+        "annex_urls": [
+          {
+            "label": "Anexos",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao9452022ANEXO.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_945_2022",
@@ -947,8 +1053,32 @@
         "do_not_import_excluded_annexes_or_fichas": true,
         "annex_urls": [
           {
-            "label": "Anexo/Manual MBFT",
-            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/mbvt20222.pdf"
+            "label": "Parte I",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/mbftpart1.zip"
+          },
+          {
+            "label": "Parte II",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/MBFTpart2.zip"
+          },
+          {
+            "label": "Parte III",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/MBFTpart3.zip"
+          },
+          {
+            "label": "Parte IV",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/mbftpart4.zip"
+          },
+          {
+            "label": "Parte V",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/MBFTpart5.zip"
+          },
+          {
+            "label": "Parte VI",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/MBFTpart6.zip"
+          },
+          {
+            "label": "Parte VII",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/MBFTpart7.zip"
           }
         ]
       },
@@ -1018,7 +1148,17 @@
         "exclude_annexes_from_original_edital": true,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": true
+        "do_not_import_excluded_annexes_or_fichas": true,
+        "annex_urls": [
+          {
+            "label": "Anexos I ao XVI",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/resolucao9702022anexos_i-xvi.pdf"
+          },
+          {
+            "label": "Anexos XVII ao XXI",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/resolucao9702022anexos_xvii-xxi.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_970_2022",
@@ -1154,7 +1294,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexos",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/resolucao9692022anexos.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_969_2022",
@@ -1222,7 +1368,13 @@
         "exclude_annexes_from_original_edital": false,
         "exclude_fichas_from_original_edital": false,
         "include_only_current_equivalent": null,
-        "do_not_import_excluded_annexes_or_fichas": false
+        "do_not_import_excluded_annexes_or_fichas": false,
+        "annex_urls": [
+          {
+            "label": "Anexo II republicado",
+            "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/resolucao7982020-anexoii.pdf"
+          }
+        ]
       },
       "implementation": {
         "study_target_key": "CONTRAN_798_2020",

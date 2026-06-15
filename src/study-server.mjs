@@ -144,6 +144,11 @@ async function routeRequest(request, response) {
     return;
   }
 
+  if (url.pathname === '/api/exams' && request.method === 'GET') {
+    sendJson(response, 200, getExamFilters(url.searchParams));
+    return;
+  }
+
   if (url.pathname === '/api/theory/page' && request.method === 'GET') {
     sendJson(response, 200, getTheoryPage(url.searchParams));
     return;
@@ -670,7 +675,86 @@ function getFilters() {
     ORDER BY materia, assunto
   `).all();
 
-  return { matters, subjects };
+  return {
+    matters,
+    subjects
+  };
+}
+
+function getExamFilters(searchParams = new URLSearchParams()) {
+  return { exams: getExamFilterOptions(searchParams) };
+}
+
+function getExamFilterOptions(searchParams = new URLSearchParams()) {
+  const q = String(searchParams.get('q') || '').trim();
+  const limit = Math.min(300, Math.max(20, Number(searchParams.get('limit') || 80)));
+  const where = [
+    "COALESCE(q.banca, '') != ''",
+    'q.concurso_ano IS NOT NULL'
+  ];
+  const values = [];
+  const terms = q.split(/\s+/).map((term) => term.trim()).filter(Boolean).slice(0, 5);
+  for (const term of terms) {
+    where.push(`(
+      q.banca LIKE ?
+      OR CAST(q.concurso_ano AS TEXT) LIKE ?
+      OR COALESCE(q.orgao_sigla, '') LIKE ?
+      OR COALESCE(q.orgao_nome, '') LIKE ?
+      OR COALESCE(q.cargo, '') LIKE ?
+    )`);
+    values.push(...Array(5).fill(`%${term}%`));
+  }
+
+  return db.prepare(`
+    SELECT
+      q.concurso_id,
+      q.banca,
+      q.concurso_ano,
+      q.orgao_sigla,
+      q.orgao_nome,
+      q.cargo,
+      COUNT(*) AS count
+    FROM questions q
+    WHERE ${where.join(' AND ')}
+    GROUP BY
+      q.concurso_id,
+      q.banca,
+      q.concurso_ano,
+      q.orgao_sigla,
+      q.orgao_nome,
+      q.cargo
+    ORDER BY q.concurso_ano DESC, q.banca, q.orgao_sigla, q.cargo
+    LIMIT ?
+  `).all(...values, limit).map((row) => {
+    const label = [row.banca || '', row.concurso_ano || ''].filter(Boolean).join(' • ');
+    const details = [row.orgao_sigla || row.orgao_nome || '', row.cargo || '']
+      .filter(Boolean)
+      .join(' - ');
+    return {
+      key: examFilterKey(row),
+      label,
+      details,
+      banca: row.banca || '',
+      ano: row.concurso_ano || '',
+      orgaoSigla: row.orgao_sigla || '',
+      orgaoNome: row.orgao_nome || '',
+      cargo: row.cargo || '',
+      concursoId: row.concurso_id || '',
+      count: Number(row.count || 0)
+    };
+  });
+}
+
+function examFilterKey(row = {}) {
+  const id = String(row.concurso_id || '').trim();
+  if (id) return `id:${id}`;
+  return `combo:${[
+    row.banca || '',
+    row.concurso_ano || '',
+    row.orgao_sigla || '',
+    row.orgao_nome || '',
+    row.cargo || ''
+  ].map((part) => encodeURIComponent(String(part || ''))).join('|')}`;
 }
 
 function getTheoryPage(searchParams) {
@@ -2465,6 +2549,7 @@ function getNormativeUpdates(searchParams) {
   const materia = String(searchParams.get('materia') || '').trim();
   const excludedMaterias = getExcludedMaterias(searchParams);
   const assunto = String(searchParams.get('assunto') || '').trim();
+  const examKey = String(searchParams.get('examKey') || '').trim();
   const recomendacao = String(searchParams.get('recomendacao') || '').trim();
   const nivelSeguranca = String(searchParams.get('nivelSeguranca') || '').trim();
   const mudancaGabarito = String(searchParams.get('mudancaGabarito') || '').trim();
@@ -2494,6 +2579,7 @@ function getNormativeUpdates(searchParams) {
     where.push('q.assunto = ?');
     values.push(assunto);
   }
+  applyExamFilter(where, values, examKey);
   if (recomendacao) {
     where.push('qnu.recomendacao = ?');
     values.push(recomendacao);
@@ -2856,6 +2942,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
   const materia = String(searchParams.get('materia') || '').trim();
   const excludedMaterias = getExcludedMaterias(searchParams, extra);
   const assunto = String(searchParams.get('assunto') || '').trim();
+  const examKey = String(searchParams.get('examKey') || extra.examKey || '').trim();
   const commented = searchParams.get('commented') === '1';
   const unanswered = searchParams.get('unanswered') === '1' || extra.unanswered;
   const lastWrong = searchParams.get('lastWrong') === '1' || extra.lastWrong;
@@ -2881,6 +2968,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
     where.push('q.assunto = ?');
     values.push(assunto);
   }
+  applyExamFilter(where, values, examKey);
   if (commented) {
     where.push("COALESCE(c.html_local, c.html, c.text, '') != ''");
   }
@@ -2959,6 +3047,50 @@ function applyExcludedMateriasFilter(where, values, materias, alias = 'q') {
   if (!materias.length) return;
   where.push(`COALESCE(${alias}.materia, '') NOT IN (${materias.map(() => '?').join(', ')})`);
   values.push(...materias);
+}
+
+function parseExamFilterKey(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (raw.startsWith('id:')) {
+    const id = Number(raw.slice(3));
+    return Number.isFinite(id) && id > 0 ? { type: 'id', id } : null;
+  }
+  if (!raw.startsWith('combo:')) return null;
+  let parts = [];
+  try {
+    parts = raw
+      .slice(6)
+      .split('|')
+      .map((part) => decodeURIComponent(part || '').trim());
+  } catch {
+    return null;
+  }
+  const [banca = '', ano = '', orgaoSigla = '', orgaoNome = '', cargo = ''] = parts;
+  if (!banca || !ano) return null;
+  return { type: 'combo', banca, ano: Number(ano), orgaoSigla, orgaoNome, cargo };
+}
+
+function applyExamFilter(where, values, examKey, alias = 'q') {
+  const parsed = parseExamFilterKey(examKey);
+  if (!parsed) return;
+  if (parsed.type === 'id') {
+    where.push(`${alias}.concurso_id = ?`);
+    values.push(parsed.id);
+    return;
+  }
+  where.push(`${alias}.banca = ?`);
+  values.push(parsed.banca);
+  if (Number.isFinite(parsed.ano) && parsed.ano > 0) {
+    where.push(`${alias}.concurso_ano = ?`);
+    values.push(parsed.ano);
+  }
+  where.push(`COALESCE(${alias}.orgao_sigla, '') = ?`);
+  values.push(parsed.orgaoSigla || '');
+  where.push(`COALESCE(${alias}.orgao_nome, '') = ?`);
+  values.push(parsed.orgaoNome || '');
+  where.push(`COALESCE(${alias}.cargo, '') = ?`);
+  values.push(parsed.cargo || '');
 }
 
 function applyQuestionStudyStatusFilter(where) {
@@ -4851,6 +4983,7 @@ function getSubjectsRanking(searchParams) {
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
   const excludedMaterias = getExcludedMaterias(searchParams);
+  const examKey = String(searchParams.get('examKey') || '').trim();
   const hideOutdated = searchParams.get('hideOutdated') === '1';
   const hideStudyExcluded = searchParams.get('hideStudyExcluded') === '1';
   const where = ["COALESCE(q.assunto, '') != ''"];
@@ -4865,6 +4998,7 @@ function getSubjectsRanking(searchParams) {
     values.push(materia);
   }
   applyExcludedMateriasFilter(where, values, excludedMaterias);
+  applyExamFilter(where, values, examKey);
   if (hideOutdated) {
     where.push('COALESCE(q.desatualizada, 0) = 0');
   }

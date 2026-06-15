@@ -32,6 +32,7 @@ const state = {
     q: '',
     materia: '',
     assunto: '',
+    examKey: '',
     excludedMaterias: [],
     commented: false,
     unanswered: false,
@@ -42,6 +43,8 @@ const state = {
     representative: false,
     normative: ''
   },
+  exams: [],
+  examOptionByLabel: new Map(),
   subjects: [],
   subjectsVisible: false,
   coverageVisible: false,
@@ -86,6 +89,8 @@ const els = {
   searchInput: document.querySelector('#searchInput'),
   matterSelect: document.querySelector('#matterSelect'),
   subjectSelect: document.querySelector('#subjectSelect'),
+  examInput: document.querySelector('#examInput'),
+  examOptions: document.querySelector('#examOptions'),
   excludedMatterList: document.querySelector('#excludedMatterList'),
   profileSelect: document.querySelector('#profileSelect'),
   commentedOnly: document.querySelector('#commentedOnly'),
@@ -236,14 +241,18 @@ const els = {
 
 let searchTimer = null;
 let excludedMatterTimer = null;
+let examSearchTimer = null;
 const mobileLayoutQuery = window.matchMedia('(max-width: 760px)');
 let lockedBodyScrollY = 0;
 
 boot().catch(handleBootError);
 
 async function boot() {
-  const [studyState] = await Promise.all([loadStudyState(), loadStats(), loadFilters(), loadExamProfiles()]);
   bindEvents();
+  const [studyState] = await Promise.all([loadStudyState(), loadStats(), loadFilters(), loadExamProfiles()]);
+  if (state.filters.examKey) {
+    return;
+  }
   if (isContranMapRoute()) {
     state.contranMapVisible = true;
     renderContranMapVisibility();
@@ -343,6 +352,36 @@ function bindEvents() {
     updateAdvancedFiltersSummary();
     await loadCurrentModeTarget();
     if (state.normativeVisible) await loadNormativeReview();
+  });
+
+  els.examInput?.addEventListener('focus', () => {
+    if (!state.exams.length) loadExamOptions('').catch(() => {});
+  });
+
+  els.examInput?.addEventListener('input', () => {
+    clearTimeout(examSearchTimer);
+    const value = els.examInput.value.trim();
+    const matched = state.examOptionByLabel.get(value);
+    if (matched) {
+      applyExamFilterOption(matched).catch((error) => {
+        els.answerStatus.textContent = error?.message || 'Falha ao carregar a prova selecionada';
+      });
+      return;
+    }
+
+    state.filters.examKey = '';
+    state.page = 1;
+    updateAdvancedFiltersSummary();
+    if (!value) {
+      loadCurrentModeTarget();
+      if (state.subjectsVisible) loadSubjectsRanking();
+      if (state.normativeVisible) loadNormativeReview();
+      return;
+    }
+    if (value.length < 2) return;
+    examSearchTimer = setTimeout(() => {
+      loadExamOptions(value).catch(() => {});
+    }, 250);
   });
 
   els.excludedMatterList.addEventListener('change', () => {
@@ -1145,6 +1184,7 @@ function clearFilters() {
     q: '',
     materia: '',
     assunto: '',
+    examKey: '',
     excludedMaterias: [],
     commented: false,
     unanswered: false,
@@ -1160,6 +1200,7 @@ function clearFilters() {
   els.matterSelect.value = '';
   renderSubjectOptions();
   els.subjectSelect.value = '';
+  if (els.examInput) els.examInput.value = '';
   renderExcludedMatterOptions();
   els.commentedOnly.checked = false;
   els.unansweredOnly.checked = false;
@@ -1177,6 +1218,7 @@ function updateAdvancedFiltersSummary() {
     state.filters.q,
     state.filters.materia,
     state.filters.assunto,
+    state.filters.examKey,
     state.filters.excludedMaterias.length,
     state.filters.commented,
     state.filters.unanswered,
@@ -1205,7 +1247,8 @@ function setStudyMode(mode) {
     review: 'Modo: Revisar hoje',
     repair: 'Plano: Revisar erros',
     unanswered: 'Modo: Não resolvidas',
-    subject: 'Modo: Trocar assunto'
+    subject: 'Modo: Trocar assunto',
+    examSource: 'Modo: Prova selecionada'
   };
   els.modeMenuButton.textContent = labels[mode] || labels.study;
   updateAdvancedFiltersSummary();
@@ -1363,6 +1406,32 @@ function renderSubjectOptions() {
   els.subjectSelect.value = state.filters.assunto;
 }
 
+async function loadExamOptions(query = '') {
+  if (!els.examOptions) return;
+  const params = new URLSearchParams({ limit: query ? '120' : '80' });
+  if (query) params.set('q', query);
+  const data = await api(`/api/exams?${params}`);
+  state.exams = data.exams || [];
+  state.examOptionByLabel = new Map();
+  els.examOptions.innerHTML = state.exams.map((exam) => {
+    const details = exam.details ? ` - ${exam.details}` : '';
+    const count = Number(exam.count || 0).toLocaleString('pt-BR');
+    const label = `${exam.label}${details} (${count})`;
+    state.examOptionByLabel.set(label, exam);
+    return `<option value="${escapeAttr(label)}"></option>`;
+  }).join('');
+}
+
+async function applyExamFilterOption(exam) {
+  state.filters.examKey = exam?.key || '';
+  state.page = 1;
+  updateAdvancedFiltersSummary();
+  setStudyMode('examSource');
+  await loadQuestions();
+  if (state.subjectsVisible) await loadSubjectsRanking();
+  if (state.normativeVisible) await loadNormativeReview();
+}
+
 function startTimer() {
   if (state.timerId) {
     clearInterval(state.timerId);
@@ -1484,6 +1553,7 @@ function buildQuestionParams() {
   if (state.filters.materia) params.set('materia', state.filters.materia);
   for (const materia of state.filters.excludedMaterias) params.append('excludeMateria', materia);
   if (state.filters.assunto) params.set('assunto', state.filters.assunto);
+  if (state.filters.examKey) params.set('examKey', state.filters.examKey);
   if (state.filters.commented) params.set('commented', '1');
   if (state.filters.unanswered) params.set('unanswered', '1');
   if (state.filters.lastWrong) params.set('lastWrong', '1');
@@ -1687,6 +1757,7 @@ async function loadSubjectsRanking() {
   if (state.filters.q) params.set('q', state.filters.q);
   if (state.filters.materia) params.set('materia', state.filters.materia);
   for (const materia of state.filters.excludedMaterias) params.append('excludeMateria', materia);
+  if (state.filters.examKey) params.set('examKey', state.filters.examKey);
   if (state.filters.hideOutdated) params.set('hideOutdated', '1');
   if (state.filters.hideStudyExcluded) params.set('hideStudyExcluded', '1');
 
@@ -2520,6 +2591,7 @@ function buildNormativeReviewParams() {
   if (state.filters.materia) params.set('materia', state.filters.materia);
   for (const materia of state.filters.excludedMaterias) params.append('excludeMateria', materia);
   if (state.filters.assunto) params.set('assunto', state.filters.assunto);
+  if (state.filters.examKey) params.set('examKey', state.filters.examKey);
   if (state.filters.q) params.set('q', state.filters.q);
   return params;
 }

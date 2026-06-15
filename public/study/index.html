@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260615-historical-images">
+    <link rel="stylesheet" href="/study.css?v=20260615-exam-filter">
   </head>
   <body>
     <div class="app-shell">
@@ -54,6 +54,11 @@
           <select id="subjectSelect">
             <option value="">Todos</option>
           </select>
+        </label>
+        <label class="field">
+          <span>Prova</span>
+          <input id="examInput" type="search" list="examOptions" placeholder="Banca, Ã³rgÃ£o ou ano">
+          <datalist id="examOptions"></datalist>
         </label>
         <label class="field">
           <span>Perfil de prova</span>
@@ -522,6 +527,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260615-historical-images" type="module"></script>
+    <script src="/study.js?v=20260615-exam-filter" type="module"></script>
   </body>
 </html>
