@@ -180,6 +180,12 @@ async function routeRequest(request, response) {
     return;
   }
 
+  if (url.pathname === '/api/contran-prf-2021/resolve-batch' && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, getContranPrf2021ResolutionBatch(body));
+    return;
+  }
+
   if (url.pathname === '/api/law-compendium/overview' && request.method === 'GET') {
     sendJson(response, 200, getLawCompendiumOverview());
     return;
@@ -403,6 +409,11 @@ async function routeRequest(request, response) {
 
   if (url.pathname.startsWith('/pdfs/')) {
     await serveFile(response, pdfsDir, url.pathname.replace(/^\/pdfs\//, ''));
+    return;
+  }
+
+  if (url.pathname === '/contran-prf-2021' || url.pathname === '/legislacao-prf/contran') {
+    await serveFile(response, PUBLIC_DIR, 'index.html');
     return;
   }
 
@@ -1011,27 +1022,85 @@ function getContranPrf2021Resolution(searchParams = new URLSearchParams()) {
   if (!parsed) {
     return { available: true, found: false, reason: 'Informe uma referencia no formato numero/ano.' };
   }
+  return resolveContranPrf2021ParsedReference(parsed, searchParams.get('organ') || 'CONTRAN');
+}
+
+function getContranPrf2021ResolutionBatch(body = {}) {
+  if (!hasContranPrf2021MapTable()) {
+    return { available: false, reason: 'Mapa CONTRAN PRF 2021 ainda nao importado.', results: [] };
+  }
+  const refs = Array.isArray(body?.refs) ? body.refs : [];
+  const seen = new Set();
+  const results = [];
+  for (const ref of refs.slice(0, 40)) {
+    const parsed = parseContranReference(ref);
+    if (!parsed) continue;
+    const key = `${parsed.number}/${parsed.year}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    results.push(resolveContranPrf2021ParsedReference(parsed, body?.organ || 'CONTRAN'));
+  }
+  return {
+    available: true,
+    results,
+    found: results.filter((item) => item.found),
+    notFound: results.filter((item) => !item.found)
+  };
+}
+
+function resolveContranPrf2021ParsedReference(parsed, organ = 'CONTRAN') {
   const row = db.prepare(`
     SELECT
-      source_organ,
-      source_number::text AS source_number_text,
-      source_year::text AS source_year_text,
-      source_title_hint,
-      edital_scope,
-      target_organ,
-      target_number::text AS target_number_text,
-      target_year::text AS target_year_text,
-      target_title,
-      target_official_url,
-      relation,
-      scope_policy,
-      old_norm_allowed_only_as_alias,
-      show_in_current_study_filter,
-      notes,
-      confidence
-    FROM resolve_contran_prf_2021_norm(?, ?, ?)
+      m.source_organ,
+      m.source_number::text AS source_number_text,
+      m.source_year::text AS source_year_text,
+      m.source_title_hint,
+      m.edital_scope,
+      m.source_aliases::text AS source_aliases_text,
+      m.target_organ,
+      m.target_number::text AS target_number_text,
+      m.target_year::text AS target_year_text,
+      m.target_title,
+      m.target_official_url,
+      m.relation,
+      m.scope_policy::text AS scope_policy_text,
+      m.old_norm_allowed_only_as_alias,
+      m.show_in_current_study_filter,
+      m.notes,
+      m.confidence
+    FROM contran_prf_2021_current_map m
+    WHERE m.source_organ = ?
+      AND m.source_number = ?
+      AND m.source_year = ?
+    UNION ALL
+    SELECT
+      m.source_organ,
+      m.source_number::text AS source_number_text,
+      m.source_year::text AS source_year_text,
+      m.source_title_hint,
+      m.edital_scope,
+      m.source_aliases::text AS source_aliases_text,
+      m.target_organ,
+      m.target_number::text AS target_number_text,
+      m.target_year::text AS target_year_text,
+      m.target_title,
+      m.target_official_url,
+      m.relation,
+      m.scope_policy::text AS scope_policy_text,
+      m.old_norm_allowed_only_as_alias,
+      m.show_in_current_study_filter,
+      m.notes,
+      m.confidence
+    FROM legal_norm_aliases a
+    JOIN contran_prf_2021_current_map m
+      ON m.target_organ = a.current_organ
+     AND m.target_number = a.current_number
+     AND m.target_year = a.current_year
+    WHERE a.old_organ = ?
+      AND a.old_number = ?
+      AND a.old_year = ?
     LIMIT 1
-  `).get(parsed.number, parsed.year, searchParams.get('organ') || 'CONTRAN');
+  `).get(organ, parsed.number, parsed.year, organ, parsed.number, parsed.year);
   if (!row) {
     return { available: true, found: false, searched: parsed };
   }
@@ -1039,25 +1108,47 @@ function getContranPrf2021Resolution(searchParams = new URLSearchParams()) {
     available: true,
     found: true,
     searched: parsed,
-    result: {
-      sourceOrgan: row.source_organ || '',
-      sourceNumber: row.source_number_text || '',
-      sourceYear: row.source_year_text || '',
-      sourceTitleHint: row.source_title_hint || '',
-      editalScope: row.edital_scope || '',
-      targetOrgan: row.target_organ || '',
-      targetNumber: row.target_number_text || '',
-      targetYear: row.target_year_text || '',
-      targetTitle: row.target_title || '',
-      targetOfficialUrl: row.target_official_url || '',
-      relation: row.relation || '',
-      scopePolicy: parseLawJson(row.scope_policy, {}),
-      oldNormAllowedOnlyAsAlias: Boolean(row.old_norm_allowed_only_as_alias),
-      showInCurrentStudyFilter: Boolean(row.show_in_current_study_filter),
-      notes: row.notes || '',
-      confidence: row.confidence || ''
-    }
+    result: normalizeContranPrf2021Row(row)
   };
+}
+
+function normalizeContranPrf2021Row(row) {
+  const sourceAliases = [
+    ...parseLawJson(row.source_aliases_text, []),
+    ...getContranPrf2021LegalAliases(row.target_organ, row.target_number_text, row.target_year_text)
+  ].filter((alias) => String(alias) !== `${row.source_number_text}/${row.source_year_text}`);
+  return {
+    sourceOrgan: row.source_organ || '',
+    sourceNumber: row.source_number_text || '',
+    sourceYear: row.source_year_text || '',
+    sourceTitleHint: row.source_title_hint || '',
+    editalScope: row.edital_scope || '',
+    sourceAliases,
+    targetOrgan: row.target_organ || '',
+    targetNumber: row.target_number_text || '',
+    targetYear: row.target_year_text || '',
+    targetTitle: row.target_title || '',
+    targetOfficialUrl: row.target_official_url || '',
+    relation: row.relation || '',
+    scopePolicy: parseLawJson(row.scope_policy_text, {}),
+    oldNormAllowedOnlyAsAlias: Boolean(row.old_norm_allowed_only_as_alias),
+    showInCurrentStudyFilter: Boolean(row.show_in_current_study_filter),
+    notes: row.notes || '',
+    confidence: row.confidence || ''
+  };
+}
+
+function getContranPrf2021LegalAliases(targetOrgan, targetNumber, targetYear) {
+  if (!targetOrgan || !targetNumber || !targetYear) return [];
+  return db.prepare(`
+    SELECT old_number::text AS old_number_text, old_year::text AS old_year_text
+    FROM legal_norm_aliases
+    WHERE current_organ = ?
+      AND current_number = ?
+      AND current_year = ?
+    ORDER BY old_year, old_number
+  `).all(targetOrgan, targetNumber, targetYear)
+    .map((row) => `${row.old_number_text}/${row.old_year_text}`);
 }
 
 function parseContranReference(value) {
@@ -1069,6 +1160,48 @@ function parseContranReference(value) {
     number: match[1].replace(/^0+(?=\d)/, '') || match[1],
     year
   };
+}
+
+function getQuestionContranPrf2021Matches(question = {}) {
+  if (!hasContranPrf2021MapTable()) return [];
+  const text = [
+    question.statement_text || '',
+    htmlToPlainText(question.statement_html || ''),
+    question.comment_text || '',
+    htmlToPlainText(question.comment_html || ''),
+    question.materia || '',
+    question.assunto || ''
+  ].join('\n').slice(0, 120000);
+  const refs = detectContranPrf2021References(text);
+  if (!refs.length) return [];
+  return refs
+    .map((ref) => resolveContranPrf2021ParsedReference(ref, 'CONTRAN'))
+    .filter((item) => item.found)
+    .map((item) => item.result);
+}
+
+function detectContranPrf2021References(text) {
+  const value = String(text || '');
+  const refs = [];
+  const seen = new Set();
+  const patterns = [
+    /\b(?:resolu[cç][aã]o|res\.?)\s*(?:contran\s*)?(?:n[ºo]\.?\s*)?(\d{1,4}(?:\.\d{3})?)\s*\/\s*(\d{2,4})\b/gi,
+    /\bcontran\s*(?:n[ºo]\.?\s*)?(\d{1,4}(?:\.\d{3})?)\s*\/\s*(\d{2,4})\b/gi,
+    /\b(\d{1,4}(?:\.\d{3})?)\s*\/\s*(19\d{2}|20\d{2})\b/g
+  ];
+  for (const pattern of patterns) {
+    for (const match of value.matchAll(pattern)) {
+      let year = match[2];
+      if (year.length === 2) year = Number(year) > 80 ? `19${year}` : `20${year}`;
+      const number = String(match[1] || '').replace(/^0+(?=\d)/, '') || String(match[1] || '');
+      const key = `${number}/${year}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      refs.push({ number, year });
+      if (refs.length >= 12) return refs;
+    }
+  }
+  return refs;
 }
 
 function getLawCompendiumOverview() {
@@ -5739,6 +5872,7 @@ async function getQuestion(questionId) {
   const appliedTheoryCard = getQuestionAppliedTheoryCard(questionId);
   const adaptive = getQuestionAdaptiveSummary(questionId);
   const studyStatus = getQuestionStudyStatus(questionId);
+  const contranPrf2021Matches = getQuestionContranPrf2021Matches(question);
 
   return {
     id: question.id_question,
@@ -5758,6 +5892,7 @@ async function getQuestion(questionId) {
     normativeUpdate,
     currentLawAnswer,
     normativeTeachingComment,
+    contranPrf2021Matches,
     appliedTheoryCard,
     legalStudy,
     answering: {

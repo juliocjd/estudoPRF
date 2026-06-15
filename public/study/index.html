@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260613-law-layout-fix">
+    <link rel="stylesheet" href="/study.css?v=20260615-historical-mobile-table">
   </head>
   <body>
     <div class="app-shell">
@@ -161,6 +161,7 @@
                 <button id="toggleTheoryCoverage" class="menu-item" type="button">Cobertura de teoria</button>
                 <button id="toggleSubjects" class="menu-item" type="button">Ranking de assuntos</button>
                 <button id="toggleNormative" class="menu-item" type="button">Revisão normativa</button>
+                <button id="toggleContranMap" class="menu-item" type="button">Mapa CONTRAN PRF 2021</button>
                 <button id="toggleLawCompendium" class="menu-item" type="button">Legislação PRF</button>
               </div>
             </div>
@@ -189,6 +190,7 @@
               <span id="questionQuickStatus">Preparando estudo</span>
             </div>
             <div id="normativeAlert" class="normative-alert" hidden></div>
+            <div id="contranNormAlert" class="contran-norm-alert" hidden></div>
             <div class="statement" id="statement">
               <p>Carregando banco local...</p>
             </div>
@@ -404,6 +406,31 @@
             <article class="law-source-detail" id="lawSourceDetail" aria-label="Apostila da Lei"></article>
           </div>
         </section>
+
+        <section class="contran-map-panel report-panel" id="contranMapPanel" hidden>
+          <div class="subjects-head">
+            <div>
+              <strong>Mapa CONTRAN PRF 2021</strong>
+              <span id="contranMapInfo"></span>
+            </div>
+            <button id="closeContranMap" class="button button-secondary" type="button">Voltar</button>
+          </div>
+          <p class="report-intro">Consulte a correspondência entre resoluções CONTRAN cobradas no edital PRF 2021 e as normas atualmente vigentes usadas para estudo.</p>
+          <form class="contran-map-search" id="contranMapForm">
+            <label class="field">
+              <span>Resolução do edital</span>
+              <input id="contranMapInput" type="search" placeholder="Ex.: 806/2020, Res. 789/2020 ou CONTRAN 552/2015">
+            </label>
+            <button class="button button-primary" type="submit">Buscar</button>
+          </form>
+          <div class="contran-map-examples" aria-label="Exemplos de consulta">
+            <button class="button button-secondary" type="button" data-contran-example="806/2020">806/2020</button>
+            <button class="button button-secondary" type="button" data-contran-example="789/2020">789/2020</button>
+            <button class="button button-secondary" type="button" data-contran-example="552/2015">552/2015</button>
+          </div>
+          <div id="contranMapStatus" class="contran-map-status"></div>
+          <div id="contranMapResults" class="contran-map-results"></div>
+        </section>
       </main>
     </div>
 
@@ -494,6 +521,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260613-report-layout" type="module"></script>
+    <script src="/study.js?v=20260615-historical-mobile-table" type="module"></script>
   </body>
 </html>

@@ -47,6 +47,7 @@ const state = {
   coverageVisible: false,
   theoryCoverageVisible: false,
   normativeVisible: false,
+  contranMapVisible: false,
   lawCompendiumVisible: false,
   lawCompendiumMode: 'beginner',
   activeLawSourceSlug: '',
@@ -58,6 +59,8 @@ const state = {
   currentLawEditMode: false,
   historicalCommentEditMode: false,
   historicalCommentSelection: null,
+  historicalTableResize: null,
+  contranMapLastQuery: '',
   studyTimeTab: 'today',
   studyTimeSummary: null
 };
@@ -110,6 +113,7 @@ const els = {
   toggleTheoryCoverage: document.querySelector('#toggleTheoryCoverage'),
   toggleSubjects: document.querySelector('#toggleSubjects'),
   toggleNormative: document.querySelector('#toggleNormative'),
+  toggleContranMap: document.querySelector('#toggleContranMap'),
   toggleLawCompendium: document.querySelector('#toggleLawCompendium'),
   closeSubjectsReport: document.querySelector('#closeSubjectsReport'),
   closeCoverageReport: document.querySelector('#closeCoverageReport'),
@@ -209,6 +213,14 @@ const els = {
   normativeReviewStatusFilter: document.querySelector('#normativeReviewStatusFilter'),
   normativeTeachingStatusFilter: document.querySelector('#normativeTeachingStatusFilter'),
   normativeTable: document.querySelector('#normativeTable'),
+  contranMapPanel: document.querySelector('#contranMapPanel'),
+  contranMapInfo: document.querySelector('#contranMapInfo'),
+  contranMapForm: document.querySelector('#contranMapForm'),
+  contranMapInput: document.querySelector('#contranMapInput'),
+  contranMapStatus: document.querySelector('#contranMapStatus'),
+  contranMapResults: document.querySelector('#contranMapResults'),
+  closeContranMap: document.querySelector('#closeContranMap'),
+  contranNormAlert: document.querySelector('#contranNormAlert'),
   supportTabTeaching: document.querySelector('#supportTabTeaching'),
   supportTeachingPanel: document.querySelector('#supportTeachingPanel'),
   teachingInfo: document.querySelector('#teachingInfo'),
@@ -231,6 +243,17 @@ boot().catch(handleBootError);
 async function boot() {
   const [studyState] = await Promise.all([loadStudyState(), loadStats(), loadFilters(), loadExamProfiles()]);
   bindEvents();
+  if (isContranMapRoute()) {
+    state.contranMapVisible = true;
+    renderContranMapVisibility();
+    renderContranMapEmptyState();
+    const initialRef = new URL(window.location.href).searchParams.get('ref') || '';
+    if (initialRef) {
+      if (els.contranMapInput) els.contranMapInput.value = initialRef;
+      await searchContranMap(initialRef, { updateUrl: false });
+    }
+    return;
+  }
   const initialTargetId = getInitialTargetId();
   if (initialTargetId) {
     setStudyMode('all');
@@ -504,6 +527,19 @@ function bindEvents() {
       await loadNormativeReview();
     }
   });
+  els.toggleContranMap?.addEventListener('click', async () => {
+    closeAllDropdowns();
+    const shouldOpen = !state.contranMapVisible;
+    closeReportPanels();
+    closeLawCompendiumView();
+    state.contranMapVisible = shouldOpen;
+    renderContranMapVisibility();
+    if (state.contranMapVisible) {
+      renderContranMapEmptyState();
+      updateContranMapUrl();
+      els.contranMapInput?.focus();
+    }
+  });
   els.toggleLawCompendium?.addEventListener('click', async () => {
     closeAllDropdowns();
     state.lawCompendiumVisible = !state.lawCompendiumVisible;
@@ -532,6 +568,42 @@ function bindEvents() {
   els.closeNormativeReport?.addEventListener('click', () => {
     state.normativeVisible = false;
     renderNormativeVisibility();
+  });
+  els.closeContranMap?.addEventListener('click', () => {
+    state.contranMapVisible = false;
+    renderContranMapVisibility();
+    updateContranMapUrl();
+  });
+  els.contranMapForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await searchContranMap(els.contranMapInput?.value || '');
+  });
+  els.contranMapPanel?.addEventListener('click', async (event) => {
+    const example = event.target.closest('[data-contran-example]');
+    if (example) {
+      const value = example.dataset.contranExample || '';
+      if (els.contranMapInput) els.contranMapInput.value = value;
+      await searchContranMap(value);
+      return;
+    }
+    const openMap = event.target.closest('[data-action="contran-map-search"]');
+    if (openMap) {
+      if (els.contranMapInput) els.contranMapInput.value = openMap.dataset.ref || '';
+      await searchContranMap(openMap.dataset.ref || '');
+    }
+  });
+  els.contranNormAlert?.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-action="open-contran-map"]');
+    if (!button) return;
+    event.preventDefault();
+    closeAllDropdowns();
+    closeReportPanels();
+    closeLawCompendiumView();
+    state.contranMapVisible = true;
+    renderContranMapVisibility();
+    const ref = button.dataset.ref || '';
+    if (els.contranMapInput) els.contranMapInput.value = ref;
+    await searchContranMap(ref);
   });
 
   els.subjectsList.addEventListener('click', async (event) => {
@@ -774,10 +846,17 @@ function bindEvents() {
   });
 
   els.commentBody.addEventListener('input', (event) => {
-    if (event.target.closest('[data-historical-comment-editor]')) {
-      saveHistoricalCommentSelection(event.target.closest('[data-historical-comment-editor]'));
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) {
+      prepareHistoricalCommentTables(editor);
+      saveHistoricalCommentSelection(editor);
       setHistoricalCommentStatus('');
     }
+  });
+
+  els.commentBody.addEventListener('paste', (event) => {
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) scheduleHistoricalTablePreparation(editor);
   });
 
   els.commentBody.addEventListener('keyup', (event) => {
@@ -863,9 +942,15 @@ function bindEvents() {
   els.inlineSupportBody?.addEventListener('input', (event) => {
     const editor = event.target.closest('[data-historical-comment-editor]');
     if (editor) {
+      prepareHistoricalCommentTables(editor);
       saveHistoricalCommentSelection(editor);
       setHistoricalCommentStatus('');
     }
+  });
+
+  els.inlineSupportBody?.addEventListener('paste', (event) => {
+    const editor = event.target.closest('[data-historical-comment-editor]');
+    if (editor) scheduleHistoricalTablePreparation(editor);
   });
 
   els.inlineSupportBody?.addEventListener('keyup', (event) => {
@@ -913,6 +998,8 @@ function bindEvents() {
       closeSupportPanel();
     }
   });
+
+  document.addEventListener('pointerdown', handleHistoricalTableResizePointerDown);
 
   els.confidenceOptions.addEventListener('click', (event) => {
     const button = event.target.closest('[data-confidence]');
@@ -1406,6 +1493,7 @@ function renderEmptyQuestion() {
   els.questionMeta.textContent = 'Nenhuma questão encontrada';
   els.questionQuickStatus.textContent = 'Sem resultado para os filtros atuais';
   renderQuestionBadges(null);
+  renderContranPrf2021QuestionAlert(null);
   els.normativeAlert.hidden = true;
   els.normativeAlert.innerHTML = '';
   els.statement.innerHTML = '<p class="empty">Nenhuma questão encontrada para os filtros atuais. Tente limpar os filtros ou mudar de assunto.</p>';
@@ -2439,6 +2527,7 @@ async function selectQuestion(questionId, options = {}) {
     els.openTheory.disabled = true;
     if (els.openQuickTheory) els.openQuickTheory.disabled = true;
     renderQuestionSituationTone(null);
+    renderContranPrf2021QuestionAlert(null);
     els.statement.innerHTML = `<p class="empty">${escapeHtml(question.error)}</p>`;
     return;
   }
@@ -2511,6 +2600,7 @@ function renderQuestion(question, options = {}) {
   renderQuestionBadges(question);
   renderMastery(question.mastery);
   renderQuestionSituationTone(question);
+  renderContranPrf2021QuestionAlert(question);
   els.statement.innerHTML = formatStatementHtml(question) || question.statementHtml || `<p>${escapeHtml(question.statementText || 'Sem enunciado')}</p>`;
   applyStatementLengthClass(question);
   renderAnswerStatus(question);
@@ -2658,6 +2748,7 @@ function renderHistoricalCommentPanel(question) {
         ` : ''}
       </section>
     `;
+    prepareHistoricalCommentTables(els.commentBody.querySelector('[data-historical-comment-editor]'));
     return;
   }
 
@@ -2760,7 +2851,7 @@ function historicalCommentToolbar({ editing }) {
 }
 
 function canEditHistoricalComment() {
-  return window.matchMedia?.('(min-width: 1181px)').matches;
+  return true;
 }
 
 async function handleHistoricalCommentAction(button, event) {
@@ -2889,6 +2980,121 @@ function findHistoricalCommentEditor(source) {
   return root.querySelector?.('[data-historical-comment-editor]');
 }
 
+function scheduleHistoricalTablePreparation(editor) {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => prepareHistoricalCommentTables(editor));
+  });
+}
+
+function prepareHistoricalCommentTables(editor) {
+  if (!editor) return;
+  editor.querySelectorAll('.historical-column-resizer').forEach((handle) => handle.remove());
+  editor.querySelectorAll('table').forEach((table) => {
+    const firstRow = table.rows?.[0];
+    if (!firstRow || firstRow.cells.length < 2) return;
+    table.classList.add('is-resizable-table');
+    const colgroup = ensureHistoricalTableColgroup(table, firstRow.cells.length);
+    const cols = Array.from(colgroup.querySelectorAll('col'));
+    const tableRect = table.getBoundingClientRect();
+    let hasMeasuredWidth = false;
+    Array.from(firstRow.cells).forEach((cell, index) => {
+      const col = cols[index];
+      const width = Math.round(cell.getBoundingClientRect().width);
+      if (col && width > 0 && !col.style.width) {
+        col.style.width = `${width}px`;
+        hasMeasuredWidth = true;
+      }
+      const handle = document.createElement('span');
+      handle.className = 'historical-column-resizer';
+      handle.contentEditable = 'false';
+      handle.setAttribute('aria-hidden', 'true');
+      handle.dataset.historicalColumnIndex = String(index);
+      cell.appendChild(handle);
+    });
+    if (tableRect.width > 0 && (!table.style.width || hasMeasuredWidth)) {
+      setHistoricalTableWidthFromColumns(table, cols, tableRect.width);
+    }
+  });
+}
+
+function ensureHistoricalTableColgroup(table, columnCount) {
+  let colgroup = table.querySelector(':scope > colgroup');
+  if (!colgroup) {
+    colgroup = document.createElement('colgroup');
+    table.insertBefore(colgroup, table.firstChild);
+  }
+  while (colgroup.querySelectorAll('col').length < columnCount) {
+    colgroup.appendChild(document.createElement('col'));
+  }
+  return colgroup;
+}
+
+function setHistoricalTableWidthFromColumns(table, cols, fallbackWidth = 0) {
+  const totalWidth = cols.reduce((sum, col) => sum + (parseFloat(col.style.width) || 0), 0);
+  const width = Math.round(totalWidth || fallbackWidth);
+  if (width > 0) table.style.width = `${width}px`;
+}
+
+function getHistoricalCommentEditorHtml(editor) {
+  const clone = editor.cloneNode(true);
+  clone.querySelectorAll('.historical-column-resizer').forEach((handle) => handle.remove());
+  return clone.innerHTML;
+}
+
+function handleHistoricalTableResizePointerDown(event) {
+  const handle = event.target.closest?.('.historical-column-resizer');
+  if (!handle || !canEditHistoricalComment()) return;
+  const editor = handle.closest('[data-historical-comment-editor]');
+  const table = handle.closest('table');
+  if (!editor || !table) return;
+  event.preventDefault();
+  event.stopPropagation();
+
+  const firstRow = table.rows?.[0];
+  const columnIndex = Number(handle.dataset.historicalColumnIndex || 0);
+  if (!firstRow || !Number.isInteger(columnIndex)) return;
+
+  const colgroup = ensureHistoricalTableColgroup(table, firstRow.cells.length);
+  const cols = Array.from(colgroup.querySelectorAll('col'));
+  const targetCol = cols[columnIndex];
+  if (!targetCol) return;
+
+  const cell = firstRow.cells[columnIndex];
+  const startWidth = parseFloat(targetCol.style.width) || cell?.getBoundingClientRect().width || 80;
+  state.historicalTableResize = {
+    editor,
+    table,
+    cols,
+    targetCol,
+    columnIndex,
+    startX: event.clientX,
+    startWidth: Math.max(40, startWidth)
+  };
+  document.body.classList.add('is-resizing-historical-table');
+  document.addEventListener('pointermove', handleHistoricalTableResizePointerMove);
+  document.addEventListener('pointerup', handleHistoricalTableResizePointerUp, { once: true });
+}
+
+function handleHistoricalTableResizePointerMove(event) {
+  const resize = state.historicalTableResize;
+  if (!resize) return;
+  const nextWidth = Math.max(40, Math.round(resize.startWidth + event.clientX - resize.startX));
+  resize.targetCol.style.width = `${nextWidth}px`;
+  setHistoricalTableWidthFromColumns(resize.table, resize.cols);
+  setHistoricalCommentStatus('');
+}
+
+function handleHistoricalTableResizePointerUp() {
+  const resize = state.historicalTableResize;
+  state.historicalTableResize = null;
+  document.body.classList.remove('is-resizing-historical-table');
+  document.removeEventListener('pointermove', handleHistoricalTableResizePointerMove);
+  if (resize?.editor) {
+    prepareHistoricalCommentTables(resize.editor);
+    saveHistoricalCommentSelection(resize.editor);
+  }
+}
+
 function focusHistoricalCommentEditor() {
   window.requestAnimationFrame(() => {
     const editor = (!els.inlineSupportCard?.hidden && els.inlineSupportBody?.querySelector('[data-historical-comment-editor]'))
@@ -2901,7 +3107,7 @@ async function saveHistoricalCommentEdit(button) {
   if (!state.selectedId || !state.currentQuestion) return;
   const editor = findHistoricalCommentEditor(button);
   if (!editor) return;
-  const html = editor.innerHTML.trim();
+  const html = getHistoricalCommentEditorHtml(editor).trim();
   const card = button.closest('[data-historical-comment-card]');
   const markNotOutdated = Boolean(card?.querySelector('[data-historical-comment-clear-outdated]')?.checked);
   setHistoricalCommentStatus('Salvando...');
@@ -4117,6 +4323,26 @@ function renderQuestionSituationTone(question) {
   document.body.classList.toggle('has-outdated-question', !isCanceled && isOutdated);
 }
 
+function renderContranPrf2021QuestionAlert(question) {
+  if (!els.contranNormAlert) return;
+  const matches = Array.isArray(question?.contranPrf2021Matches) ? question.contranPrf2021Matches : [];
+  if (!matches.length) {
+    els.contranNormAlert.hidden = true;
+    els.contranNormAlert.innerHTML = '';
+    return;
+  }
+  const first = matches[0];
+  const sourceRef = formatContranRef(first.sourceNumber, first.sourceYear);
+  els.contranNormAlert.hidden = false;
+  els.contranNormAlert.innerHTML = `
+    <div class="contran-question-alert-head">
+      <strong>Atualização normativa CONTRAN</strong>
+      <button class="button button-secondary" type="button" data-action="open-contran-map" data-ref="${escapeAttr(sourceRef)}">Ver mapa</button>
+    </div>
+    ${matches.slice(0, 3).map((item) => renderContranPrf2021NormCard(item, { mode: 'compact' })).join('')}
+  `;
+}
+
 function renderStudyStatusControl(question) {
   if (!els.studyStatusControl) {
     return;
@@ -4708,6 +4934,9 @@ function renderInlineSupportCard() {
   const shouldResetScroll = wasHidden || renderKey !== state.inlineSupportRenderKey;
   els.inlineSupportBody.innerHTML = bodyHtml;
   state.inlineSupportRenderKey = renderKey;
+  if (state.inlineSupportTab === 'comment') {
+    prepareHistoricalCommentTables(els.inlineSupportBody.querySelector('[data-historical-comment-editor]'));
+  }
   if (shouldResetScroll) {
     resetInlineSupportScroll();
   }
@@ -5067,6 +5296,13 @@ function renderNormativeVisibility() {
   updateReportViewState();
 }
 
+function renderContranMapVisibility() {
+  if (!els.contranMapPanel || !els.toggleContranMap) return;
+  els.contranMapPanel.hidden = !state.contranMapVisible;
+  els.toggleContranMap.textContent = state.contranMapVisible ? 'Ocultar mapa CONTRAN' : 'Mapa CONTRAN PRF 2021';
+  updateReportViewState();
+}
+
 function renderLawCompendiumVisibility() {
   if (!els.lawCompendiumPanel || !els.toggleLawCompendium) return;
   els.lawCompendiumPanel.hidden = !state.lawCompendiumVisible;
@@ -5081,6 +5317,7 @@ function updateReportViewState() {
     || state.theoryCoverageVisible
     || state.subjectsVisible
     || state.normativeVisible
+    || state.contranMapVisible
     || state.lawCompendiumVisible
   );
   document.body.classList.toggle('is-report-view', hasOpenReport);
@@ -5091,16 +5328,179 @@ function closeReportPanels() {
   state.theoryCoverageVisible = false;
   state.subjectsVisible = false;
   state.normativeVisible = false;
+  state.contranMapVisible = false;
   renderCoverageVisibility();
   renderTheoryCoverageVisibility();
   renderSubjectsVisibility();
   renderNormativeVisibility();
+  renderContranMapVisibility();
 }
 
 function closeLawCompendiumView() {
   if (!state.lawCompendiumVisible) return;
   state.lawCompendiumVisible = false;
   renderLawCompendiumVisibility();
+}
+
+function isContranMapRoute() {
+  return ['/contran-prf-2021', '/legislacao-prf/contran'].includes(window.location.pathname);
+}
+
+function updateContranMapUrl() {
+  if (!window.history?.pushState) return;
+  if (state.contranMapVisible) {
+    const url = new URL('/contran-prf-2021', window.location.origin);
+    if (state.contranMapLastQuery) url.searchParams.set('ref', state.contranMapLastQuery);
+    window.history.pushState({}, '', `${url.pathname}${url.search}`);
+  } else if (isContranMapRoute()) {
+    window.history.pushState({}, '', '/');
+  }
+}
+
+function renderContranMapEmptyState() {
+  if (!els.contranMapStatus || !els.contranMapResults) return;
+  els.contranMapInfo.textContent = 'consulte por número/ano';
+  els.contranMapStatus.textContent = 'Digite uma resolução antiga do edital PRF 2021 ou use um exemplo.';
+  els.contranMapResults.innerHTML = '';
+}
+
+async function searchContranMap(query, options = {}) {
+  const refs = detectContranPrf2021References(query);
+  state.contranMapLastQuery = refs[0] || String(query || '').trim();
+  if (!refs.length) {
+    els.contranMapInfo.textContent = 'referência inválida';
+    els.contranMapStatus.textContent = 'Informe uma referência no formato número/ano, por exemplo 806/2020.';
+    els.contranMapResults.innerHTML = renderContranNotFoundCard(String(query || '').trim());
+    if (options.updateUrl !== false) updateContranMapUrl();
+    return;
+  }
+  els.contranMapInfo.textContent = 'buscando';
+  els.contranMapStatus.textContent = 'Consultando mapa CONTRAN PRF 2021...';
+  const data = await api('/api/contran-prf-2021/resolve-batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refs })
+  });
+  const found = data.found || [];
+  const notFound = data.notFound || [];
+  els.contranMapInfo.textContent = found.length
+    ? `${found.length} mapeamento${found.length === 1 ? '' : 's'} encontrado${found.length === 1 ? '' : 's'}`
+    : 'sem mapeamento';
+  els.contranMapStatus.textContent = found.length
+    ? 'Correspondência normativa encontrada no mapa implantado.'
+    : 'Nenhuma correspondência foi encontrada para a referência informada.';
+  els.contranMapResults.innerHTML = [
+    ...found.map((item) => renderContranPrf2021NormCard(item.result, { mode: 'full' })),
+    ...notFound.map((item) => renderContranNotFoundCard(`${item.searched?.number || ''}/${item.searched?.year || ''}`))
+  ].join('');
+  if (options.updateUrl !== false) updateContranMapUrl();
+}
+
+function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
+  const sourceRef = formatContranRef(item.sourceNumber, item.sourceYear);
+  const targetRef = formatContranRef(item.targetNumber, item.targetYear);
+  const relationLabel = contranRelationLabel(item.relation);
+  const scope = contranScopeLabel(item);
+  const aliases = normalizeContranAliases(item.sourceAliases);
+  const title = item.relation === 'permanece_vigente'
+    ? 'Norma do edital permanece vigente'
+    : 'Atualização normativa CONTRAN';
+  if (mode === 'compact') {
+    return `
+      <article class="contran-norm-card is-compact">
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(sourceRef)} → ${escapeHtml(targetRef || 'sem alvo')}</span>
+        </div>
+        <small>${escapeHtml([relationLabel, scope].filter(Boolean).join(' · '))}</small>
+        ${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ''}
+      </article>
+    `;
+  }
+  return `
+    <article class="contran-norm-card">
+      <div class="contran-norm-card-head">
+        <div>
+          <strong>${escapeHtml(sourceRef)}</strong>
+          <span>Norma do edital PRF 2021</span>
+        </div>
+        <span class="contran-arrow">→</span>
+        <div>
+          <strong>${escapeHtml(targetRef)}</strong>
+          <span>${escapeHtml(item.targetTitle || 'Norma CONTRAN vigente correspondente')}</span>
+        </div>
+      </div>
+      <dl class="contran-norm-fields">
+        <div><dt>Status</dt><dd>${escapeHtml(relationLabel)}</dd></div>
+        <div><dt>Escopo</dt><dd>${escapeHtml(scope || 'texto integral')}</dd></div>
+        <div><dt>Observações</dt><dd>${escapeHtml(item.notes || item.sourceTitleHint || 'Sem observações específicas.')}</dd></div>
+        <div><dt>Aliases</dt><dd>${escapeHtml(aliases.length ? aliases.join(', ') : 'Sem aliases cadastrados.')}</dd></div>
+      </dl>
+      ${item.targetOfficialUrl ? `<a class="button button-secondary" href="${escapeAttr(item.targetOfficialUrl)}" target="_blank" rel="noreferrer">Abrir norma oficial</a>` : ''}
+    </article>
+  `;
+}
+
+function renderContranNotFoundCard(ref) {
+  return `
+    <article class="contran-norm-card is-empty">
+      <strong>Mapeamento não encontrado</strong>
+      <p>Não há correspondência cadastrada para ${escapeHtml(ref || 'a referência informada')} no mapa CONTRAN PRF 2021.</p>
+    </article>
+  `;
+}
+
+function detectContranPrf2021References(text) {
+  const value = String(text || '');
+  const refs = [];
+  const seen = new Set();
+  const patterns = [
+    /\b(?:resolu[cç][aã]o|res\.?)\s*(?:contran\s*)?(?:n[ºo]\.?\s*)?(\d{1,4}(?:\.\d{3})?)\s*\/\s*(\d{2,4})\b/gi,
+    /\bcontran\s*(?:n[ºo]\.?\s*)?(\d{1,4}(?:\.\d{3})?)\s*\/\s*(\d{2,4})\b/gi,
+    /\b(\d{1,4}(?:\.\d{3})?)\s*\/\s*(19\d{2}|20\d{2})\b/g
+  ];
+  for (const pattern of patterns) {
+    for (const match of value.matchAll(pattern)) {
+      let year = match[2];
+      if (year.length === 2) year = Number(year) > 80 ? `19${year}` : `20${year}`;
+      const number = String(match[1] || '').replace(/^0+(?=\d)/, '') || String(match[1] || '');
+      const ref = `${number}/${year}`;
+      if (seen.has(ref)) continue;
+      seen.add(ref);
+      refs.push(ref);
+      if (refs.length >= 12) return refs;
+    }
+  }
+  return refs;
+}
+
+function formatContranRef(number, year) {
+  return number && year ? `${number}/${year}` : '';
+}
+
+function contranRelationLabel(relation) {
+  return {
+    permanece_vigente: 'permanece vigente',
+    substituida_ou_consolidada: 'substituída/consolidada',
+    substituida_por_cadeia_anual: 'substituída por cadeia anual'
+  }[relation] || relation || 'status não informado';
+}
+
+function contranScopeLabel(item = {}) {
+  if (item.editalScope && item.editalScope !== 'texto integral') return item.editalScope;
+  const policy = item.scopePolicy || {};
+  if (policy.exclude_annexes_from_original_edital) return 'exceto anexos';
+  if (policy.exclude_fichas_from_original_edital) return 'exceto fichas';
+  if (policy.include_only_current_equivalent) return policy.include_only_current_equivalent;
+  return item.editalScope || 'texto integral';
+}
+
+function normalizeContranAliases(aliases) {
+  if (!Array.isArray(aliases)) return [];
+  return aliases.map((alias) => {
+    if (typeof alias === 'string') return alias;
+    return formatContranRef(alias.number || alias.old_number || alias.source_number, alias.year || alias.old_year || alias.source_year);
+  }).filter(Boolean);
 }
 
 function renderPager() {

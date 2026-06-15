@@ -2298,6 +2298,52 @@ button:disabled {
   line-height: 1.62;
 }
 
+.historical-comment-editor table.is-resizable-table,
+.historical-comment-content table.is-resizable-table {
+  max-width: none;
+  table-layout: fixed;
+}
+
+.historical-comment-editor table.is-resizable-table th,
+.historical-comment-editor table.is-resizable-table td {
+  position: relative;
+}
+
+.historical-column-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  z-index: 2;
+  width: 7px;
+  height: 100%;
+  min-height: 24px;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.historical-column-resizer::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 3px;
+  width: 1px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.historical-column-resizer:hover::after,
+.is-resizing-historical-table .historical-column-resizer::after {
+  background: var(--primary);
+}
+
+.is-resizing-historical-table,
+.is-resizing-historical-table * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
 .historical-comment-editor:focus {
   border-color: var(--primary);
   outline: 3px solid rgba(37, 99, 235, 0.16);
@@ -2325,6 +2371,137 @@ button:disabled {
 
 .historical-comment-content {
   min-width: 0;
+  overflow-x: auto;
+}
+
+.contran-map-panel {
+  gap: 16px;
+}
+
+.contran-map-search {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.contran-map-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.contran-map-status {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.contran-map-results {
+  display: grid;
+  gap: 12px;
+}
+
+.contran-norm-alert {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: var(--info-soft);
+}
+
+.contran-question-alert-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.contran-question-alert-head strong {
+  color: var(--primary);
+  font-size: 13px;
+}
+
+.contran-norm-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  background: var(--surface);
+}
+
+.contran-norm-card.is-compact {
+  gap: 4px;
+  border-color: rgba(37, 99, 235, 0.18);
+  padding: 10px;
+}
+
+.contran-norm-card.is-empty {
+  border-color: rgba(217, 119, 6, 0.3);
+  background: var(--warning-soft);
+}
+
+.contran-norm-card.is-compact > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+}
+
+.contran-norm-card strong {
+  color: var(--text);
+}
+
+.contran-norm-card small,
+.contran-norm-card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.contran-norm-card-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.4fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.contran-norm-card-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.contran-norm-card-head span,
+.contran-norm-fields dt {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.contran-arrow {
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.contran-norm-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.contran-norm-fields div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.contran-norm-fields dd {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.45;
 }
 
 .quick-theory-card {
@@ -2918,10 +3095,6 @@ button:disabled {
     display: none !important;
   }
 
-  .historical-comment-toolbar {
-    display: none;
-  }
-
   .answer-panel {
     grid-column: auto;
     grid-row: auto;
@@ -3108,6 +3281,43 @@ button:disabled {
 
   .teaching-edit-actions .button {
     flex: 1;
+  }
+
+  .historical-comment-toolbar.is-editing {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .historical-format-tools {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+  }
+
+  .historical-edit-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .historical-comment-editor {
+    min-height: 220px;
+    max-height: 58vh;
+    padding: 12px;
+  }
+
+  .contran-map-search,
+  .contran-norm-card-head,
+  .contran-norm-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .contran-arrow {
+    display: none;
+  }
+
+  .contran-question-alert-head {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
