@@ -593,6 +593,21 @@ button:disabled {
   min-height: calc(100vh - 210px);
 }
 
+.is-report-page .report-panel:not([hidden]) {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+}
+
+.is-report-page .mobile-filter-toggle,
+.is-report-page .filter-bar,
+.is-report-page .advanced-filters,
+.is-report-page .context-bar {
+  display: none !important;
+}
+
 .question-card,
 .inline-support-card,
 .answer-panel,

@@ -6,6 +6,7 @@ import { openStudyDatabase } from './db/open-study-database.mjs';
 import { safeJsonParse } from './normative-teaching-utils.mjs';
 import { initLawCompendiumSchema as initLawCompendiumSchemaShared, safeJson as parseLawJson } from '../scripts/law-compendium-utils.mjs';
 import { loadEnvFiles } from '../scripts/lib/env.mjs';
+import { getContranPrfResolutionExamStats } from '../scripts/contran-prf-exam-counts.mjs';
 
 loadEnvFiles();
 
@@ -422,7 +423,11 @@ async function routeRequest(request, response) {
     return;
   }
 
-  if (url.pathname === '/contran-prf-2021' || url.pathname === '/legislacao-prf/contran') {
+  if (
+    url.pathname === '/contran-prf-2021'
+    || url.pathname === '/legislacao-prf/contran'
+    || url.pathname.startsWith('/relatorios/')
+  ) {
     await serveFile(response, PUBLIC_DIR, 'index.html');
     return;
   }
@@ -1251,6 +1256,7 @@ function normalizeContranPrf2021Row(row, aliasMap = null, questionCounts = null)
     || /\bexceto\s+os?\s+anexos?\b/i.test(editalScope);
   const fichasExcluded = Boolean(scopePolicy.exclude_fichas_from_original_edital)
     || /\bexceto\s+as?\s+fichas?\b/i.test(editalScope);
+  const sourceRef = `${row.source_number_text}/${row.source_year_text}`;
   return {
     sourceOrgan: row.source_organ || '',
     sourceNumber: row.source_number_text || '',
@@ -1265,8 +1271,9 @@ function normalizeContranPrf2021Row(row, aliasMap = null, questionCounts = null)
     targetOfficialUrl: row.target_official_url || '',
     relation: row.relation || '',
     scopePolicy,
-    sourceQuestionStats: serializeContranQuestionStats(questionCounts?.get(`${row.source_number_text}/${row.source_year_text}`)),
+    sourceQuestionStats: serializeContranQuestionStats(questionCounts?.get(sourceRef)),
     targetQuestionStats: serializeContranQuestionStats(questionCounts?.get(`${row.target_number_text}/${row.target_year_text}`)),
+    examQuestionStats: getContranPrfResolutionExamStats(sourceRef),
     annexLinks: normalizeContranAnnexLinks(scopePolicy.annex_urls || scopePolicy.annexLinks),
     annexesExcluded,
     fichasExcluded,

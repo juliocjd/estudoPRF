@@ -69,6 +69,39 @@ const state = {
   studyTimeSummary: null
 };
 
+const REPORT_ROUTES = {
+  coverage: {
+    path: '/relatorios/base-prova',
+    title: 'Base x Prova',
+    load: () => loadExamCoverage()
+  },
+  theoryCoverage: {
+    path: '/relatorios/cobertura-teoria',
+    title: 'Cobertura de teoria',
+    load: () => loadTheoryCoverage()
+  },
+  subjects: {
+    path: '/relatorios/ranking-assuntos',
+    title: 'Ranking de assuntos',
+    load: () => loadSubjectsRanking()
+  },
+  normative: {
+    path: '/relatorios/revisao-normativa',
+    title: 'Revisão normativa',
+    load: () => loadNormativeReview()
+  },
+  contranMap: {
+    path: '/relatorios/mapa-contran-prf-2021',
+    title: 'Mapa CONTRAN PRF 2021',
+    load: () => loadContranMapList()
+  },
+  lawCompendium: {
+    path: '/relatorios/legislacao-prf',
+    title: 'Legislação PRF',
+    load: () => loadLawCompendiumOverview()
+  }
+};
+
 const els = {
   stats: document.querySelector('#stats'),
   studyTimeTodayTab: document.querySelector('#studyTimeTodayTab'),
@@ -250,19 +283,12 @@ boot().catch(handleBootError);
 async function boot() {
   bindEvents();
   const [studyState] = await Promise.all([loadStudyState(), loadStats(), loadFilters(), loadExamProfiles()]);
-  if (state.filters.examKey) {
+  const initialReportKey = getCurrentReportRouteKey();
+  if (initialReportKey) {
+    await openReportPage(initialReportKey, { replace: true, preserveContranQuery: true });
     return;
   }
-  if (isContranMapRoute()) {
-    state.contranMapVisible = true;
-    renderContranMapVisibility();
-    const initialRef = new URL(window.location.href).searchParams.get('ref') || '';
-    if (initialRef) {
-      if (els.contranMapInput) els.contranMapInput.value = initialRef;
-      await searchContranMap(initialRef, { updateUrl: false });
-    } else {
-      await loadContranMapList();
-    }
+  if (state.filters.examKey) {
     return;
   }
   const initialTargetId = getInitialTargetId();
@@ -300,6 +326,9 @@ function bindEvents() {
   window.addEventListener('blur', syncQuestionTimerTracking);
   window.addEventListener('focus', syncQuestionTimerTracking);
   window.addEventListener('pagehide', pauseQuestionTimer);
+  window.addEventListener('popstate', () => {
+    handleReportRouteChange().catch(handleBootError);
+  });
   els.studyTimeTodayTab?.addEventListener('click', () => setStudyTimeTab('today'));
   els.studyTimeTotalTab?.addEventListener('click', () => setStudyTimeTab('total'));
   updateAdvancedFiltersSummary();
@@ -526,94 +555,47 @@ function bindEvents() {
   });
   els.toggleCoverage.addEventListener('click', async () => {
     closeAllDropdowns();
-    const shouldOpen = !state.coverageVisible;
-    closeReportPanels();
-    closeLawCompendiumView();
-    state.coverageVisible = shouldOpen;
-    renderCoverageVisibility();
-    if (state.coverageVisible) {
-      await loadExamCoverage();
-    }
+    await openReportPage('coverage');
   });
   els.toggleTheoryCoverage?.addEventListener('click', async () => {
     closeAllDropdowns();
-    const shouldOpen = !state.theoryCoverageVisible;
-    closeReportPanels();
-    closeLawCompendiumView();
-    state.theoryCoverageVisible = shouldOpen;
-    renderTheoryCoverageVisibility();
-    if (state.theoryCoverageVisible) {
-      await loadTheoryCoverage();
-    }
+    await openReportPage('theoryCoverage');
   });
   els.toggleSubjects.addEventListener('click', async () => {
     closeAllDropdowns();
-    const shouldOpen = !state.subjectsVisible;
-    closeReportPanels();
-    closeLawCompendiumView();
-    state.subjectsVisible = shouldOpen;
-    renderSubjectsVisibility();
-    if (state.subjectsVisible) {
-      await loadSubjectsRanking();
-    }
+    await openReportPage('subjects');
   });
   els.toggleNormative.addEventListener('click', async () => {
     closeAllDropdowns();
-    const shouldOpen = !state.normativeVisible;
-    closeReportPanels();
-    closeLawCompendiumView();
-    state.normativeVisible = shouldOpen;
-    renderNormativeVisibility();
-    if (state.normativeVisible) {
-      await loadNormativeReview();
-    }
+    await openReportPage('normative');
   });
   els.toggleContranMap?.addEventListener('click', async () => {
     closeAllDropdowns();
-    const shouldOpen = !state.contranMapVisible;
-    closeReportPanels();
-    closeLawCompendiumView();
-    state.contranMapVisible = shouldOpen;
-    renderContranMapVisibility();
-    if (state.contranMapVisible) {
-      await loadContranMapList();
-      updateContranMapUrl();
-      els.contranMapInput?.focus();
-    }
+    await openReportPage('contranMap');
+    els.contranMapInput?.focus();
   });
   els.toggleLawCompendium?.addEventListener('click', async () => {
     closeAllDropdowns();
-    state.lawCompendiumVisible = !state.lawCompendiumVisible;
-    if (state.lawCompendiumVisible) closeReportPanels();
-    renderLawCompendiumVisibility();
-    if (state.lawCompendiumVisible) {
-      await loadLawCompendiumOverview();
-    }
+    await openReportPage('lawCompendium');
   });
 
   els.closeLawCompendium?.addEventListener('click', () => {
-    closeLawCompendiumView();
+    navigateStudyHome();
   });
   els.closeSubjectsReport?.addEventListener('click', () => {
-    state.subjectsVisible = false;
-    renderSubjectsVisibility();
+    navigateStudyHome();
   });
   els.closeCoverageReport?.addEventListener('click', () => {
-    state.coverageVisible = false;
-    renderCoverageVisibility();
+    navigateStudyHome();
   });
   els.closeTheoryCoverageReport?.addEventListener('click', () => {
-    state.theoryCoverageVisible = false;
-    renderTheoryCoverageVisibility();
+    navigateStudyHome();
   });
   els.closeNormativeReport?.addEventListener('click', () => {
-    state.normativeVisible = false;
-    renderNormativeVisibility();
+    navigateStudyHome();
   });
   els.closeContranMap?.addEventListener('click', () => {
-    state.contranMapVisible = false;
-    renderContranMapVisibility();
-    updateContranMapUrl();
+    navigateStudyHome();
   });
   els.contranMapForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -5469,33 +5451,33 @@ function renderSupportVisibility() {
 
 function renderSubjectsVisibility() {
   els.subjectsPanel.hidden = !state.subjectsVisible;
-  els.toggleSubjects.textContent = state.subjectsVisible ? 'Ocultar ranking' : 'Ranking de assuntos';
+  els.toggleSubjects.textContent = 'Ranking de assuntos';
   updateReportViewState();
 }
 
 function renderCoverageVisibility() {
   els.coveragePanel.hidden = !state.coverageVisible;
-  els.toggleCoverage.textContent = state.coverageVisible ? 'Ocultar base' : 'Base x Prova';
+  els.toggleCoverage.textContent = 'Base x Prova';
   updateReportViewState();
 }
 
 function renderTheoryCoverageVisibility() {
   if (!els.theoryCoveragePanel || !els.toggleTheoryCoverage) return;
   els.theoryCoveragePanel.hidden = !state.theoryCoverageVisible;
-  els.toggleTheoryCoverage.textContent = state.theoryCoverageVisible ? 'Ocultar cobertura de teoria' : 'Cobertura de teoria';
+  els.toggleTheoryCoverage.textContent = 'Cobertura de teoria';
   updateReportViewState();
 }
 
 function renderNormativeVisibility() {
   els.normativePanel.hidden = !state.normativeVisible;
-  els.toggleNormative.textContent = state.normativeVisible ? 'Ocultar revisão normativa' : 'Revisão normativa';
+  els.toggleNormative.textContent = 'Revisão normativa';
   updateReportViewState();
 }
 
 function renderContranMapVisibility() {
   if (!els.contranMapPanel || !els.toggleContranMap) return;
   els.contranMapPanel.hidden = !state.contranMapVisible;
-  els.toggleContranMap.textContent = state.contranMapVisible ? 'Ocultar mapa CONTRAN' : 'Mapa CONTRAN PRF 2021';
+  els.toggleContranMap.textContent = 'Mapa CONTRAN PRF 2021';
   updateReportViewState();
 }
 
@@ -5503,7 +5485,7 @@ function renderLawCompendiumVisibility() {
   if (!els.lawCompendiumPanel || !els.toggleLawCompendium) return;
   els.lawCompendiumPanel.hidden = !state.lawCompendiumVisible;
   document.body.classList.toggle('is-law-compendium-view', state.lawCompendiumVisible);
-  els.toggleLawCompendium.textContent = state.lawCompendiumVisible ? 'Ocultar Legislação PRF' : 'Legislação PRF';
+  els.toggleLawCompendium.textContent = 'Legislação PRF';
   updateReportViewState();
 }
 
@@ -5517,6 +5499,14 @@ function updateReportViewState() {
     || state.lawCompendiumVisible
   );
   document.body.classList.toggle('is-report-view', hasOpenReport);
+  document.body.classList.toggle('is-report-page', hasOpenReport);
+  if (hasOpenReport) {
+    const active = getActiveReportKey();
+    const title = REPORT_ROUTES[active]?.title || 'Relatório';
+    document.title = `${title} | Estudos PRF`;
+  } else {
+    document.title = 'Estudos PRF';
+  }
 }
 
 function closeReportPanels() {
@@ -5525,11 +5515,13 @@ function closeReportPanels() {
   state.subjectsVisible = false;
   state.normativeVisible = false;
   state.contranMapVisible = false;
+  state.lawCompendiumVisible = false;
   renderCoverageVisibility();
   renderTheoryCoverageVisibility();
   renderSubjectsVisibility();
   renderNormativeVisibility();
   renderContranMapVisibility();
+  renderLawCompendiumVisibility();
 }
 
 function closeLawCompendiumView() {
@@ -5538,14 +5530,97 @@ function closeLawCompendiumView() {
   renderLawCompendiumVisibility();
 }
 
+async function openReportPage(reportKey, options = {}) {
+  const route = REPORT_ROUTES[reportKey];
+  if (!route) return;
+  setActiveReport(reportKey);
+  const url = buildReportUrl(reportKey, options);
+  if (window.history?.pushState) {
+    const method = options.replace ? 'replaceState' : 'pushState';
+    window.history[method]({}, '', url);
+  }
+  if (reportKey === 'contranMap') {
+    const ref = options.contranRef ?? (options.preserveContranQuery
+      ? new URL(window.location.href).searchParams.get('ref')
+      : state.contranMapLastQuery);
+    if (ref) {
+      if (els.contranMapInput) els.contranMapInput.value = ref;
+      await searchContranMap(ref, { updateUrl: false });
+    } else {
+      await loadContranMapList();
+    }
+    return;
+  }
+  await route.load?.();
+}
+
+function setActiveReport(reportKey) {
+  state.coverageVisible = reportKey === 'coverage';
+  state.theoryCoverageVisible = reportKey === 'theoryCoverage';
+  state.subjectsVisible = reportKey === 'subjects';
+  state.normativeVisible = reportKey === 'normative';
+  state.contranMapVisible = reportKey === 'contranMap';
+  state.lawCompendiumVisible = reportKey === 'lawCompendium';
+  renderCoverageVisibility();
+  renderTheoryCoverageVisibility();
+  renderSubjectsVisibility();
+  renderNormativeVisibility();
+  renderContranMapVisibility();
+  renderLawCompendiumVisibility();
+}
+
+function getActiveReportKey() {
+  if (state.coverageVisible) return 'coverage';
+  if (state.theoryCoverageVisible) return 'theoryCoverage';
+  if (state.subjectsVisible) return 'subjects';
+  if (state.normativeVisible) return 'normative';
+  if (state.contranMapVisible) return 'contranMap';
+  if (state.lawCompendiumVisible) return 'lawCompendium';
+  return '';
+}
+
+function buildReportUrl(reportKey, options = {}) {
+  const route = REPORT_ROUTES[reportKey];
+  const url = new URL(route?.path || '/', window.location.origin);
+  if (reportKey === 'contranMap') {
+    const ref = options.contranRef ?? (options.preserveContranQuery
+      ? new URL(window.location.href).searchParams.get('ref')
+      : state.contranMapLastQuery);
+    if (ref) url.searchParams.set('ref', ref);
+  }
+  return `${url.pathname}${url.search}`;
+}
+
+function getCurrentReportRouteKey() {
+  const pathname = window.location.pathname;
+  if (pathname === '/contran-prf-2021' || pathname === '/legislacao-prf/contran') return 'contranMap';
+  return Object.entries(REPORT_ROUTES).find(([, route]) => route.path === pathname)?.[0] || '';
+}
+
+function navigateStudyHome() {
+  closeReportPanels();
+  if (window.history?.pushState) {
+    window.history.pushState({}, '', '/');
+  }
+}
+
+async function handleReportRouteChange() {
+  const reportKey = getCurrentReportRouteKey();
+  if (reportKey) {
+    await openReportPage(reportKey, { replace: true, preserveContranQuery: true });
+    return;
+  }
+  closeReportPanels();
+}
+
 function isContranMapRoute() {
-  return ['/contran-prf-2021', '/legislacao-prf/contran'].includes(window.location.pathname);
+  return getCurrentReportRouteKey() === 'contranMap';
 }
 
 function updateContranMapUrl() {
   if (!window.history?.pushState) return;
   if (state.contranMapVisible) {
-    const url = new URL('/contran-prf-2021', window.location.origin);
+    const url = new URL(REPORT_ROUTES.contranMap.path, window.location.origin);
     if (state.contranMapLastQuery) url.searchParams.set('ref', state.contranMapLastQuery);
     window.history.pushState({}, '', `${url.pathname}${url.search}`);
   } else if (isContranMapRoute()) {
@@ -5642,6 +5717,8 @@ function renderContranCurrentNormCard(group) {
   const scopes = [...group.scopes].filter(Boolean);
   const notes = [...group.notes].filter(Boolean);
   const questionStats = contranGroupQuestionStats(group);
+  const examStats = contranGroupExamQuestionStats(group);
+  const prf2021Direct = contranExamBucket(examStats.directByExam, 'prf_2021_objetiva');
   const annexLinks = collectContranAnnexLinks(group.sources);
   const exclusionNotices = group.sources
     .map((item) => {
@@ -5662,8 +5739,8 @@ function renderContranCurrentNormCard(group) {
       <div class="contran-current-meta">
         <span><strong>${sourceRefs.length}</strong> ${sourceRefs.length === 1 ? 'item' : 'itens'} do edital</span>
         <span>${escapeHtml(relation || 'status não informado')}</span>
-        <span><strong>${Number(questionStats.prfQuestions || 0).toLocaleString('pt-BR')}</strong> questões PRF</span>
-        <span><strong>${Number(questionStats.prf2021Questions || 0).toLocaleString('pt-BR')}</strong> PRF 2021</span>
+        <span><strong>${Number(prf2021Direct.count || 0).toLocaleString('pt-BR')}</strong> PRF 2021 objetiva</span>
+        <span><strong>${Number(questionStats.allTrafficQuestions || 0).toLocaleString('pt-BR')}</strong> base inteira</span>
       </div>
       ${annexLinks.length ? renderContranAnnexLinks(annexLinks) : ''}
       ${exclusionNotices.length ? `
@@ -5675,7 +5752,8 @@ function renderContranCurrentNormCard(group) {
       <dl class="contran-norm-fields">
         <div><dt>Resoluções do edital PRF 2021</dt><dd>${sourceRefs.map((ref) => `<button class="contran-ref-chip" type="button" data-action="contran-map-search" data-ref="${escapeAttr(ref)}">${escapeHtml(ref)}</button>`).join(' ')}</dd></div>
         <div><dt>Escopo</dt><dd>${escapeHtml(scopes.join('; ') || 'texto integral')}</dd></div>
-        <div><dt>Questões vinculadas</dt><dd>${escapeHtml(contranQuestionStatsLabel(questionStats))}</dd></div>
+        ${renderContranExamStatsFields(examStats)}
+        <div><dt>Base inteira de questões</dt><dd>${escapeHtml(contranQuestionStatsLabel(questionStats))}</dd></div>
         <div><dt>Do que trata</dt><dd>${escapeHtml(group.targetTitle || group.sources[0]?.sourceTitleHint || 'Sem descrição cadastrada.')}</dd></div>
         <div><dt>Observações</dt><dd>${escapeHtml(notes.join(' ') || 'Sem observações específicas.')}</dd></div>
       </dl>
@@ -5714,6 +5792,7 @@ function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
   const annexLinks = normalizeContranAnnexLinks(item.annexLinks);
   const exclusionNotice = contranExcludedNotice(item);
   const questionStats = contranItemQuestionStats(item);
+  const examStats = contranItemExamQuestionStats(item);
   const title = item.relation === 'permanece_vigente'
     ? 'Norma do edital permanece vigente'
     : 'Atualização normativa CONTRAN';
@@ -5725,6 +5804,7 @@ function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
           <span>${escapeHtml(sourceRef)} → ${escapeHtml(targetRef || 'sem alvo')}</span>
         </div>
         <small>${escapeHtml([relationLabel, scope].filter(Boolean).join(' · '))}</small>
+        <small>${escapeHtml(contranExamStatsShortLabel(examStats))}</small>
         <small>${escapeHtml(contranQuestionStatsLabel(questionStats))}</small>
         ${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ''}
         ${exclusionNotice ? `<p class="contran-scope-warning is-compact">${escapeHtml(exclusionNotice)}</p>` : ''}
@@ -5747,7 +5827,8 @@ function renderContranPrf2021NormCard(item = {}, { mode = 'compact' } = {}) {
       <dl class="contran-norm-fields">
         <div><dt>Status</dt><dd>${escapeHtml(relationLabel)}</dd></div>
         <div><dt>Escopo</dt><dd>${escapeHtml(scope || 'texto integral')}</dd></div>
-        <div><dt>Questões vinculadas</dt><dd>${escapeHtml(contranQuestionStatsLabel(questionStats))}</dd></div>
+        ${renderContranExamStatsFields(examStats)}
+        <div><dt>Base inteira de questões</dt><dd>${escapeHtml(contranQuestionStatsLabel(questionStats))}</dd></div>
         <div><dt>Observações</dt><dd>${escapeHtml(item.notes || item.sourceTitleHint || 'Sem observações específicas.')}</dd></div>
         <div><dt>Aliases</dt><dd>${escapeHtml(aliases.length ? aliases.join(', ') : 'Sem aliases cadastrados.')}</dd></div>
       </dl>
@@ -5848,6 +5929,154 @@ function normalizeContranAliases(aliases) {
   }).filter(Boolean);
 }
 
+const CONTRAN_EXAM_KEYS = ['prf_2021_objetiva', 'prf_2019_objetiva', 'prf_2013_objetiva'];
+const CONTRAN_EXAM_LABELS = {
+  prf_2021_objetiva: 'Prova objetiva PRF 2021',
+  prf_2019_objetiva: 'Prova objetiva PRF 2019',
+  prf_2013_objetiva: 'Prova objetiva PRF 2013'
+};
+
+function emptyContranExamBucket() {
+  return { count: 0, items: [], normsAtExam: [] };
+}
+
+function emptyContranExamStats() {
+  const directByExam = {};
+  const linkedByExam = {};
+  const topicEquivalentByExam = {};
+  CONTRAN_EXAM_KEYS.forEach((key) => {
+    directByExam[key] = emptyContranExamBucket();
+    linkedByExam[key] = emptyContranExamBucket();
+    topicEquivalentByExam[key] = emptyContranExamBucket();
+  });
+  return {
+    topicIds: [],
+    topicLabels: [],
+    currentNormReferences: [],
+    directByExam,
+    linkedByExam,
+    topicEquivalentByExam
+  };
+}
+
+function contranItemExamQuestionStats(item = {}) {
+  return mergeContranExamStats([item.examQuestionStats]);
+}
+
+function contranGroupExamQuestionStats(group = {}) {
+  return mergeContranExamStats((group.sources || []).map((item) => item.examQuestionStats));
+}
+
+function mergeContranExamStats(statsItems = []) {
+  const itemSets = {
+    directByExam: Object.fromEntries(CONTRAN_EXAM_KEYS.map((key) => [key, new Set()])),
+    linkedByExam: Object.fromEntries(CONTRAN_EXAM_KEYS.map((key) => [key, new Set()])),
+    topicEquivalentByExam: Object.fromEntries(CONTRAN_EXAM_KEYS.map((key) => [key, new Set()]))
+  };
+  const countFallbacks = {
+    directByExam: Object.fromEntries(CONTRAN_EXAM_KEYS.map((key) => [key, 0])),
+    linkedByExam: Object.fromEntries(CONTRAN_EXAM_KEYS.map((key) => [key, 0])),
+    topicEquivalentByExam: Object.fromEntries(CONTRAN_EXAM_KEYS.map((key) => [key, 0]))
+  };
+  const normSets = Object.fromEntries(CONTRAN_EXAM_KEYS.map((key) => [key, new Set()]));
+  const topicIds = new Set();
+  const topicLabels = new Set();
+  const currentNormReferences = new Set();
+
+  statsItems.filter(Boolean).forEach((stats) => {
+    if (stats.topicId) topicIds.add(stats.topicId);
+    if (stats.topicLabel) topicLabels.add(stats.topicLabel);
+    if (stats.currentNormReference) currentNormReferences.add(stats.currentNormReference);
+    ['directByExam', 'linkedByExam', 'topicEquivalentByExam'].forEach((field) => {
+      CONTRAN_EXAM_KEYS.forEach((examKey) => {
+        const bucket = contranExamBucket(stats[field], examKey);
+        if (bucket.items.length) {
+          bucket.items.forEach((item) => itemSets[field][examKey].add(item));
+        } else {
+          countFallbacks[field][examKey] += Number(bucket.count || 0);
+        }
+        if (field === 'topicEquivalentByExam') {
+          (bucket.normsAtExam || []).forEach((norm) => normSets[examKey].add(norm));
+        }
+      });
+    });
+  });
+
+  const merged = emptyContranExamStats();
+  merged.topicIds = [...topicIds];
+  merged.topicLabels = [...topicLabels];
+  merged.currentNormReferences = [...currentNormReferences];
+  ['directByExam', 'linkedByExam', 'topicEquivalentByExam'].forEach((field) => {
+    CONTRAN_EXAM_KEYS.forEach((examKey) => {
+      const items = [...itemSets[field][examKey]].sort((a, b) => a - b);
+      merged[field][examKey] = {
+        count: items.length || countFallbacks[field][examKey],
+        items,
+        normsAtExam: field === 'topicEquivalentByExam' ? [...normSets[examKey]] : []
+      };
+    });
+  });
+  return merged;
+}
+
+function contranExamBucket(source = {}, examKey) {
+  const bucket = source?.[examKey] || {};
+  const items = Array.isArray(bucket.items)
+    ? [...new Set(bucket.items.map(Number).filter((item) => Number.isFinite(item) && item > 0))].sort((a, b) => a - b)
+    : [];
+  return {
+    count: Number.isFinite(Number(bucket.count)) ? Number(bucket.count) : items.length,
+    items,
+    normsAtExam: Array.isArray(bucket.normsAtExam) ? bucket.normsAtExam.filter(Boolean) : []
+  };
+}
+
+function renderContranExamStatsFields(stats = {}) {
+  return CONTRAN_EXAM_KEYS
+    .filter((examKey) => {
+      const direct = contranExamBucket(stats.directByExam, examKey);
+      const equivalent = contranExamBucket(stats.topicEquivalentByExam, examKey);
+      return examKey === 'prf_2021_objetiva' || direct.count > 0 || equivalent.count > 0;
+    })
+    .map((examKey) => {
+      const direct = contranExamBucket(stats.directByExam, examKey);
+      const equivalent = contranExamBucket(stats.topicEquivalentByExam, examKey);
+      return `<div><dt>${escapeHtml(CONTRAN_EXAM_LABELS[examKey] || examKey)}</dt><dd>${escapeHtml(contranExamStatsDetailedLabel(direct, equivalent))}</dd></div>`;
+    })
+    .join('');
+}
+
+function contranExamStatsDetailedLabel(direct, equivalent) {
+  const parts = [contranExamBucketLabel(direct, 'direta')];
+  if (equivalent.count > 0 && !sameNumberArray(direct.items, equivalent.items)) {
+    const normLabel = equivalent.normsAtExam?.length
+      ? `; norma da época: ${equivalent.normsAtExam.join(', ')}`
+      : '';
+    parts.push(`tema equivalente: ${contranExamBucketLabel(equivalent, 'por tema equivalente')}${normLabel}`);
+  }
+  return parts.join(' · ');
+}
+
+function contranExamStatsShortLabel(stats = {}) {
+  const direct2021 = contranExamBucket(stats.directByExam, 'prf_2021_objetiva');
+  return `PRF 2021 objetiva: ${contranExamBucketLabel(direct2021, 'direta')}`;
+}
+
+function contranExamBucketLabel(bucket = {}, kind = 'direta') {
+  const count = Number(bucket.count || 0);
+  const noun = count === 1 ? 'questão' : 'questões';
+  const kindLabel = kind === 'direta'
+    ? (count === 1 ? 'direta' : 'diretas')
+    : kind;
+  const itemLabel = bucket.items?.length ? ` - itens ${bucket.items.join(', ')}` : '';
+  return `${count.toLocaleString('pt-BR')} ${noun} ${kindLabel}${itemLabel}`;
+}
+
+function sameNumberArray(left = [], right = []) {
+  if (left.length !== right.length) return false;
+  return left.every((item, index) => Number(item) === Number(right[index]));
+}
+
 function emptyContranQuestionStats() {
   return {
     allTrafficQuestions: 0,
@@ -5882,14 +6111,12 @@ function contranGroupQuestionStats(group = {}) {
 
 function contranQuestionStatsLabel(stats = {}) {
   const prf = Number(stats.prfQuestions || 0);
-  const prf2021 = Number(stats.prf2021Questions || 0);
   const allTraffic = Number(stats.allTrafficQuestions || 0);
   const parts = [
-    `${prf.toLocaleString('pt-BR')} ${prf === 1 ? 'questão' : 'questões'} PRF`,
-    `${prf2021.toLocaleString('pt-BR')} no concurso PRF 2021`
+    `${allTraffic.toLocaleString('pt-BR')} ${allTraffic === 1 ? 'questão' : 'questões'} na base inteira de trânsito`
   ];
-  if (allTraffic > prf) {
-    parts.push(`${allTraffic.toLocaleString('pt-BR')} em toda a base de trânsito`);
+  if (prf > 0) {
+    parts.push(`${prf.toLocaleString('pt-BR')} ${prf === 1 ? 'questão' : 'questões'} PRF na base ampla`);
   }
   return parts.join(' · ');
 }
