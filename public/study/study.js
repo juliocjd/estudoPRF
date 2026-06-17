@@ -12,6 +12,7 @@ const state = {
   adaptiveTarget: null,
   eliminatedAnswers: new Set(),
   activeProfile: '',
+  examProfiles: [],
   theoryUrl: '',
   resumeLast: true,
   sessionId: buildSessionId(),
@@ -439,6 +440,7 @@ function bindEvents() {
 
   els.profileSelect.addEventListener('change', async () => {
     state.activeProfile = els.profileSelect.value;
+    renderStudyPlanLabel();
     await api('/api/exam-profiles/active', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1390,10 +1392,20 @@ function selectedExcludedMatterValues() {
 async function loadExamProfiles() {
   const data = await api('/api/exam-profiles');
   state.activeProfile = data.active || '';
+  state.examProfiles = data.profiles || [];
   els.profileSelect.innerHTML = (data.profiles || [])
     .map((profile) => `<option value="${escapeAttr(profile.id)}">${escapeHtml(profile.name)}</option>`)
     .join('');
   els.profileSelect.value = state.activeProfile;
+  renderStudyPlanLabel();
+}
+
+function renderStudyPlanLabel() {
+  if (!els.studyPlanLabel) return;
+  const profile = state.examProfiles.find((item) => item.id === state.activeProfile);
+  const label = profile?.name || 'Plano PRF';
+  els.studyPlanLabel.textContent = label;
+  els.studyPlanLabel.title = label;
 }
 
 function renderSubjectOptions() {

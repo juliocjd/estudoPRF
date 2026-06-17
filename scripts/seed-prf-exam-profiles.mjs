@@ -1,8 +1,10 @@
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { openStudyDatabase } from '../src/db/open-study-database.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const dbPath = path.resolve(args.db || 'questoes-prf.sqlite');
+const databaseUrl = args['database-url'] || process.env.DATABASE_URL || '';
+const dbClient = args['db-client'] || (args.db ? 'sqlite' : '');
 const activeProfile = String(args.active || 'prf_2021_qconcursos_disciplina');
 
 const PROFILES = [
@@ -62,6 +64,25 @@ const PROFILES = [
     ]
   },
   {
+    id: 'prf_principais',
+    name: 'Principais PRF',
+    description: 'Plano focado nos temas e materias de maior incidencia historica nas provas objetivas PRF 2021, 2019 e 2013.',
+    source: 'Analise PRF 2021/2019/2013',
+    weights: [
+      weight('legislacao_transito', 'Legislacao de Transito', 'bloco_2', 'Bloco II', 30, 120, 10, 'Materia central do edital e bloco proprio na PRF 2021.'),
+      weight('portugues', 'Lingua Portuguesa', 'bloco_1', 'Bloco I', 18, 120, 15, 'Alta recorrencia nas provas PRF 2021, 2019 e 2013.'),
+      weight('direito_constitucional', 'Direito Constitucional', 'bloco_3', 'Bloco III', 11, 120, 10, 'Inclui direitos fundamentais, organizacao do Estado e seguranca publica.'),
+      weight('legislacao_especial_prf', 'Legislacao Especial e PRF', 'bloco_3', 'Bloco III', 10, 120, 10, 'Agrega legislacao especial penal, legislacao federal e atribuicoes da PRF.'),
+      weight('raciocinio_logico_matematico', 'Raciocinio Logico-Matematico', 'bloco_1', 'Bloco I', 8, 120, 15, 'Agrega matematica, estatistica e raciocinio logico.'),
+      weight('direito_administrativo', 'Direito Administrativo', 'bloco_3', 'Bloco III', 8, 120, 10, 'Inclui atos, poderes, responsabilidade civil e regime de servidores.'),
+      weight('direito_penal', 'Direito Penal', 'bloco_3', 'Bloco III', 8, 120, 10, 'Prioriza parte geral, crimes contra a Administracao e crimes recorrentes.'),
+      weight('direito_processual_penal', 'Direito Processual Penal', 'bloco_3', 'Bloco III', 7, 120, 10, 'Foco em flagrante, prisoes, busca, provas, inquerito e acao penal.'),
+      weight('direitos_humanos', 'Direitos Humanos', 'bloco_3', 'Bloco III', 7, 120, 10, 'Inclui DUDH, tratados, hierarquia normativa e protecao de grupos vulneraveis.'),
+      weight('informatica', 'Informatica', 'bloco_1', 'Bloco I', 7, 120, 15, 'Foco em seguranca da informacao, internet, redes, nuvem e sistemas.'),
+      weight('fisica', 'Fisica', 'bloco_1', 'Bloco I', 6, 120, 15, 'Prioriza mecanica, cinematica, dinamica, energia e temas aplicados.')
+    ]
+  },
+  {
     id: 'prf_pre_edital_personalizado',
     name: 'PRF pre-edital personalizado',
     description: 'Perfil editavel pelo usuario enquanto nao houver novo edital.',
@@ -85,14 +106,14 @@ const PROFILES = [
   }
 ];
 
-const db = new DatabaseSync(dbPath);
+const { db, client: activeDbClient } = openStudyDatabase({ dbPath, databaseUrl, client: dbClient });
 
 try {
   ensureSchema(db);
   seedProfiles(db, activeProfile);
   console.log(`Perfis semeados: ${PROFILES.length}`);
   console.log(`Perfil ativo: ${activeProfile}`);
-  console.log(`Banco: ${dbPath}`);
+  console.log(activeDbClient === 'postgres' ? 'Banco: Postgres (DATABASE_URL)' : `Banco: ${dbPath}`);
 } finally {
   db.close();
 }
