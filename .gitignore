@@ -17,6 +17,8 @@ data/
 data/*
 !data/contran_prf_2021/
 !data/contran_prf_2021/**
+!data/plano_estudos_prf/
+!data/plano_estudos_prf/**
 !data/traffic_legal_sources_seed_v1.json
 !data/legal_theory_v4_1/
 !data/legal_theory_v4_1/**

@@ -7,6 +7,7 @@ import { safeJsonParse } from './normative-teaching-utils.mjs';
 import { initLawCompendiumSchema as initLawCompendiumSchemaShared, safeJson as parseLawJson } from '../scripts/law-compendium-utils.mjs';
 import { loadEnvFiles } from '../scripts/lib/env.mjs';
 import { getContranPrfResolutionExamStats } from '../scripts/contran-prf-exam-counts.mjs';
+import { gerar_plano_prf } from '../scripts/plano_estudos_prf.mjs';
 
 loadEnvFiles();
 
@@ -168,6 +169,11 @@ async function routeRequest(request, response) {
 
   if (url.pathname === '/api/exam-coverage' && request.method === 'GET') {
     sendJson(response, 200, getExamCoverage(url.searchParams));
+    return;
+  }
+
+  if (url.pathname === '/api/plano-prf' && request.method === 'GET') {
+    sendJson(response, 200, getPlanoPrf(url.searchParams));
     return;
   }
 
@@ -548,6 +554,35 @@ function getStudyTimeDaily(searchParams = new URLSearchParams()) {
     timeZone: STUDY_TIME_ZONE,
     maxAttemptMinutes: STUDY_TIME_MAX_ATTEMPT_MINUTES,
     daily
+  };
+}
+
+function getPlanoPrf(searchParams = new URLSearchParams()) {
+  const nivelPorMateria = {};
+  for (const [key, value] of searchParams.entries()) {
+    if (!key.startsWith('nivel_')) continue;
+    const materia = key.replace(/^nivel_/, '').replace(/_/g, ' ');
+    const number = Number(value);
+    if (materia && Number.isFinite(number)) nivelPorMateria[materia] = number;
+  }
+  const materiasDoEdital = String(searchParams.get('materias_do_edital') || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const config = {
+    semanas_disponiveis: Number(searchParams.get('semanas_disponiveis') || searchParams.get('semanas') || 12),
+    horas_por_semana: Number(searchParams.get('horas_por_semana') || searchParams.get('horas') || 20),
+    dias_de_estudo_por_semana: Number(searchParams.get('dias_de_estudo_por_semana') || searchParams.get('dias') || 5),
+    nivel_por_materia: nivelPorMateria,
+    edital_publicado: ['1', 'true', 'sim'].includes(String(searchParams.get('edital_publicado') || '').toLowerCase()),
+    materias_do_edital: materiasDoEdital,
+    data_prova: searchParams.get('data_prova') || ''
+  };
+  const plan = gerar_plano_prf(config);
+  return {
+    available: true,
+    plan: plan.json,
+    markdown: plan.markdown
   };
 }
 

@@ -1,0 +1,3715 @@
+{
+  "metadata": {
+    "generated_at": "2026-06-17T12:51:10.387Z",
+    "source_title": "Dados da análise de provas PRF para geração de plano de estudo",
+    "source_generated_at": "2026-06-16",
+    "methodology": "Contagem por item Certo/Errado em provas objetivas PRF 2021, PRF 2019 e PRF 2013; Legislação de Trânsito separada das demais matérias; resoluções antigas agrupadas por tema equivalente atual quando cabível.",
+    "warning": "Sempre conferir edital vigente, retificações, resoluções atuais do CONTRAN/SENATRAN e jurisprudência atual antes de gerar plano definitivo."
+  },
+  "config": {
+    "semanas_disponiveis": 12,
+    "horas_por_semana": 20,
+    "dias_de_estudo_por_semana": 5,
+    "nivel_por_materia": {},
+    "edital_publicado": false,
+    "materias_do_edital": [],
+    "data_prova": "",
+    "preferencias": {}
+  },
+  "alertas": [
+    "Antes do cronograma final, conferir edital vigente e retificacoes.",
+    "Conferir resolucoes CONTRAN/SENATRAN vigentes e se o edital exige norma historica ou norma atual.",
+    "Conferir jurisprudencia atual em temas de CTB, processo penal, abordagem, alcool e direitos fundamentais."
+  ],
+  "exams_used": [
+    {
+      "exam_key": "prf_2021_objetiva",
+      "items": {
+        "items_total": 120,
+        "traffic_items": 30,
+        "non_traffic_items": 90
+      }
+    },
+    {
+      "exam_key": "prf_2019_objetiva",
+      "items": {
+        "items_total": 120,
+        "traffic_items": 40,
+        "non_traffic_items": 80
+      }
+    },
+    {
+      "exam_key": "prf_2013_objetiva",
+      "items": {
+        "items_total": 120,
+        "traffic_items_identified": 2,
+        "non_traffic_or_prf_specific_items": 118
+      }
+    }
+  ],
+  "visao_geral": {
+    "semanas": 12,
+    "horas_por_semana": 20,
+    "dias_de_estudo_por_semana": 5,
+    "sessoes_por_semana": 10,
+    "horas_por_sessao": 2,
+    "revisao_espacada": [
+      "24h",
+      "7 dias",
+      "30 dias"
+    ],
+    "estilo_questoes": "Cebraspe/CESPE - Certo/Errado"
+  },
+  "distribuicao_percentual_horas": [
+    {
+      "id": "legislacao_transito",
+      "label": "Legislacao de Transito",
+      "percentual": 27,
+      "horas_semana": 5.4,
+      "ajuste_nivel": "sem nivel informado",
+      "subjects": [
+        "Legislacao de Transito",
+        "Legislacao de Transito e Transportes",
+        "CTB",
+        "CONTRAN",
+        "SENATRAN"
+      ]
+    },
+    {
+      "id": "penal_processual_legislacao_especial",
+      "label": "Penal + Processo Penal + Legislacao Especial",
+      "percentual": 17,
+      "horas_semana": 3.4,
+      "ajuste_nivel": "sem nivel informado",
+      "subjects": [
+        "Direito Penal",
+        "Processo Penal",
+        "Legislacao Especial"
+      ]
+    },
+    {
+      "id": "portugues_redacao",
+      "label": "Portugues + Redacao Oficial",
+      "percentual": 14,
+      "horas_semana": 2.8,
+      "ajuste_nivel": "sem nivel informado",
+      "subjects": [
+        "Portugues",
+        "Redacao Oficial"
+      ]
+    },
+    {
+      "id": "constitucional_administrativo",
+      "label": "Constitucional + Administrativo",
+      "percentual": 13,
+      "horas_semana": 2.6,
+      "ajuste_nivel": "sem nivel informado",
+      "subjects": [
+        "Direito Constitucional",
+        "Direito Administrativo"
+      ]
+    },
+    {
+      "id": "matematica_fisica",
+      "label": "Matematica/RLM + Fisica",
+      "percentual": 13,
+      "horas_semana": 2.6,
+      "ajuste_nivel": "sem nivel informado",
+      "subjects": [
+        "Matematica/RLM",
+        "Matematica",
+        "RLM",
+        "Fisica"
+      ]
+    },
+    {
+      "id": "informatica_etica_dh",
+      "label": "Informatica + Etica + Direitos Humanos",
+      "percentual": 10,
+      "horas_semana": 2,
+      "ajuste_nivel": "sem nivel informado",
+      "subjects": [
+        "Informatica/TI",
+        "Informatica",
+        "Etica",
+        "Administracao Publica",
+        "Direitos Humanos"
+      ]
+    },
+    {
+      "id": "geopolitica_leg_prf_ingles",
+      "label": "Geopolitica + Legislacao PRF + Ingles",
+      "percentual": 6,
+      "horas_semana": 1.2,
+      "ajuste_nivel": "sem nivel informado",
+      "subjects": [
+        "Geopolitica/Atualidades",
+        "Atualidades",
+        "Legislacao/atribuicoes da PRF",
+        "Ingles"
+      ]
+    }
+  ],
+  "quadro_semanal_modelo": [
+    {
+      "dia": 1,
+      "sessao_no_dia": 1,
+      "bloco_id": "legislacao_transito",
+      "bloco": "Legislacao de Transito",
+      "duracao_horas": 2,
+      "foco": "Amarração das cargas transportadas em veículos de carga",
+      "topic_id": "amarração_cargas",
+      "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+      "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    },
+    {
+      "dia": 1,
+      "sessao_no_dia": 2,
+      "bloco_id": "penal_processual_legislacao_especial",
+      "bloco": "Penal + Processo Penal + Legislacao Especial",
+      "duracao_horas": 2,
+      "foco": "Direito Penal",
+      "topic_id": "",
+      "norma_cobrada_na_prova": "",
+      "norma_atual_de_estudo": "",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    },
+    {
+      "dia": 2,
+      "sessao_no_dia": 1,
+      "bloco_id": "portugues_redacao",
+      "bloco": "Portugues + Redacao Oficial",
+      "duracao_horas": 2,
+      "foco": "Português",
+      "topic_id": "",
+      "norma_cobrada_na_prova": "",
+      "norma_atual_de_estudo": "",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    },
+    {
+      "dia": 2,
+      "sessao_no_dia": 2,
+      "bloco_id": "constitucional_administrativo",
+      "bloco": "Constitucional + Administrativo",
+      "duracao_horas": 2,
+      "foco": "Direito Administrativo",
+      "topic_id": "",
+      "norma_cobrada_na_prova": "",
+      "norma_atual_de_estudo": "",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    },
+    {
+      "dia": 3,
+      "sessao_no_dia": 1,
+      "bloco_id": "matematica_fisica",
+      "bloco": "Matematica/RLM + Fisica",
+      "duracao_horas": 2,
+      "foco": "Matemática/RLM",
+      "topic_id": "",
+      "norma_cobrada_na_prova": "",
+      "norma_atual_de_estudo": "",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    },
+    {
+      "dia": 3,
+      "sessao_no_dia": 2,
+      "bloco_id": "informatica_etica_dh",
+      "bloco": "Informatica + Etica + Direitos Humanos",
+      "duracao_horas": 2,
+      "foco": "Ética/Administração Pública básica",
+      "topic_id": "",
+      "norma_cobrada_na_prova": "",
+      "norma_atual_de_estudo": "",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    },
+    {
+      "dia": 4,
+      "sessao_no_dia": 1,
+      "bloco_id": "geopolitica_leg_prf_ingles",
+      "bloco": "Geopolitica + Legislacao PRF + Ingles",
+      "duracao_horas": 2,
+      "foco": "Legislação/atribuições da PRF",
+      "topic_id": "",
+      "norma_cobrada_na_prova": "",
+      "norma_atual_de_estudo": "",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    },
+    {
+      "dia": 4,
+      "sessao_no_dia": 2,
+      "bloco_id": "legislacao_transito",
+      "bloco": "Legislacao de Transito",
+      "duracao_horas": 2,
+      "foco": "Autuação, notificação, multas, arrecadação e repasse",
+      "topic_id": "multas_autuacao",
+      "norma_cobrada_na_prova": "Res. 619/2016",
+      "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    },
+    {
+      "dia": 5,
+      "sessao_no_dia": 1,
+      "bloco_id": "penal_processual_legislacao_especial",
+      "bloco": "Penal + Processo Penal + Legislacao Especial",
+      "duracao_horas": 2,
+      "foco": "Processo Penal",
+      "topic_id": "",
+      "norma_cobrada_na_prova": "",
+      "norma_atual_de_estudo": "",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    },
+    {
+      "dia": 5,
+      "sessao_no_dia": 2,
+      "bloco_id": "portugues_redacao",
+      "bloco": "Portugues + Redacao Oficial",
+      "duracao_horas": 2,
+      "foco": "Redação Oficial",
+      "topic_id": "",
+      "norma_cobrada_na_prova": "",
+      "norma_atual_de_estudo": "",
+      "itens_ce": 20,
+      "tarefas": [
+        "teoria objetiva",
+        "mapa mental/checklist",
+        "20 itens C/E",
+        "correcao ativa",
+        "registro de erro",
+        "flashcards/resumo",
+        "agendar 24h/7d/30d"
+      ]
+    }
+  ],
+  "cronograma": [
+    {
+      "semana": 1,
+      "fase": "base e consolidacao",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "iniciar banco de revisoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 2,
+      "fase": "base e consolidacao",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "iniciar banco de revisoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 3,
+      "fase": "base e consolidacao",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "iniciar banco de revisoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 4,
+      "fase": "base e consolidacao",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "iniciar banco de revisoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 5,
+      "fase": "base e consolidacao",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "revisar sessoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 6,
+      "fase": "base e consolidacao",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "revisar sessoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 7,
+      "fase": "reta final e simulados",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "revisar sessoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 8,
+      "fase": "reta final e simulados",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "revisar sessoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 9,
+      "fase": "reta final e simulados",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "revisar sessoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 10,
+      "fase": "reta final e simulados",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "revisar sessoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 11,
+      "fase": "reta final e simulados",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "revisar sessoes de 30 dias"
+      ]
+    },
+    {
+      "semana": 12,
+      "fase": "reta final e simulados",
+      "sessoes": [
+        {
+          "dia": 1,
+          "sessao_no_dia": 1,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Amarração das cargas transportadas em veículos de carga",
+          "topic_id": "amarração_cargas",
+          "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+          "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 1,
+          "sessao_no_dia": 2,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Direito Penal - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 1,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Português - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 2,
+          "sessao_no_dia": 2,
+          "bloco_id": "constitucional_administrativo",
+          "bloco": "Constitucional + Administrativo",
+          "duracao_horas": 2,
+          "foco": "Direito Administrativo - ciclo 3",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 1,
+          "bloco_id": "matematica_fisica",
+          "bloco": "Matematica/RLM + Fisica",
+          "duracao_horas": 2,
+          "foco": "Matemática/RLM - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 3,
+          "sessao_no_dia": 2,
+          "bloco_id": "informatica_etica_dh",
+          "bloco": "Informatica + Etica + Direitos Humanos",
+          "duracao_horas": 2,
+          "foco": "Ética/Administração Pública básica - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 1,
+          "bloco_id": "geopolitica_leg_prf_ingles",
+          "bloco": "Geopolitica + Legislacao PRF + Ingles",
+          "duracao_horas": 2,
+          "foco": "Legislação/atribuições da PRF - ciclo 2",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 4,
+          "sessao_no_dia": 2,
+          "bloco_id": "legislacao_transito",
+          "bloco": "Legislacao de Transito",
+          "duracao_horas": 2,
+          "foco": "Autuação, notificação, multas, arrecadação e repasse",
+          "topic_id": "multas_autuacao",
+          "norma_cobrada_na_prova": "Res. 619/2016",
+          "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 1,
+          "bloco_id": "penal_processual_legislacao_especial",
+          "bloco": "Penal + Processo Penal + Legislacao Especial",
+          "duracao_horas": 2,
+          "foco": "Processo Penal - ciclo 4",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        },
+        {
+          "dia": 5,
+          "sessao_no_dia": 2,
+          "bloco_id": "portugues_redacao",
+          "bloco": "Portugues + Redacao Oficial",
+          "duracao_horas": 2,
+          "foco": "Redação Oficial - ciclo 1",
+          "topic_id": "",
+          "norma_cobrada_na_prova": "",
+          "norma_atual_de_estudo": "",
+          "itens_ce": 20,
+          "tarefas": [
+            "teoria objetiva",
+            "mapa mental/checklist",
+            "20 itens C/E",
+            "correcao ativa",
+            "registro de erro",
+            "flashcards/resumo",
+            "agendar 24h/7d/30d"
+          ]
+        }
+      ],
+      "revisoes": [
+        "revisar sessoes de 24h",
+        "revisar sessoes de 7 dias",
+        "revisar sessoes de 30 dias"
+      ]
+    }
+  ],
+  "revisoes_programadas": [
+    {
+      "quando": "24h",
+      "acao": "refazer erros e revisar checklist da sessao anterior"
+    },
+    {
+      "quando": "7 dias",
+      "acao": "10 a 20 itens C/E do mesmo tema e revisao dos flashcards"
+    },
+    {
+      "quando": "30 dias",
+      "acao": "mini-simulado por assunto e correcao ativa dos erros recorrentes"
+    }
+  ],
+  "simulados": [
+    {
+      "semana": 2,
+      "tipo": "simulado quinzenal",
+      "itens": 120,
+      "estilo": "Cebraspe/CESPE Certo/Errado",
+      "relatorio_por_assunto": true
+    },
+    {
+      "semana": 4,
+      "tipo": "simulado quinzenal",
+      "itens": 120,
+      "estilo": "Cebraspe/CESPE Certo/Errado",
+      "relatorio_por_assunto": true
+    },
+    {
+      "semana": 6,
+      "tipo": "simulado quinzenal",
+      "itens": 120,
+      "estilo": "Cebraspe/CESPE Certo/Errado",
+      "relatorio_por_assunto": true
+    },
+    {
+      "semana": 7,
+      "tipo": "simulado semanal",
+      "itens": 120,
+      "estilo": "Cebraspe/CESPE Certo/Errado",
+      "relatorio_por_assunto": true
+    },
+    {
+      "semana": 8,
+      "tipo": "simulado semanal",
+      "itens": 120,
+      "estilo": "Cebraspe/CESPE Certo/Errado",
+      "relatorio_por_assunto": true
+    },
+    {
+      "semana": 9,
+      "tipo": "simulado semanal",
+      "itens": 120,
+      "estilo": "Cebraspe/CESPE Certo/Errado",
+      "relatorio_por_assunto": true
+    },
+    {
+      "semana": 10,
+      "tipo": "simulado semanal",
+      "itens": 120,
+      "estilo": "Cebraspe/CESPE Certo/Errado",
+      "relatorio_por_assunto": true
+    },
+    {
+      "semana": 11,
+      "tipo": "simulado semanal",
+      "itens": 120,
+      "estilo": "Cebraspe/CESPE Certo/Errado",
+      "relatorio_por_assunto": true
+    },
+    {
+      "semana": 12,
+      "tipo": "simulado semanal",
+      "itens": 120,
+      "estilo": "Cebraspe/CESPE Certo/Errado",
+      "relatorio_por_assunto": true
+    }
+  ],
+  "metas_questoes_por_materia": [
+    {
+      "bloco": "Legislacao de Transito",
+      "itens_ce_por_semana": 40,
+      "correcao_ativa": "classificar erro e registrar providencia"
+    },
+    {
+      "bloco": "Penal + Processo Penal + Legislacao Especial",
+      "itens_ce_por_semana": 40,
+      "correcao_ativa": "classificar erro e registrar providencia"
+    },
+    {
+      "bloco": "Portugues + Redacao Oficial",
+      "itens_ce_por_semana": 40,
+      "correcao_ativa": "classificar erro e registrar providencia"
+    },
+    {
+      "bloco": "Constitucional + Administrativo",
+      "itens_ce_por_semana": 20,
+      "correcao_ativa": "classificar erro e registrar providencia"
+    },
+    {
+      "bloco": "Matematica/RLM + Fisica",
+      "itens_ce_por_semana": 20,
+      "correcao_ativa": "classificar erro e registrar providencia"
+    },
+    {
+      "bloco": "Informatica + Etica + Direitos Humanos",
+      "itens_ce_por_semana": 20,
+      "correcao_ativa": "classificar erro e registrar providencia"
+    },
+    {
+      "bloco": "Geopolitica + Legislacao PRF + Ingles",
+      "itens_ce_por_semana": 20,
+      "correcao_ativa": "classificar erro e registrar providencia"
+    }
+  ],
+  "classificacao_erros": [
+    "erro de conteudo",
+    "erro de leitura",
+    "erro de memorizacao literal",
+    "erro por norma desatualizada",
+    "chute"
+  ],
+  "legislacao_transito_priorizada": [
+    {
+      "topic_id": "amarração_cargas",
+      "tema": "Amarração das cargas transportadas em veículos de carga",
+      "norma_cobrada_na_prova": "2021: Res. 552/2015; 2019: Res. 552/2015",
+      "norma_atual_de_estudo": "Res. CONTRAN 945/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "3 (itens 83, 84, 85)",
+        "prf_2019_objetiva": "3 (itens 82, 83, 84)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 100,
+      "foco": "Dispositivos de amarração, resistência, responsabilidade, proibicoes, carroceria, atrito, deslocamento da carga."
+    },
+    {
+      "topic_id": "peso_dimensoes_cvc",
+      "tema": "Limites de peso, dimensões e CVC",
+      "norma_cobrada_na_prova": "Res. 210/2006 e correlatas do edital",
+      "norma_atual_de_estudo": "Res. CONTRAN 882/2021",
+      "exam_counts": {
+        "prf_2021_objetiva": "3 (itens 74, 75, 76)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 96,
+      "foco": "PBT, PBTC, CMT, peso por eixo, comprimento, largura, altura, CVC, AET e tolerâncias."
+    },
+    {
+      "topic_id": "tacografo_cronotacografo",
+      "tema": "Tacógrafo / cronotacógrafo / registrador instantâneo e inalterável",
+      "norma_cobrada_na_prova": "Res. 92/1998/1999",
+      "norma_atual_de_estudo": "Res. CONTRAN 938/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "3 (itens 71, 72, 73)",
+        "prf_2019_objetiva": "1 (item 80)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 95,
+      "foco": "Obrigatoriedade, disco/fita/registro, certificado, leitura, equipamento inoperante, exceções."
+    },
+    {
+      "topic_id": "jornada_motorista",
+      "tema": "Tempo de direção e descanso do motorista profissional",
+      "norma_cobrada_na_prova": "Res. 525/2015",
+      "norma_atual_de_estudo": "Res. CONTRAN 525/2015, com atenção à legislação do motorista e jurisprudência",
+      "exam_counts": {
+        "prf_2021_objetiva": "3 (itens 77, 78, 79)",
+        "prf_2019_objetiva": "1 (item 79)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 93,
+      "foco": "Tempo de direção, parada, intervalo, descanso, fiscalização por registro e exceções."
+    },
+    {
+      "topic_id": "excesso_peso_transbordo",
+      "tema": "Excesso de peso, CMT, remanejamento e transbordo de carga",
+      "norma_cobrada_na_prova": "Res. 803/2020",
+      "norma_atual_de_estudo": "Res. CONTRAN 882/2021",
+      "exam_counts": {
+        "prf_2021_objetiva": "2 (itens 81, 82)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 90,
+      "foco": "Autuação, transbordo, remanejamento, impedimento de prosseguir, excesso por eixo e por PBT/PBTC."
+    },
+    {
+      "topic_id": "medidores_velocidade",
+      "tema": "Medidores de velocidade / fiscalização eletrônica de velocidade",
+      "norma_cobrada_na_prova": "2021: Res. 798/2020; 2019: Res. 396/2011",
+      "norma_atual_de_estudo": "Res. CONTRAN 798/2020",
+      "exam_counts": {
+        "prf_2021_objetiva": "1 (item 64)",
+        "prf_2019_objetiva": "2 (itens 74, 75)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 87,
+      "foco": "Tipos de medidor, requisitos de instalação/operação, sinalização, estudo técnico, velocidade medida e considerada."
+    },
+    {
+      "topic_id": "alcool_substancia_psicoativa",
+      "tema": "Álcool, substância psicoativa e alteração da capacidade psicomotora",
+      "norma_cobrada_na_prova": "Res. 432/2013",
+      "norma_atual_de_estudo": "Res. CONTRAN 432/2013, com CTB e jurisprudência",
+      "exam_counts": {
+        "prf_2021_objetiva": "0",
+        "prf_2019_objetiva": "1 (item 71)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 82,
+      "foco": "Sinais de alteração, etilômetro, recusa, prova testemunhal, auto de constatação e medidas administrativas."
+    },
+    {
+      "topic_id": "multas_autuacao",
+      "tema": "Autuação, notificação, multas, arrecadação e repasse",
+      "norma_cobrada_na_prova": "Res. 619/2016",
+      "norma_atual_de_estudo": "Res. CONTRAN 918/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "0",
+        "prf_2019_objetiva": "1 (item 88)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 80,
+      "foco": "AIT, notificação de autuação, notificação de penalidade, defesa, recurso, responsabilidade e prazos."
+    },
+    {
+      "topic_id": "bicicletas_carga_externa",
+      "tema": "Transporte de bicicletas / cargas em partes externas do veículo",
+      "norma_cobrada_na_prova": "Res. 349/2010",
+      "norma_atual_de_estudo": "Res. CONTRAN 955/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "0",
+        "prf_2019_objetiva": "3 (itens 76, 77, 78)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 78,
+      "foco": "Limites externos, visibilidade, placa, iluminação, bagageiro, suporte e vedações."
+    },
+    {
+      "topic_id": "motofrete_mototaxi_capacete",
+      "tema": "Motofrete, mototáxi, capacete, motocicletas e quadriciclos",
+      "norma_cobrada_na_prova": "Res. 356/2010 e Res. 453/2013, conforme subtema",
+      "norma_atual_de_estudo": "Res. 943/2022 e Res. 940/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "0",
+        "prf_2019_objetiva": "3 (itens 85, 86, 87)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 76,
+      "foco": "Capacete, viseira, dispositivos, transporte remunerado, requisitos de segurança e identificação."
+    },
+    {
+      "topic_id": "vidros_parabrisa_transmitancia",
+      "tema": "Para-brisa, trincas, vidros e transmitância luminosa",
+      "norma_cobrada_na_prova": "2021: Res. 216/2006; 2019: Res. 254/2007",
+      "norma_atual_de_estudo": "Res. CONTRAN 960/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "1 (item 70)",
+        "prf_2019_objetiva": "1 (item 73)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 74,
+      "foco": "Trincas, áreas críticas, transmitância, medição, película e visibilidade."
+    },
+    {
+      "topic_id": "suspensao_cassacao_reciclagem",
+      "tema": "Suspensão, cassação, curso preventivo de reciclagem e reciclagem",
+      "norma_cobrada_na_prova": "Res. 723/2018",
+      "norma_atual_de_estudo": "Res. CONTRAN 723/2018, com alterações; conferir edição vigente",
+      "exam_counts": {
+        "prf_2021_objetiva": "0",
+        "prf_2019_objetiva": "1 (item 90)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 73,
+      "foco": "Pontuação, infração autossuspensiva, processo, entrega da CNH, prazos, reciclagem e reincidência."
+    },
+    {
+      "topic_id": "ctv_ctvp",
+      "tema": "CTV/CTVP, veículo-cegonha, AET e restrições de trânsito",
+      "norma_cobrada_na_prova": "Res. 735/2018",
+      "norma_atual_de_estudo": "Res. CONTRAN 735/2018, salvo alteração posterior; conferir lista oficial no edital",
+      "exam_counts": {
+        "prf_2021_objetiva": "0",
+        "prf_2019_objetiva": "1 (item 81)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 72,
+      "foco": "Autorização Especial de Trânsito, limites, circulação, combinações e requisitos de segurança."
+    },
+    {
+      "topic_id": "mbft",
+      "tema": "Manual Brasileiro de Fiscalização de Trânsito - MBFT / infrações concomitantes",
+      "norma_cobrada_na_prova": "Res. 561/2015",
+      "norma_atual_de_estudo": "Res. CONTRAN 985/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "1 (item 66)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 70,
+      "foco": "Concomitância de infrações, campos do AIT, enquadramento, abordagem e observações."
+    },
+    {
+      "topic_id": "iluminacao_sinalizacao",
+      "tema": "Sistemas de iluminação e sinalização / luz azul / lanternas especiais",
+      "norma_cobrada_na_prova": "Res. 667/2017",
+      "norma_atual_de_estudo": "Res. CONTRAN 970/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "1 (item 69)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 68,
+      "foco": "Cores, luzes permitidas/proibidas, dispositivos obrigatórios e equipamentos especiais."
+    },
+    {
+      "topic_id": "transporte_criancas",
+      "tema": "Transporte de crianças / dispositivo de retenção",
+      "norma_cobrada_na_prova": "Res. 277/2008",
+      "norma_atual_de_estudo": "Res. CONTRAN 819/2021",
+      "exam_counts": {
+        "prf_2021_objetiva": "0",
+        "prf_2019_objetiva": "1 (item 72)",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 66,
+      "foco": "Idade, altura, banco traseiro, exceções, dispositivo de retenção e transporte em motocicleta."
+    },
+    {
+      "topic_id": "videomonitoramento",
+      "tema": "Fiscalização por videomonitoramento",
+      "norma_cobrada_na_prova": "Res. 471/2013",
+      "norma_atual_de_estudo": "Res. CONTRAN 909/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "1 (item 61)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 65,
+      "foco": "Quando pode autuar, identificação do local, registro e observação remota."
+    },
+    {
+      "topic_id": "crlv_e",
+      "tema": "CRV, CLA, CRLV-e e documentos digitais do veículo",
+      "norma_cobrada_na_prova": "Res. 809/2020",
+      "norma_atual_de_estudo": "Res. CONTRAN 809/2020, com alterações",
+      "exam_counts": {
+        "prf_2021_objetiva": "1 (item 62)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 63,
+      "foco": "Documento eletrônico, porte, comprovação, impressão, transferência e baixa."
+    },
+    {
+      "topic_id": "piv",
+      "tema": "Placa de Identificação Veicular - PIV / segunda placa traseira",
+      "norma_cobrada_na_prova": "Res. 780/2019",
+      "norma_atual_de_estudo": "Res. CONTRAN 969/2022",
+      "exam_counts": {
+        "prf_2021_objetiva": "1 (item 65)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 62,
+      "foco": "Padrão Mercosul, segunda placa, tarjeta/QR Code, lacre, instalação e irregularidades."
+    },
+    {
+      "topic_id": "campanhas_educativas",
+      "tema": "Campanhas educativas de trânsito do ano",
+      "norma_cobrada_na_prova": "Res. 806/2020",
+      "norma_atual_de_estudo": "Tema anual - checar resolução vigente do ano do edital",
+      "exam_counts": {
+        "prf_2021_objetiva": "2 (itens 63, 80)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 60,
+      "foco": "Tema, mensagem e cronograma anual; estudar somente se constar no edital ou se edital repetir campanha anual."
+    },
+    {
+      "topic_id": "transporte_passageiros_carga_misto",
+      "tema": "Transporte de passageiros em veículo de carga ou misto, a título precário",
+      "norma_cobrada_na_prova": "Res. 508/2014",
+      "norma_atual_de_estudo": "Res. CONTRAN 508/2014, com alterações; conferir edição vigente",
+      "exam_counts": {
+        "prf_2021_objetiva": "1 (item 68)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 58,
+      "foco": "Autorização, caráter precário, requisitos de segurança e condições do veículo."
+    },
+    {
+      "topic_id": "pnatrans",
+      "tema": "PNATRANS - Plano Nacional de Redução de Mortes e Lesões no Trânsito",
+      "norma_cobrada_na_prova": "Res. 740/2018",
+      "norma_atual_de_estudo": "Res. CONTRAN 1004/2023",
+      "exam_counts": {
+        "prf_2021_objetiva": "1 (item 67)",
+        "prf_2019_objetiva": "0",
+        "prf_2013_objetiva": "0"
+      },
+      "prioridade": 55,
+      "foco": "Metas, pilares, indicadores, órgãos envolvidos e lógica de redução de mortes/lesões."
+    }
+  ],
+  "materias_nao_transito_priorizadas": [
+    {
+      "subject": "Português",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 13,
+        "prf_2019_objetiva": 20,
+        "prf_2013_objetiva": 15
+      },
+      "total": 48,
+      "priority": 100,
+      "topics": [
+        "Interpretação e inferência",
+        "Coesão e referenciação",
+        "Sintaxe/pontuação/concordância",
+        "Semântica contextual",
+        "Reescrita/paráfrase"
+      ]
+    },
+    {
+      "subject": "Direito Constitucional",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 7,
+        "prf_2019_objetiva": 5,
+        "prf_2013_objetiva": 15
+      },
+      "total": 27,
+      "priority": 92,
+      "topics": [
+        "Direitos fundamentais",
+        "Art. 144 e segurança pública",
+        "Organização do Estado",
+        "Poderes",
+        "Estado de defesa/sítio"
+      ]
+    },
+    {
+      "subject": "Legislação Especial",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 6,
+        "prf_2019_objetiva": 5,
+        "prf_2013_objetiva": 14
+      },
+      "total": 25,
+      "priority": 90,
+      "topics": [
+        "Abuso de autoridade",
+        "Tortura",
+        "Drogas",
+        "Desarmamento",
+        "Hediondos",
+        "Organizações criminosas",
+        "Vulneráveis"
+      ]
+    },
+    {
+      "subject": "Matemática/RLM",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 6,
+        "prf_2019_objetiva": 8,
+        "prf_2013_objetiva": 10
+      },
+      "total": 24,
+      "priority": 86,
+      "topics": [
+        "Funções e modelagem",
+        "Variação percentual",
+        "Sequências/PA",
+        "Geometria espacial",
+        "Razão/proporção"
+      ]
+    },
+    {
+      "subject": "Direito Administrativo",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 5,
+        "prf_2019_objetiva": 5,
+        "prf_2013_objetiva": 12
+      },
+      "total": 22,
+      "priority": 84,
+      "topics": [
+        "Lei 8.112",
+        "Atos administrativos",
+        "Poder de polícia",
+        "Responsabilidade civil",
+        "Organização administrativa"
+      ]
+    },
+    {
+      "subject": "Direito Penal",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 5,
+        "prf_2019_objetiva": 5,
+        "prf_2013_objetiva": 12
+      },
+      "total": 22,
+      "priority": 84,
+      "topics": [
+        "Parte Geral",
+        "Administração Pública",
+        "Fé pública",
+        "Descaminho/contrabando",
+        "Crimes patrimoniais"
+      ]
+    },
+    {
+      "subject": "Processo Penal",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 5,
+        "prf_2019_objetiva": 5,
+        "prf_2013_objetiva": 10
+      },
+      "total": 20,
+      "priority": 82,
+      "topics": [
+        "Flagrante/prisões",
+        "Busca pessoal/veicular/domiciliar",
+        "Provas",
+        "Inquérito/ação penal",
+        "HC/competência"
+      ]
+    },
+    {
+      "subject": "Direitos Humanos",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 5,
+        "prf_2019_objetiva": 5,
+        "prf_2013_objetiva": 10
+      },
+      "total": 20,
+      "priority": 80,
+      "topics": [
+        "DUDH",
+        "Tratados e hierarquia",
+        "Características",
+        "Dignidade",
+        "Responsabilidade internacional",
+        "Minorais/PCD"
+      ]
+    },
+    {
+      "subject": "Informática/TI",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 7,
+        "prf_2019_objetiva": 6,
+        "prf_2013_objetiva": 5
+      },
+      "total": 18,
+      "priority": 72,
+      "topics": [
+        "Segurança da informação",
+        "Nuvem/IoT/Big Data",
+        "Internet/protocolos",
+        "Redes/acesso remoto",
+        "Sistemas/suíte"
+      ]
+    },
+    {
+      "subject": "Física",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 5,
+        "prf_2019_objetiva": 6,
+        "prf_2013_objetiva": 6
+      },
+      "total": 17,
+      "priority": 70,
+      "topics": [
+        "Cinemática",
+        "Dinâmica",
+        "Trabalho/energia",
+        "Colisões",
+        "Atrito/movimento circular",
+        "Doppler/MHS"
+      ]
+    },
+    {
+      "subject": "Ética/Administração Pública básica",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 6,
+        "prf_2019_objetiva": 4,
+        "prf_2013_objetiva": 5
+      },
+      "total": 15,
+      "priority": 65,
+      "topics": [
+        "Código de Ética",
+        "Comissões de ética",
+        "LAI/transparência",
+        "Governança",
+        "Nepotismo/conflito de interesses"
+      ]
+    },
+    {
+      "subject": "Legislação/atribuições da PRF",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 2,
+        "prf_2019_objetiva": 2,
+        "prf_2013_objetiva": 4
+      },
+      "total": 8,
+      "priority": 58,
+      "topics": [
+        "Atribuições da PRF",
+        "Patrulhamento ostensivo",
+        "Decreto 1.655/1995",
+        "Lei da carreira",
+        "Porte/limites de atuação"
+      ]
+    },
+    {
+      "subject": "Geopolítica/Atualidades",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 5,
+        "prf_2019_objetiva": 4,
+        "prf_2013_objetiva": 0
+      },
+      "total": 9,
+      "priority": 55,
+      "topics": [
+        "Matriz de transportes",
+        "Logística",
+        "Integração territorial",
+        "Urbanização",
+        "Globalização/economia"
+      ]
+    },
+    {
+      "subject": "Inglês",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 8,
+        "prf_2019_objetiva": 0,
+        "prf_2013_objetiva": 0
+      },
+      "total": 8,
+      "priority": 52,
+      "topics": [
+        "Compreensão textual",
+        "Inferência",
+        "Referenciação",
+        "Conectivos",
+        "Vocabulário contextual"
+      ]
+    },
+    {
+      "subject": "Redação Oficial",
+      "counts_by_exam": {
+        "prf_2021_objetiva": 5,
+        "prf_2019_objetiva": 0,
+        "prf_2013_objetiva": 0
+      },
+      "total": 5,
+      "priority": 50,
+      "topics": [
+        "Atributos",
+        "Vocativo",
+        "Assunto",
+        "E-mail institucional",
+        "Identificação do signatário"
+      ]
+    }
+  ],
+  "checklist_legislacao_atualizada": [
+    "Conferir edital e retificacoes antes de fechar o ciclo.",
+    "Conferir CTB vigente e leis correlatas citadas no edital.",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 945/2022",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 882/2021",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 938/2022",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 525/2015, com atenção à legislação do motorista e jurisprudência",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 798/2020",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 432/2013, com CTB e jurisprudência",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 918/2022",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 955/2022",
+    "Conferir vigencia e alteracoes: Res. 943/2022 e Res. 940/2022",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 960/2022",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 723/2018, com alterações; conferir edição vigente",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 735/2018, salvo alteração posterior; conferir lista oficial no edital",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 985/2022",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 970/2022",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 819/2021",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 909/2022",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 809/2020, com alterações",
+    "Conferir vigencia e alteracoes: Res. CONTRAN 969/2022",
+    "Separar norma cobrada na prova anterior da norma atual de estudo.",
+    "Registrar erro por norma desatualizada quando a questao historica nao puder ser aproveitada."
+  ]
+}

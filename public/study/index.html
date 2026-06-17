@@ -163,6 +163,7 @@
               </button>
               <div class="dropdown-menu" role="menu" hidden>
                 <button id="toggleCoverage" class="menu-item" type="button">Base x Prova</button>
+                <button id="togglePrincipaisPrf" class="menu-item" type="button">Principais PRF</button>
                 <button id="toggleTheoryCoverage" class="menu-item" type="button">Cobertura de teoria</button>
                 <button id="toggleSubjects" class="menu-item" type="button">Ranking de assuntos</button>
                 <button id="toggleNormative" class="menu-item" type="button">Revisão normativa</button>
@@ -322,6 +323,18 @@
           <p class="report-intro">Compara o peso esperado de cada disciplina no perfil de prova com a quantidade de questões válidas, questões com gabarito e tentativas já feitas.</p>
           <div id="coverageAlerts" class="coverage-alerts"></div>
           <div class="coverage-table" id="coverageTable"></div>
+        </section>
+
+        <section class="principais-prf-panel report-panel" id="principaisPrfPanel" hidden>
+          <div class="subjects-head">
+            <div>
+              <strong>Principais PRF</strong>
+              <span id="principaisPrfInfo"></span>
+            </div>
+            <button id="closePrincipaisPrf" class="button button-secondary" type="button">Voltar</button>
+          </div>
+          <p class="report-intro">Plano de estudo PRF gerado com pesos das provas objetivas PRF 2021, 2019 e 2013, mantendo normas cobradas na prova separadas das normas atuais de estudo.</p>
+          <div id="principaisPrfBody" class="principais-prf-body"></div>
         </section>
 
         <section class="coverage-panel theory-coverage-panel report-panel" id="theoryCoveragePanel" hidden>

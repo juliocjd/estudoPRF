@@ -47,6 +47,8 @@
     "apply-manual-answer-overrides": "node --no-warnings scripts/apply-manual-answer-overrides.mjs",
     "smoke-study-engine-v12": "node --no-warnings scripts/smoke-study-engine-v12.mjs --db questoes-prf.sqlite",
     "diagnose-study-flow": "node --no-warnings scripts/diagnose-study-flow.mjs --db questoes-prf.sqlite",
+    "plano-prf:generate": "node --no-warnings scripts/plano_estudos_prf.mjs",
+    "plano-prf:test": "node --test scripts/test-plano-estudos-prf.mjs",
     "import-traffic-legal-sources": "node --no-warnings scripts/import-traffic-legal-sources.mjs --db questoes-prf.sqlite --seed data/traffic_legal_sources_seed_v1.json",
     "build-legal-topic-cards": "node --no-warnings scripts/build-legal-topic-cards.mjs --db questoes-prf.sqlite --profile prf",
     "link-questions-to-legal-cards": "node --no-warnings scripts/link-questions-to-legal-cards.mjs --db questoes-prf.sqlite",

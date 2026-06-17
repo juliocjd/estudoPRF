@@ -1,0 +1,674 @@
+{
+  "metadata": {
+    "title": "Dados da análise de provas PRF para geração de plano de estudo",
+    "generated_at": "2026-06-16",
+    "methodology": "Contagem por item Certo/Errado em provas objetivas PRF 2021, PRF 2019 e PRF 2013; Legislação de Trânsito separada das demais matérias; resoluções antigas agrupadas por tema equivalente atual quando cabível.",
+    "important_warning": "Sempre conferir edital vigente, retificações, resoluções atuais do CONTRAN/SENATRAN e jurisprudência atual antes de gerar plano definitivo."
+  },
+  "exams": {
+    "prf_2021_objetiva": {
+      "items_total": 120,
+      "traffic_items": 30,
+      "non_traffic_items": 90
+    },
+    "prf_2019_objetiva": {
+      "items_total": 120,
+      "traffic_items": 40,
+      "non_traffic_items": 80
+    },
+    "prf_2013_objetiva": {
+      "items_total": 120,
+      "traffic_items_identified": 2,
+      "non_traffic_or_prf_specific_items": 118
+    }
+  },
+  "traffic": {
+    "total_by_exam": {
+      "prf_2021_objetiva": {
+        "legislacao_transito": 30,
+        "ctb_lei_correlata": 5,
+        "resolucoes_ou_tema_resolucional": 25
+      },
+      "prf_2019_objetiva": {
+        "legislacao_transito": 40,
+        "ctb_lei_correlata": 21,
+        "resolucoes_ou_tema_resolucional": 19
+      },
+      "prf_2013_objetiva": {
+        "legislacao_transito_identificada": 2,
+        "ctb_lei_correlata": 2,
+        "resolucoes_ou_tema_resolucional": 0
+      }
+    },
+    "themes": [
+      {
+        "topic_id": "amarração_cargas",
+        "tema": "Amarração das cargas transportadas em veículos de carga",
+        "norma_epoca": "2021: Res. 552/2015; 2019: Res. 552/2015",
+        "prf2021": "3 (itens 83, 84, 85)",
+        "prf2019": "3 (itens 82, 83, 84)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 945/2022",
+        "prioridade": 100,
+        "foco": "Dispositivos de amarração, resistência, responsabilidade, proibicoes, carroceria, atrito, deslocamento da carga."
+      },
+      {
+        "topic_id": "tacografo_cronotacografo",
+        "tema": "Tacógrafo / cronotacógrafo / registrador instantâneo e inalterável",
+        "norma_epoca": "Res. 92/1998/1999",
+        "prf2021": "3 (itens 71, 72, 73)",
+        "prf2019": "1 (item 80)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 938/2022",
+        "prioridade": 95,
+        "foco": "Obrigatoriedade, disco/fita/registro, certificado, leitura, equipamento inoperante, exceções."
+      },
+      {
+        "topic_id": "peso_dimensoes_cvc",
+        "tema": "Limites de peso, dimensões e CVC",
+        "norma_epoca": "Res. 210/2006 e correlatas do edital",
+        "prf2021": "3 (itens 74, 75, 76)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 882/2021",
+        "prioridade": 96,
+        "foco": "PBT, PBTC, CMT, peso por eixo, comprimento, largura, altura, CVC, AET e tolerâncias."
+      },
+      {
+        "topic_id": "jornada_motorista",
+        "tema": "Tempo de direção e descanso do motorista profissional",
+        "norma_epoca": "Res. 525/2015",
+        "prf2021": "3 (itens 77, 78, 79)",
+        "prf2019": "1 (item 79)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 525/2015, com atenção à legislação do motorista e jurisprudência",
+        "prioridade": 93,
+        "foco": "Tempo de direção, parada, intervalo, descanso, fiscalização por registro e exceções."
+      },
+      {
+        "topic_id": "excesso_peso_transbordo",
+        "tema": "Excesso de peso, CMT, remanejamento e transbordo de carga",
+        "norma_epoca": "Res. 803/2020",
+        "prf2021": "2 (itens 81, 82)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 882/2021",
+        "prioridade": 90,
+        "foco": "Autuação, transbordo, remanejamento, impedimento de prosseguir, excesso por eixo e por PBT/PBTC."
+      },
+      {
+        "topic_id": "medidores_velocidade",
+        "tema": "Medidores de velocidade / fiscalização eletrônica de velocidade",
+        "norma_epoca": "2021: Res. 798/2020; 2019: Res. 396/2011",
+        "prf2021": "1 (item 64)",
+        "prf2019": "2 (itens 74, 75)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 798/2020",
+        "prioridade": 87,
+        "foco": "Tipos de medidor, requisitos de instalação/operação, sinalização, estudo técnico, velocidade medida e considerada."
+      },
+      {
+        "topic_id": "bicicletas_carga_externa",
+        "tema": "Transporte de bicicletas / cargas em partes externas do veículo",
+        "norma_epoca": "Res. 349/2010",
+        "prf2021": "0",
+        "prf2019": "3 (itens 76, 77, 78)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 955/2022",
+        "prioridade": 78,
+        "foco": "Limites externos, visibilidade, placa, iluminação, bagageiro, suporte e vedações."
+      },
+      {
+        "topic_id": "motofrete_mototaxi_capacete",
+        "tema": "Motofrete, mototáxi, capacete, motocicletas e quadriciclos",
+        "norma_epoca": "Res. 356/2010 e Res. 453/2013, conforme subtema",
+        "prf2021": "0",
+        "prf2019": "3 (itens 85, 86, 87)",
+        "prf2013": "0",
+        "norma_atual": "Res. 943/2022 e Res. 940/2022",
+        "prioridade": 76,
+        "foco": "Capacete, viseira, dispositivos, transporte remunerado, requisitos de segurança e identificação."
+      },
+      {
+        "topic_id": "campanhas_educativas",
+        "tema": "Campanhas educativas de trânsito do ano",
+        "norma_epoca": "Res. 806/2020",
+        "prf2021": "2 (itens 63, 80)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Tema anual - checar resolução vigente do ano do edital",
+        "prioridade": 60,
+        "foco": "Tema, mensagem e cronograma anual; estudar somente se constar no edital ou se edital repetir campanha anual."
+      },
+      {
+        "topic_id": "vidros_parabrisa_transmitancia",
+        "tema": "Para-brisa, trincas, vidros e transmitância luminosa",
+        "norma_epoca": "2021: Res. 216/2006; 2019: Res. 254/2007",
+        "prf2021": "1 (item 70)",
+        "prf2019": "1 (item 73)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 960/2022",
+        "prioridade": 74,
+        "foco": "Trincas, áreas críticas, transmitância, medição, película e visibilidade."
+      },
+      {
+        "topic_id": "videomonitoramento",
+        "tema": "Fiscalização por videomonitoramento",
+        "norma_epoca": "Res. 471/2013",
+        "prf2021": "1 (item 61)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 909/2022",
+        "prioridade": 65,
+        "foco": "Quando pode autuar, identificação do local, registro e observação remota."
+      },
+      {
+        "topic_id": "crlv_e",
+        "tema": "CRV, CLA, CRLV-e e documentos digitais do veículo",
+        "norma_epoca": "Res. 809/2020",
+        "prf2021": "1 (item 62)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 809/2020, com alterações",
+        "prioridade": 63,
+        "foco": "Documento eletrônico, porte, comprovação, impressão, transferência e baixa."
+      },
+      {
+        "topic_id": "piv",
+        "tema": "Placa de Identificação Veicular - PIV / segunda placa traseira",
+        "norma_epoca": "Res. 780/2019",
+        "prf2021": "1 (item 65)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 969/2022",
+        "prioridade": 62,
+        "foco": "Padrão Mercosul, segunda placa, tarjeta/QR Code, lacre, instalação e irregularidades."
+      },
+      {
+        "topic_id": "mbft",
+        "tema": "Manual Brasileiro de Fiscalização de Trânsito - MBFT / infrações concomitantes",
+        "norma_epoca": "Res. 561/2015",
+        "prf2021": "1 (item 66)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 985/2022",
+        "prioridade": 70,
+        "foco": "Concomitância de infrações, campos do AIT, enquadramento, abordagem e observações."
+      },
+      {
+        "topic_id": "pnatrans",
+        "tema": "PNATRANS - Plano Nacional de Redução de Mortes e Lesões no Trânsito",
+        "norma_epoca": "Res. 740/2018",
+        "prf2021": "1 (item 67)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 1004/2023",
+        "prioridade": 55,
+        "foco": "Metas, pilares, indicadores, órgãos envolvidos e lógica de redução de mortes/lesões."
+      },
+      {
+        "topic_id": "transporte_passageiros_carga_misto",
+        "tema": "Transporte de passageiros em veículo de carga ou misto, a título precário",
+        "norma_epoca": "Res. 508/2014",
+        "prf2021": "1 (item 68)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 508/2014, com alterações; conferir edição vigente",
+        "prioridade": 58,
+        "foco": "Autorização, caráter precário, requisitos de segurança e condições do veículo."
+      },
+      {
+        "topic_id": "iluminacao_sinalizacao",
+        "tema": "Sistemas de iluminação e sinalização / luz azul / lanternas especiais",
+        "norma_epoca": "Res. 667/2017",
+        "prf2021": "1 (item 69)",
+        "prf2019": "0",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 970/2022",
+        "prioridade": 68,
+        "foco": "Cores, luzes permitidas/proibidas, dispositivos obrigatórios e equipamentos especiais."
+      },
+      {
+        "topic_id": "alcool_substancia_psicoativa",
+        "tema": "Álcool, substância psicoativa e alteração da capacidade psicomotora",
+        "norma_epoca": "Res. 432/2013",
+        "prf2021": "0",
+        "prf2019": "1 (item 71)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 432/2013, com CTB e jurisprudência",
+        "prioridade": 82,
+        "foco": "Sinais de alteração, etilômetro, recusa, prova testemunhal, auto de constatação e medidas administrativas."
+      },
+      {
+        "topic_id": "transporte_criancas",
+        "tema": "Transporte de crianças / dispositivo de retenção",
+        "norma_epoca": "Res. 277/2008",
+        "prf2021": "0",
+        "prf2019": "1 (item 72)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 819/2021",
+        "prioridade": 66,
+        "foco": "Idade, altura, banco traseiro, exceções, dispositivo de retenção e transporte em motocicleta."
+      },
+      {
+        "topic_id": "ctv_ctvp",
+        "tema": "CTV/CTVP, veículo-cegonha, AET e restrições de trânsito",
+        "norma_epoca": "Res. 735/2018",
+        "prf2021": "0",
+        "prf2019": "1 (item 81)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 735/2018, salvo alteração posterior; conferir lista oficial no edital",
+        "prioridade": 72,
+        "foco": "Autorização Especial de Trânsito, limites, circulação, combinações e requisitos de segurança."
+      },
+      {
+        "topic_id": "multas_autuacao",
+        "tema": "Autuação, notificação, multas, arrecadação e repasse",
+        "norma_epoca": "Res. 619/2016",
+        "prf2021": "0",
+        "prf2019": "1 (item 88)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 918/2022",
+        "prioridade": 80,
+        "foco": "AIT, notificação de autuação, notificação de penalidade, defesa, recurso, responsabilidade e prazos."
+      },
+      {
+        "topic_id": "suspensao_cassacao_reciclagem",
+        "tema": "Suspensão, cassação, curso preventivo de reciclagem e reciclagem",
+        "norma_epoca": "Res. 723/2018",
+        "prf2021": "0",
+        "prf2019": "1 (item 90)",
+        "prf2013": "0",
+        "norma_atual": "Res. CONTRAN 723/2018, com alterações; conferir edição vigente",
+        "prioridade": 73,
+        "foco": "Pontuação, infração autossuspensiva, processo, entrega da CNH, prazos, reciclagem e reincidência."
+      }
+    ],
+    "priority_blocks": [
+      {
+        "block": "Carga, peso, dimensões e amarração",
+        "norms": [
+          "Res. 945/2022",
+          "Res. 882/2021",
+          "CTB",
+          "normas de AET"
+        ],
+        "weight": 100
+      },
+      {
+        "block": "Tacógrafo e jornada do motorista",
+        "norms": [
+          "Res. 938/2022",
+          "Res. 525/2015",
+          "Lei do Motorista"
+        ],
+        "weight": 95
+      },
+      {
+        "block": "Fiscalização eletrônica, autuação e processo administrativo",
+        "norms": [
+          "Res. 798/2020",
+          "Res. 909/2022",
+          "Res. 985/2022",
+          "Res. 918/2022",
+          "Res. 723/2018"
+        ],
+        "weight": 88
+      },
+      {
+        "block": "Equipamentos, identificação e segurança veicular",
+        "norms": [
+          "Res. 960/2022",
+          "Res. 969/2022",
+          "Res. 970/2022",
+          "Res. 955/2022"
+        ],
+        "weight": 76
+      },
+      {
+        "block": "Temas de pegadinha",
+        "norms": [
+          "Res. 819/2021",
+          "Res. 432/2013",
+          "Res. 1004/2023",
+          "Res. 809/2020",
+          "Res. 940/2022",
+          "Res. 943/2022"
+        ],
+        "weight": 65
+      }
+    ]
+  },
+  "non_traffic": {
+    "subjects": [
+      {
+        "subject": "Português",
+        "2021": 13,
+        "2019": 20,
+        "2013": 15,
+        "total": 48,
+        "priority": 100,
+        "topics": [
+          "Interpretação e inferência",
+          "Coesão e referenciação",
+          "Sintaxe/pontuação/concordância",
+          "Semântica contextual",
+          "Reescrita/paráfrase"
+        ]
+      },
+      {
+        "subject": "Direito Constitucional",
+        "2021": 7,
+        "2019": 5,
+        "2013": 15,
+        "total": 27,
+        "priority": 92,
+        "topics": [
+          "Direitos fundamentais",
+          "Art. 144 e segurança pública",
+          "Organização do Estado",
+          "Poderes",
+          "Estado de defesa/sítio"
+        ]
+      },
+      {
+        "subject": "Legislação Especial",
+        "2021": 6,
+        "2019": 5,
+        "2013": 14,
+        "total": 25,
+        "priority": 90,
+        "topics": [
+          "Abuso de autoridade",
+          "Tortura",
+          "Drogas",
+          "Desarmamento",
+          "Hediondos",
+          "Organizações criminosas",
+          "Vulneráveis"
+        ]
+      },
+      {
+        "subject": "Matemática/RLM",
+        "2021": 6,
+        "2019": 8,
+        "2013": 10,
+        "total": 24,
+        "priority": 86,
+        "topics": [
+          "Funções e modelagem",
+          "Variação percentual",
+          "Sequências/PA",
+          "Geometria espacial",
+          "Razão/proporção"
+        ]
+      },
+      {
+        "subject": "Direito Administrativo",
+        "2021": 5,
+        "2019": 5,
+        "2013": 12,
+        "total": 22,
+        "priority": 84,
+        "topics": [
+          "Lei 8.112",
+          "Atos administrativos",
+          "Poder de polícia",
+          "Responsabilidade civil",
+          "Organização administrativa"
+        ]
+      },
+      {
+        "subject": "Direito Penal",
+        "2021": 5,
+        "2019": 5,
+        "2013": 12,
+        "total": 22,
+        "priority": 84,
+        "topics": [
+          "Parte Geral",
+          "Administração Pública",
+          "Fé pública",
+          "Descaminho/contrabando",
+          "Crimes patrimoniais"
+        ]
+      },
+      {
+        "subject": "Processo Penal",
+        "2021": 5,
+        "2019": 5,
+        "2013": 10,
+        "total": 20,
+        "priority": 82,
+        "topics": [
+          "Flagrante/prisões",
+          "Busca pessoal/veicular/domiciliar",
+          "Provas",
+          "Inquérito/ação penal",
+          "HC/competência"
+        ]
+      },
+      {
+        "subject": "Direitos Humanos",
+        "2021": 5,
+        "2019": 5,
+        "2013": 10,
+        "total": 20,
+        "priority": 80,
+        "topics": [
+          "DUDH",
+          "Tratados e hierarquia",
+          "Características",
+          "Dignidade",
+          "Responsabilidade internacional",
+          "Minorais/PCD"
+        ]
+      },
+      {
+        "subject": "Informática/TI",
+        "2021": 7,
+        "2019": 6,
+        "2013": 5,
+        "total": 18,
+        "priority": 72,
+        "topics": [
+          "Segurança da informação",
+          "Nuvem/IoT/Big Data",
+          "Internet/protocolos",
+          "Redes/acesso remoto",
+          "Sistemas/suíte"
+        ]
+      },
+      {
+        "subject": "Física",
+        "2021": 5,
+        "2019": 6,
+        "2013": 6,
+        "total": 17,
+        "priority": 70,
+        "topics": [
+          "Cinemática",
+          "Dinâmica",
+          "Trabalho/energia",
+          "Colisões",
+          "Atrito/movimento circular",
+          "Doppler/MHS"
+        ]
+      },
+      {
+        "subject": "Ética/Administração Pública básica",
+        "2021": 6,
+        "2019": 4,
+        "2013": 5,
+        "total": 15,
+        "priority": 65,
+        "topics": [
+          "Código de Ética",
+          "Comissões de ética",
+          "LAI/transparência",
+          "Governança",
+          "Nepotismo/conflito de interesses"
+        ]
+      },
+      {
+        "subject": "Geopolítica/Atualidades",
+        "2021": 5,
+        "2019": 4,
+        "2013": 0,
+        "total": 9,
+        "priority": 55,
+        "topics": [
+          "Matriz de transportes",
+          "Logística",
+          "Integração territorial",
+          "Urbanização",
+          "Globalização/economia"
+        ]
+      },
+      {
+        "subject": "Legislação/atribuições da PRF",
+        "2021": 2,
+        "2019": 2,
+        "2013": 4,
+        "total": 8,
+        "priority": 58,
+        "topics": [
+          "Atribuições da PRF",
+          "Patrulhamento ostensivo",
+          "Decreto 1.655/1995",
+          "Lei da carreira",
+          "Porte/limites de atuação"
+        ]
+      },
+      {
+        "subject": "Inglês",
+        "2021": 8,
+        "2019": 0,
+        "2013": 0,
+        "total": 8,
+        "priority": 52,
+        "topics": [
+          "Compreensão textual",
+          "Inferência",
+          "Referenciação",
+          "Conectivos",
+          "Vocabulário contextual"
+        ]
+      },
+      {
+        "subject": "Redação Oficial",
+        "2021": 5,
+        "2019": 0,
+        "2013": 0,
+        "total": 5,
+        "priority": 50,
+        "topics": [
+          "Atributos",
+          "Vocativo",
+          "Assunto",
+          "E-mail institucional",
+          "Identificação do signatário"
+        ]
+      }
+    ],
+    "top_topics": [
+      [
+        "1",
+        "Interpretação, inferência e sentido global de texto",
+        "16",
+        "Português 2021, 2019 e 2013"
+      ],
+      [
+        "2",
+        "Direitos e garantias fundamentais",
+        "13",
+        "Constitucional e Direitos Humanos"
+      ],
+      [
+        "3",
+        "Funções, modelagem algébrica e variação percentual",
+        "11",
+        "Matemática/RLM"
+      ],
+      [
+        "4",
+        "Parte Geral do Direito Penal",
+        "10",
+        "Penal, especialmente 2013"
+      ],
+      [
+        "5",
+        "Coesão, referenciação, pronomes e conectores",
+        "9",
+        "Português"
+      ],
+      [
+        "6",
+        "Gramática normativa, sintaxe e pontuação",
+        "9",
+        "Português"
+      ],
+      [
+        "7",
+        "Semântica e vocabulário contextual",
+        "8",
+        "Português"
+      ],
+      [
+        "8",
+        "Prisões, flagrante, APF e cautelares",
+        "7",
+        "Processo Penal"
+      ],
+      [
+        "9",
+        "Servidores públicos e Lei 8.112",
+        "6",
+        "Administrativo"
+      ],
+      [
+        "10",
+        "Abuso de autoridade, tortura e uso da força",
+        "6",
+        "Legislação Especial"
+      ],
+      [
+        "11",
+        "Tratados internacionais, hierarquia e sistema global de DH",
+        "6",
+        "Direitos Humanos"
+      ],
+      [
+        "12",
+        "Sequências, PA e recorrência",
+        "6",
+        "Matemática/RLM"
+      ],
+      [
+        "13",
+        "Cinemática, lançamentos e dinâmica aplicada",
+        "6",
+        "Física"
+      ],
+      [
+        "14",
+        "Segurança da informação",
+        "5",
+        "Informática/TI"
+      ],
+      [
+        "15",
+        "Rede de transportes, logística e matriz rodoviária",
+        "5",
+        "Geopolítica"
+      ]
+    ],
+    "study_order": [
+      "Português todos os dias ou em alta frequência",
+      "Direito aplicado em ciclos: Constitucional, Administrativo, Penal, Processo Penal, Legislação Especial, Direitos Humanos",
+      "Matemática e Física por modelo de questão",
+      "Informática com foco em segurança, nuvem, redes e internet",
+      "Geopolítica e Legislação PRF conectadas à missão institucional da PRF"
+    ]
+  }
+}

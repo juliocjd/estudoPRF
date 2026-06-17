@@ -48,6 +48,8 @@ const state = {
   subjects: [],
   subjectsVisible: false,
   coverageVisible: false,
+  principaisPrfVisible: false,
+  principaisPrfPlan: null,
   theoryCoverageVisible: false,
   normativeVisible: false,
   contranMapVisible: false,
@@ -74,6 +76,11 @@ const REPORT_ROUTES = {
     path: '/relatorios/base-prova',
     title: 'Base x Prova',
     load: () => loadExamCoverage()
+  },
+  principaisPrf: {
+    path: '/relatorios/principais-prf',
+    title: 'Principais PRF',
+    load: () => loadPrincipaisPrf()
   },
   theoryCoverage: {
     path: '/relatorios/cobertura-teoria',
@@ -149,6 +156,7 @@ const els = {
   reportsMenuButton: document.querySelector('#reportsMenuButton'),
   supportMenuButton: document.querySelector('#supportMenuButton'),
   toggleCoverage: document.querySelector('#toggleCoverage'),
+  togglePrincipaisPrf: document.querySelector('#togglePrincipaisPrf'),
   toggleTheoryCoverage: document.querySelector('#toggleTheoryCoverage'),
   toggleSubjects: document.querySelector('#toggleSubjects'),
   toggleNormative: document.querySelector('#toggleNormative'),
@@ -156,6 +164,7 @@ const els = {
   toggleLawCompendium: document.querySelector('#toggleLawCompendium'),
   closeSubjectsReport: document.querySelector('#closeSubjectsReport'),
   closeCoverageReport: document.querySelector('#closeCoverageReport'),
+  closePrincipaisPrf: document.querySelector('#closePrincipaisPrf'),
   closeTheoryCoverageReport: document.querySelector('#closeTheoryCoverageReport'),
   closeNormativeReport: document.querySelector('#closeNormativeReport'),
   lawCompendiumPanel: document.querySelector('#lawCompendiumPanel'),
@@ -239,6 +248,9 @@ const els = {
   coverageInfo: document.querySelector('#coverageInfo'),
   coverageAlerts: document.querySelector('#coverageAlerts'),
   coverageTable: document.querySelector('#coverageTable'),
+  principaisPrfPanel: document.querySelector('#principaisPrfPanel'),
+  principaisPrfInfo: document.querySelector('#principaisPrfInfo'),
+  principaisPrfBody: document.querySelector('#principaisPrfBody'),
   theoryCoveragePanel: document.querySelector('#theoryCoveragePanel'),
   theoryCoverageInfo: document.querySelector('#theoryCoverageInfo'),
   theoryCoverageStats: document.querySelector('#theoryCoverageStats'),
@@ -557,6 +569,10 @@ function bindEvents() {
     closeAllDropdowns();
     await openReportPage('coverage');
   });
+  els.togglePrincipaisPrf?.addEventListener('click', async () => {
+    closeAllDropdowns();
+    await openReportPage('principaisPrf');
+  });
   els.toggleTheoryCoverage?.addEventListener('click', async () => {
     closeAllDropdowns();
     await openReportPage('theoryCoverage');
@@ -586,6 +602,9 @@ function bindEvents() {
     navigateStudyHome();
   });
   els.closeCoverageReport?.addEventListener('click', () => {
+    navigateStudyHome();
+  });
+  els.closePrincipaisPrf?.addEventListener('click', () => {
     navigateStudyHome();
   });
   els.closeTheoryCoverageReport?.addEventListener('click', () => {
@@ -5461,6 +5480,13 @@ function renderCoverageVisibility() {
   updateReportViewState();
 }
 
+function renderPrincipaisPrfVisibility() {
+  if (!els.principaisPrfPanel || !els.togglePrincipaisPrf) return;
+  els.principaisPrfPanel.hidden = !state.principaisPrfVisible;
+  els.togglePrincipaisPrf.textContent = 'Principais PRF';
+  updateReportViewState();
+}
+
 function renderTheoryCoverageVisibility() {
   if (!els.theoryCoveragePanel || !els.toggleTheoryCoverage) return;
   els.theoryCoveragePanel.hidden = !state.theoryCoverageVisible;
@@ -5492,6 +5518,7 @@ function renderLawCompendiumVisibility() {
 function updateReportViewState() {
   const hasOpenReport = Boolean(
     state.coverageVisible
+    || state.principaisPrfVisible
     || state.theoryCoverageVisible
     || state.subjectsVisible
     || state.normativeVisible
@@ -5511,12 +5538,14 @@ function updateReportViewState() {
 
 function closeReportPanels() {
   state.coverageVisible = false;
+  state.principaisPrfVisible = false;
   state.theoryCoverageVisible = false;
   state.subjectsVisible = false;
   state.normativeVisible = false;
   state.contranMapVisible = false;
   state.lawCompendiumVisible = false;
   renderCoverageVisibility();
+  renderPrincipaisPrfVisibility();
   renderTheoryCoverageVisibility();
   renderSubjectsVisibility();
   renderNormativeVisibility();
@@ -5556,12 +5585,14 @@ async function openReportPage(reportKey, options = {}) {
 
 function setActiveReport(reportKey) {
   state.coverageVisible = reportKey === 'coverage';
+  state.principaisPrfVisible = reportKey === 'principaisPrf';
   state.theoryCoverageVisible = reportKey === 'theoryCoverage';
   state.subjectsVisible = reportKey === 'subjects';
   state.normativeVisible = reportKey === 'normative';
   state.contranMapVisible = reportKey === 'contranMap';
   state.lawCompendiumVisible = reportKey === 'lawCompendium';
   renderCoverageVisibility();
+  renderPrincipaisPrfVisibility();
   renderTheoryCoverageVisibility();
   renderSubjectsVisibility();
   renderNormativeVisibility();
@@ -5571,6 +5602,7 @@ function setActiveReport(reportKey) {
 
 function getActiveReportKey() {
   if (state.coverageVisible) return 'coverage';
+  if (state.principaisPrfVisible) return 'principaisPrf';
   if (state.theoryCoverageVisible) return 'theoryCoverage';
   if (state.subjectsVisible) return 'subjects';
   if (state.normativeVisible) return 'normative';
@@ -5626,6 +5658,136 @@ function updateContranMapUrl() {
   } else if (isContranMapRoute()) {
     window.history.pushState({}, '', '/');
   }
+}
+
+async function loadPrincipaisPrf() {
+  if (!els.principaisPrfInfo || !els.principaisPrfBody) return;
+  els.principaisPrfInfo.textContent = 'carregando plano';
+  els.principaisPrfBody.innerHTML = '<p class="empty">Carregando Principais PRF...</p>';
+  const data = await api('/api/plano-prf');
+  const plan = data.plan || {};
+  state.principaisPrfPlan = plan;
+  els.principaisPrfInfo.textContent = [
+    `${Number(plan.visao_geral?.semanas || 0).toLocaleString('pt-BR')} semanas`,
+    `${Number(plan.visao_geral?.horas_por_semana || 0).toLocaleString('pt-BR')}h/semana`,
+    `${Number(plan.quadro_semanal_modelo?.length || 0).toLocaleString('pt-BR')} sessões`
+  ].join(' · ');
+  els.principaisPrfBody.innerHTML = renderPrincipaisPrfPlan(plan);
+}
+
+function renderPrincipaisPrfPlan(plan = {}) {
+  const overview = plan.visao_geral || {};
+  const distribution = plan.distribuicao_percentual_horas || [];
+  const sessions = plan.quadro_semanal_modelo || [];
+  const traffic = plan.legislacao_transito_priorizada || [];
+  const simulations = plan.simulados || [];
+  const checklist = plan.checklist_legislacao_atualizada || [];
+  const goals = plan.metas_questoes_por_materia || [];
+  const alerts = plan.alertas || [];
+  return `
+    <section class="principais-prf-alert">
+      <strong>Conferência obrigatória</strong>
+      <ul>${alerts.map((alert) => `<li>${escapeHtml(alert)}</li>`).join('')}</ul>
+    </section>
+    <section class="principais-prf-grid">
+      ${renderPrincipaisPrfMetric('Semanas', overview.semanas)}
+      ${renderPrincipaisPrfMetric('Horas/semana', overview.horas_por_semana)}
+      ${renderPrincipaisPrfMetric('Sessões/semana', overview.sessoes_por_semana)}
+      ${renderPrincipaisPrfMetric('Revisão', (overview.revisao_espacada || []).join(' · '))}
+    </section>
+    <section class="principais-prf-section">
+      <h2>Distribuição de horas</h2>
+      <div class="principais-prf-bars">
+        ${distribution.map(renderPrincipaisPrfDistribution).join('')}
+      </div>
+    </section>
+    <section class="principais-prf-section">
+      <h2>Quadro semanal</h2>
+      <div class="principais-prf-session-grid">
+        ${sessions.map(renderPrincipaisPrfSession).join('')}
+      </div>
+    </section>
+    <section class="principais-prf-section">
+      <h2>Legislação de Trânsito prioritária</h2>
+      <div class="principais-prf-topic-list">
+        ${traffic.slice(0, 10).map(renderPrincipaisPrfTrafficTopic).join('')}
+      </div>
+    </section>
+    <section class="principais-prf-split">
+      <div class="principais-prf-section">
+        <h2>Simulados</h2>
+        <ul class="principais-prf-list">${simulations.slice(0, 10).map((item) => `<li><strong>Semana ${Number(item.semana || 0)}:</strong> ${escapeHtml(item.tipo || '')}, ${Number(item.itens || 0)} itens C/E, com relatório por assunto.</li>`).join('')}</ul>
+      </div>
+      <div class="principais-prf-section">
+        <h2>Metas de questões</h2>
+        <ul class="principais-prf-list">${goals.map((item) => `<li><strong>${escapeHtml(item.bloco || '')}:</strong> ${Number(item.itens_ce_por_semana || 0)} itens C/E por semana.</li>`).join('')}</ul>
+      </div>
+    </section>
+    <section class="principais-prf-section">
+      <h2>Checklist de atualização normativa</h2>
+      <ul class="principais-prf-checklist">${checklist.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+    </section>
+  `;
+}
+
+function renderPrincipaisPrfMetric(label, value) {
+  return `
+    <span class="metric-card principais-prf-metric">
+      <strong>${escapeHtml(String(value ?? ''))}</strong>
+      <small>${escapeHtml(label)}</small>
+    </span>
+  `;
+}
+
+function renderPrincipaisPrfDistribution(item = {}) {
+  const percent = Number(item.percentual || 0);
+  return `
+    <article class="principais-prf-bar">
+      <div>
+        <strong>${escapeHtml(item.label || '')}</strong>
+        <span>${percent.toLocaleString('pt-BR')}% · ${Number(item.horas_semana || 0).toLocaleString('pt-BR')}h/semana · ${escapeHtml(item.ajuste_nivel || '')}</span>
+      </div>
+      <div class="principais-prf-bar-track"><span style="width: ${Math.max(2, Math.min(100, percent))}%"></span></div>
+    </article>
+  `;
+}
+
+function renderPrincipaisPrfSession(session = {}) {
+  return `
+    <article class="principais-prf-session">
+      <header>
+        <strong>Dia ${Number(session.dia || 0)} · Sessão ${Number(session.sessao_no_dia || 0)}</strong>
+        <span>${Number(session.duracao_horas || 0).toLocaleString('pt-BR')}h · ${Number(session.itens_ce || 0)} itens C/E</span>
+      </header>
+      <p>${escapeHtml(session.bloco || '')}</p>
+      <small>${escapeHtml(session.foco || '')}</small>
+    </article>
+  `;
+}
+
+function renderPrincipaisPrfTrafficTopic(topic = {}) {
+  return `
+    <article class="principais-prf-topic">
+      <header>
+        <strong>${escapeHtml(topic.tema || '')}</strong>
+        <span>Prioridade ${Number(topic.prioridade || 0)}</span>
+      </header>
+      <dl>
+        <div><dt>Norma cobrada na prova</dt><dd>${escapeHtml(topic.norma_cobrada_na_prova || '')}</dd></div>
+        <div><dt>Norma atual de estudo</dt><dd>${escapeHtml(topic.norma_atual_de_estudo || '')}</dd></div>
+        <div><dt>Provas</dt><dd>${escapeHtml(contranExamCountLabel(topic.exam_counts || {}))}</dd></div>
+        <div><dt>Foco</dt><dd>${escapeHtml(topic.foco || '')}</dd></div>
+      </dl>
+    </article>
+  `;
+}
+
+function contranExamCountLabel(counts = {}) {
+  return [
+    `PRF 2021: ${counts.prf_2021_objetiva || '0'}`,
+    `PRF 2019: ${counts.prf_2019_objetiva || '0'}`,
+    `PRF 2013: ${counts.prf_2013_objetiva || '0'}`
+  ].join(' · ');
 }
 
 async function loadContranMapList() {
