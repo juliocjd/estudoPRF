@@ -1,10 +1,10 @@
 <!doctype html>
 <html lang="pt-BR">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260615-exam-filter">
+    <link rel="stylesheet" href="/study.css?v=20260615-exam-filter" />
   </head>
   <body>
     <div class="app-shell">
@@ -14,34 +14,81 @@
           <span>Banco local de questões</span>
         </div>
         <div class="topbar-metrics">
-        <section class="stats" id="stats" aria-label="Resumo do banco"></section>
-        <section class="study-time-panel" aria-label="Tempo de estudo">
-          <div class="study-time-tabs" role="tablist" aria-label="Tempo de estudo">
-            <button id="studyTimeTodayTab" class="study-time-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="studyTimeTodayPanel">Hoje</button>
-            <button id="studyTimeTotalTab" class="study-time-tab" type="button" role="tab" aria-selected="false" aria-controls="studyTimeTotalPanel">Total</button>
-          </div>
-          <div class="study-time-content">
-            <div id="studyTimeTodayPanel" class="study-time-pane" role="tabpanel" aria-labelledby="studyTimeTodayTab">
-              <strong id="studyTimeToday">0min</strong>
-              <span id="studyTimeTodayMeta">0 questões</span>
+          <section
+            class="stats"
+            id="stats"
+            aria-label="Resumo do banco"
+          ></section>
+          <section class="study-time-panel" aria-label="Tempo de estudo">
+            <div
+              class="study-time-tabs"
+              role="tablist"
+              aria-label="Tempo de estudo"
+            >
+              <button
+                id="studyTimeTodayTab"
+                class="study-time-tab is-active"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="studyTimeTodayPanel"
+              >
+                Hoje
+              </button>
+              <button
+                id="studyTimeTotalTab"
+                class="study-time-tab"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="studyTimeTotalPanel"
+              >
+                Total
+              </button>
             </div>
-            <div id="studyTimeTotalPanel" class="study-time-pane" role="tabpanel" aria-labelledby="studyTimeTotalTab" hidden>
-              <strong id="studyTimeTotal">0min</strong>
-              <span id="studyTimeTotalMeta">0 tentativas</span>
+            <div class="study-time-content">
+              <div
+                id="studyTimeTodayPanel"
+                class="study-time-pane"
+                role="tabpanel"
+                aria-labelledby="studyTimeTodayTab"
+              >
+                <strong id="studyTimeToday">0min</strong>
+                <span id="studyTimeTodayMeta">0 questões</span>
+              </div>
+              <div
+                id="studyTimeTotalPanel"
+                class="study-time-pane"
+                role="tabpanel"
+                aria-labelledby="studyTimeTotalTab"
+                hidden
+              >
+                <strong id="studyTimeTotal">0min</strong>
+                <span id="studyTimeTotalMeta">0 tentativas</span>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
         </div>
       </header>
 
-      <button id="mobileFilterToggle" class="button button-secondary mobile-filter-toggle" type="button" aria-expanded="false" aria-controls="filterBar">
+      <button
+        id="mobileFilterToggle"
+        class="button button-secondary mobile-filter-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="filterBar"
+      >
         Busca e filtros
       </button>
 
       <section class="filter-bar" id="filterBar" aria-label="Filtros">
         <label class="field field-search">
           <span>Busca</span>
-          <input id="searchInput" type="search" placeholder="Texto, assunto ou ID">
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Texto, assunto ou ID"
+          />
         </label>
         <label class="field">
           <span>Matéria</span>
@@ -57,7 +104,12 @@
         </label>
         <label class="field">
           <span>Prova</span>
-          <input id="examInput" type="search" list="examOptions" placeholder="Banca, Ã³rgÃ£o ou ano">
+          <input
+            id="examInput"
+            type="search"
+            list="examOptions"
+            placeholder="Banca, Órgão ou ano"
+          />
           <datalist id="examOptions"></datalist>
         </label>
         <label class="field">
@@ -67,45 +119,61 @@
           </select>
         </label>
         <div class="filter-actions">
-          <button id="advancedFilterToggle" class="button button-secondary" type="button" aria-expanded="false" aria-controls="advancedFilters">
+          <button
+            id="advancedFilterToggle"
+            class="button button-secondary"
+            type="button"
+            aria-expanded="false"
+            aria-controls="advancedFilters"
+          >
             Filtros avançados <span id="activeFiltersLabel">(0 ativos)</span>
           </button>
-          <button id="clearFilters" class="button button-ghost" type="button">Limpar filtros</button>
+          <button id="clearFilters" class="button button-ghost" type="button">
+            Limpar filtros
+          </button>
         </div>
       </section>
 
-      <section class="advanced-filters" id="advancedFilters" hidden aria-label="Filtros avançados">
-        <div class="advanced-filter-group advanced-toggle-grid" aria-label="Filtros rápidos">
+      <section
+        class="advanced-filters"
+        id="advancedFilters"
+        hidden
+        aria-label="Filtros avançados"
+      >
+        <div
+          class="advanced-filter-group advanced-toggle-grid"
+          aria-label="Filtros rápidos"
+        >
           <label class="checkline">
-            <input id="commentedOnly" type="checkbox">
+            <input id="commentedOnly" type="checkbox" />
             <span>Com comentário</span>
           </label>
           <label class="checkline">
-            <input id="unansweredOnly" type="checkbox">
+            <input id="unansweredOnly" type="checkbox" />
             <span>Não resolvidas</span>
           </label>
           <label class="checkline">
-            <input id="wrongOnly" type="checkbox">
+            <input id="wrongOnly" type="checkbox" />
             <span>Errei por último</span>
           </label>
           <label class="checkline">
-            <input id="hideOutdated" type="checkbox">
+            <input id="hideOutdated" type="checkbox" />
             <span>Ocultar desatualizadas</span>
           </label>
           <label class="checkline">
-            <input id="hideStudyExcluded" type="checkbox" checked>
+            <input id="hideStudyExcluded" type="checkbox" checked />
             <span>Ocultar fora do estudo</span>
           </label>
           <label class="checkline">
-            <input id="hideDuplicates" type="checkbox">
+            <input id="hideDuplicates" type="checkbox" />
             <span>Ocultar duplicadas</span>
           </label>
           <label class="checkline">
-            <input id="representativeOnly" type="checkbox">
+            <input id="representativeOnly" type="checkbox" />
             <span>Representativas</span>
           </label>
           <label class="checkline">
-            <input id="resumeLast" type="checkbox">
+            <input id="resumeLast" type="checkbox" />
             <span>Continuar estudo</span>
           </label>
         </div>
@@ -123,14 +191,22 @@
           </label>
           <label class="field advanced-field-wide">
             <span>Excluir matérias</span>
-            <div id="excludedMatterList" class="matter-exclusion-list" role="group" aria-label="Matérias que não quero estudar"></div>
+            <div
+              id="excludedMatterList"
+              class="matter-exclusion-list"
+              role="group"
+              aria-label="Matérias que não quero estudar"
+            ></div>
           </label>
         </div>
 
-        <div class="advanced-filter-group contran-filter-group" aria-label="Questões inéditas PRF/CONTRAN">
+        <div
+          class="advanced-filter-group contran-filter-group"
+          aria-label="Questões inéditas PRF/CONTRAN"
+        >
           <div class="contran-filter-head">
             <label class="checkline checkline-emphasis">
-              <input id="contranUnpublishedOnly" type="checkbox">
+              <input id="contranUnpublishedOnly" type="checkbox" />
               <span>Somente inéditas PRF/CONTRAN</span>
             </label>
           </div>
@@ -191,58 +267,185 @@
 
           <div class="study-actions">
             <div class="study-now-group" aria-label="Plano de estudo">
-              <span id="studyPlanLabel" title="Plano PRF Otimizado">Plano PRF</span>
-              <button id="studyNow" class="button button-primary" type="button">Estudar agora</button>
-              <button id="viewAllQuestions" class="button button-secondary" type="button">Ver todas</button>
+              <span id="studyPlanLabel" title="Plano PRF Otimizado"
+                >Plano PRF</span
+              >
+              <button id="studyNow" class="button button-primary" type="button">
+                Estudar agora
+              </button>
+              <button
+                id="viewAllQuestions"
+                class="button button-secondary"
+                type="button"
+              >
+                Ver todas
+              </button>
             </div>
 
             <div class="pager-group" aria-label="Navegação da questão">
-              <button id="prevPage" class="button button-secondary icon-button" type="button" aria-label="Questão anterior">&lt;</button>
+              <button
+                id="prevPage"
+                class="button button-secondary icon-button"
+                type="button"
+                aria-label="Questão anterior"
+              >
+                &lt;
+              </button>
               <span class="page-chip" id="pageLabel">0 / 0</span>
-              <button id="nextPage" class="button button-secondary icon-button" type="button" aria-label="Próxima questão">&gt;</button>
+              <button
+                id="nextPage"
+                class="button button-secondary icon-button"
+                type="button"
+                aria-label="Próxima questão"
+              >
+                &gt;
+              </button>
             </div>
 
             <div class="dropdown mode-dropdown" data-dropdown>
-              <button id="modeMenuButton" class="button button-secondary" type="button" aria-expanded="false" title="Escolher outro modo de estudo">
+              <button
+                id="modeMenuButton"
+                class="button button-secondary"
+                type="button"
+                aria-expanded="false"
+                title="Escolher outro modo de estudo"
+              >
                 Mais modos
               </button>
               <div class="dropdown-menu" role="menu" hidden>
-                <button id="smartQueue" class="menu-item" type="button" hidden>Estudar agora</button>
-                <button id="dueReviews" class="menu-item" type="button">Revisar hoje</button>
-                <button id="repairQueue" class="menu-item" type="button">Revisar erros</button>
-                <button id="nextUnanswered" class="menu-item" type="button">Próxima não resolvida</button>
-                <button id="nextSubject" class="menu-item" type="button">Trocar assunto</button>
+                <button id="smartQueue" class="menu-item" type="button" hidden>
+                  Estudar agora
+                </button>
+                <button id="dueReviews" class="menu-item" type="button">
+                  Revisar hoje
+                </button>
+                <button id="repairQueue" class="menu-item" type="button">
+                  Revisar erros
+                </button>
+                <button id="nextUnanswered" class="menu-item" type="button">
+                  Próxima não resolvida
+                </button>
+                <button id="nextSubject" class="menu-item" type="button">
+                  Trocar assunto
+                </button>
               </div>
             </div>
 
             <div class="dropdown reports-dropdown" data-dropdown>
-              <button id="reportsMenuButton" class="button button-ghost" type="button" aria-expanded="false">
+              <button
+                id="reportsMenuButton"
+                class="button button-ghost"
+                type="button"
+                aria-expanded="false"
+              >
                 Relatórios
               </button>
               <div class="dropdown-menu" role="menu" hidden>
-                <button id="toggleCoverage" class="menu-item" type="button">Base x Prova</button>
-                <button id="togglePrincipaisPrf" class="menu-item" type="button">Principais PRF</button>
-                <button id="toggleGranCursosPlan" class="menu-item" type="button">Plano de Aulas Gran Cursos - Trânsito PRF</button>
-                <button id="toggleTheoryCoverage" class="menu-item" type="button">Cobertura de teoria</button>
-                <button id="toggleSubjects" class="menu-item" type="button">Ranking de assuntos</button>
-                <button id="toggleNormative" class="menu-item" type="button">Revisão normativa</button>
-                <button id="toggleContranMap" class="menu-item" type="button">Mapa CONTRAN PRF 2021</button>
-                <button id="toggleLawCompendium" class="menu-item" type="button">Legislação PRF</button>
+                <button id="toggleCoverage" class="menu-item" type="button">
+                  Base x Prova
+                </button>
+                <button
+                  id="togglePrincipaisPrf"
+                  class="menu-item"
+                  type="button"
+                >
+                  Principais PRF
+                </button>
+                <button
+                  id="toggleGranCursosPlan"
+                  class="menu-item"
+                  type="button"
+                >
+                  Plano de Aulas Gran Cursos - Trânsito PRF
+                </button>
+                <button
+                  id="toggleTheoryCoverage"
+                  class="menu-item"
+                  type="button"
+                >
+                  Cobertura de teoria
+                </button>
+                <button id="toggleSubjects" class="menu-item" type="button">
+                  Ranking de assuntos
+                </button>
+                <button id="toggleNormative" class="menu-item" type="button">
+                  Revisão normativa
+                </button>
+                <button id="toggleContranMap" class="menu-item" type="button">
+                  Mapa CONTRAN PRF 2021
+                </button>
+                <button
+                  id="toggleLawCompendium"
+                  class="menu-item"
+                  type="button"
+                >
+                  Legislação PRF
+                </button>
               </div>
             </div>
 
             <div class="dropdown support-dropdown" data-dropdown>
-              <button id="supportMenuButton" class="button button-ghost" type="button" aria-expanded="false">
+              <button
+                id="supportMenuButton"
+                class="button button-ghost"
+                type="button"
+                aria-expanded="false"
+              >
                 Apoio
               </button>
               <div class="dropdown-menu" role="menu" hidden>
-                <button id="openTeaching" class="menu-item" type="button" disabled>Resposta pela legislação atual</button>
-                <button id="openQuickTheory" class="menu-item" type="button" disabled>Teoria rápida</button>
-                <button id="toggleNormativeSupport" class="menu-item" type="button" disabled hidden>Atualização normativa</button>
-                <button id="toggleComment" class="menu-item" type="button" disabled>Explicação histórica</button>
-                <button id="openTheory" class="menu-item" type="button" disabled>PDF de teoria</button>
-                <button id="openHistory" class="menu-item" type="button">Histórico da questão</button>
-                <button id="showSimilar" class="menu-item" type="button" disabled>Semelhantes</button>
+                <button
+                  id="openTeaching"
+                  class="menu-item"
+                  type="button"
+                  disabled
+                >
+                  Resposta pela legislação atual
+                </button>
+                <button
+                  id="openQuickTheory"
+                  class="menu-item"
+                  type="button"
+                  disabled
+                >
+                  Teoria rápida
+                </button>
+                <button
+                  id="toggleNormativeSupport"
+                  class="menu-item"
+                  type="button"
+                  disabled
+                  hidden
+                >
+                  Atualização normativa
+                </button>
+                <button
+                  id="toggleComment"
+                  class="menu-item"
+                  type="button"
+                  disabled
+                >
+                  Explicação histórica
+                </button>
+                <button
+                  id="openTheory"
+                  class="menu-item"
+                  type="button"
+                  disabled
+                >
+                  PDF de teoria
+                </button>
+                <button id="openHistory" class="menu-item" type="button">
+                  Histórico da questão
+                </button>
+                <button
+                  id="showSimilar"
+                  class="menu-item"
+                  type="button"
+                  disabled
+                >
+                  Semelhantes
+                </button>
               </div>
             </div>
           </div>
@@ -261,16 +464,36 @@
             </div>
           </article>
 
-          <section class="inline-support-card" id="inlineSupportCard" hidden aria-label="Explicação da questão">
+          <section
+            class="inline-support-card"
+            id="inlineSupportCard"
+            hidden
+            aria-label="Explicação da questão"
+          >
             <div class="inline-support-head">
               <div>
                 <strong id="inlineSupportTitle">Explicação</strong>
-                <span id="inlineSupportSubtitle">Comentário, teoria e histórico</span>
+                <span id="inlineSupportSubtitle"
+                  >Comentário, teoria e histórico</span
+                >
               </div>
-              <button id="inlineOpenDrawer" class="button button-secondary" type="button">Abrir painel</button>
+              <button
+                id="inlineOpenDrawer"
+                class="button button-secondary"
+                type="button"
+              >
+                Abrir painel
+              </button>
             </div>
-            <nav class="support-tabs inline-support-tabs" id="inlineSupportTabs" aria-label="Abas de explicação"></nav>
-            <div id="inlineSupportBody" class="support-body inline-support-body"></div>
+            <nav
+              class="support-tabs inline-support-tabs"
+              id="inlineSupportTabs"
+              aria-label="Abas de explicação"
+            ></nav>
+            <div
+              id="inlineSupportBody"
+              class="support-body inline-support-body"
+            ></div>
           </section>
 
           <form class="answer-panel" id="answerForm">
@@ -279,7 +502,12 @@
                 <strong>Sua resposta</strong>
                 <span id="answerHint">Escolha uma alternativa</span>
               </div>
-              <button id="answerStatus" class="status-button" type="button" disabled></button>
+              <button
+                id="answerStatus"
+                class="status-button"
+                type="button"
+                disabled
+              ></button>
             </div>
 
             <div id="answerDetails" class="answer-details" hidden></div>
@@ -301,11 +529,21 @@
 
             <fieldset class="confidence-field">
               <legend>Confiança</legend>
-              <input id="confidenceSelect" type="hidden" value="sure">
+              <input id="confidenceSelect" type="hidden" value="sure" />
               <div class="segmented-control" id="confidenceOptions">
-                <button class="segment is-active" type="button" data-confidence="sure">Certeza</button>
-                <button class="segment" type="button" data-confidence="doubt">Dúvida</button>
-                <button class="segment" type="button" data-confidence="guess">Chute</button>
+                <button
+                  class="segment is-active"
+                  type="button"
+                  data-confidence="sure"
+                >
+                  Certeza
+                </button>
+                <button class="segment" type="button" data-confidence="doubt">
+                  Dúvida
+                </button>
+                <button class="segment" type="button" data-confidence="guess">
+                  Chute
+                </button>
               </div>
             </fieldset>
 
@@ -327,9 +565,30 @@
             </label>
 
             <div class="answer-actions">
-              <button id="submitAnswer" class="button button-primary" type="submit" disabled>Responder</button>
-              <button id="secondaryExplain" class="button button-secondary" type="button" disabled>Ver explicação</button>
-              <button id="similarQuestions" class="button button-secondary" type="button" disabled>Ver semelhantes</button>
+              <button
+                id="submitAnswer"
+                class="button button-primary"
+                type="submit"
+                disabled
+              >
+                Responder
+              </button>
+              <button
+                id="secondaryExplain"
+                class="button button-secondary"
+                type="button"
+                disabled
+              >
+                Ver explicação
+              </button>
+              <button
+                id="similarQuestions"
+                class="button button-secondary"
+                type="button"
+                disabled
+              >
+                Ver semelhantes
+              </button>
             </div>
 
             <details class="study-status-control" id="studyStatusControl">
@@ -341,7 +600,9 @@
                 <label class="field compact-field">
                   <span>Motivo</span>
                   <select id="studyStatusReason" disabled>
-                    <option value="outdated_no_value">Desatualizada sem aproveitamento</option>
+                    <option value="outdated_no_value">
+                      Desatualizada sem aproveitamento
+                    </option>
                     <option value="obsolete_norm">Norma antiga</option>
                     <option value="bad_statement">Enunciado ruim</option>
                     <option value="duplicate">Duplicada</option>
@@ -350,9 +611,30 @@
                   </select>
                 </label>
                 <div class="study-status-buttons">
-                  <button id="excludeFromStudy" class="button button-danger" type="button" disabled>Nao estudar</button>
-                  <button id="reviewLater" class="button button-secondary" type="button" disabled>Revisar depois</button>
-                  <button id="restoreToStudy" class="button button-secondary" type="button" hidden>Voltar ao estudo</button>
+                  <button
+                    id="excludeFromStudy"
+                    class="button button-danger"
+                    type="button"
+                    disabled
+                  >
+                    Nao estudar
+                  </button>
+                  <button
+                    id="reviewLater"
+                    class="button button-secondary"
+                    type="button"
+                    disabled
+                  >
+                    Revisar depois
+                  </button>
+                  <button
+                    id="restoreToStudy"
+                    class="button button-secondary"
+                    type="button"
+                    hidden
+                  >
+                    Voltar ao estudo
+                  </button>
                 </div>
               </div>
             </details>
@@ -365,9 +647,19 @@
               <strong>Ranking de assuntos</strong>
               <span id="subjectsInfo"></span>
             </div>
-            <button id="closeSubjectsReport" class="button button-secondary" type="button">Voltar</button>
+            <button
+              id="closeSubjectsReport"
+              class="button button-secondary"
+              type="button"
+            >
+              Voltar
+            </button>
           </div>
-          <p class="report-intro">Mostra os assuntos por desempenho e prioridade de revisão, combinando tentativas, erros, domínio e fila de estudo para indicar onde seu tempo tende a render mais.</p>
+          <p class="report-intro">
+            Mostra os assuntos por desempenho e prioridade de revisão,
+            combinando tentativas, erros, domínio e fila de estudo para indicar
+            onde seu tempo tende a render mais.
+          </p>
           <div class="subjects-list" id="subjectsList"></div>
         </section>
 
@@ -377,60 +669,130 @@
               <strong>Base x Prova PRF</strong>
               <span id="coverageInfo"></span>
             </div>
-            <button id="closeCoverageReport" class="button button-secondary" type="button">Voltar</button>
+            <button
+              id="closeCoverageReport"
+              class="button button-secondary"
+              type="button"
+            >
+              Voltar
+            </button>
           </div>
-          <p class="report-intro">Compara o peso esperado de cada disciplina no perfil de prova com a quantidade de questões válidas, questões com gabarito e tentativas já feitas.</p>
+          <p class="report-intro">
+            Compara o peso esperado de cada disciplina no perfil de prova com a
+            quantidade de questões válidas, questões com gabarito e tentativas
+            já feitas.
+          </p>
           <div id="coverageAlerts" class="coverage-alerts"></div>
           <div class="coverage-table" id="coverageTable"></div>
         </section>
 
-        <section class="principais-prf-panel report-panel" id="principaisPrfPanel" hidden>
+        <section
+          class="principais-prf-panel report-panel"
+          id="principaisPrfPanel"
+          hidden
+        >
           <div class="subjects-head">
             <div>
               <strong>Principais PRF</strong>
               <span id="principaisPrfInfo"></span>
             </div>
-            <button id="closePrincipaisPrf" class="button button-secondary" type="button">Voltar</button>
+            <button
+              id="closePrincipaisPrf"
+              class="button button-secondary"
+              type="button"
+            >
+              Voltar
+            </button>
           </div>
-          <p class="report-intro">Plano de estudo PRF gerado com pesos das provas objetivas PRF 2021, 2019 e 2013, mantendo normas cobradas na prova separadas das normas atuais de estudo.</p>
+          <p class="report-intro">
+            Plano de estudo PRF gerado com pesos das provas objetivas PRF 2021,
+            2019 e 2013, mantendo normas cobradas na prova separadas das normas
+            atuais de estudo.
+          </p>
           <div id="principaisPrfBody" class="principais-prf-body"></div>
         </section>
 
-        <section class="gran-plan-panel report-panel" id="granCursosPlanPanel" hidden>
+        <section
+          class="gran-plan-panel report-panel"
+          id="granCursosPlanPanel"
+          hidden
+        >
           <div class="subjects-head">
             <div>
-              <strong>Plano de Aulas Gran Cursos - Legislação de Trânsito PRF</strong>
+              <strong
+                >Plano de Aulas Gran Cursos - Legislação de Trânsito PRF</strong
+              >
               <span id="granCursosPlanInfo"></span>
             </div>
-            <button id="closeGranCursosPlan" class="button button-secondary" type="button">Voltar</button>
+            <button
+              id="closeGranCursosPlan"
+              class="button button-secondary"
+              type="button"
+            >
+              Voltar
+            </button>
           </div>
-          <p class="report-intro">Organização das aulas por prioridade, com base na incidência das provas PRF e nos temas mais rentáveis de fiscalização rodoviária.</p>
-          <p class="report-intro">A prioridade é por tema/eixo de incidência, não significa que a aula específica tenha caído em prova.</p>
+          <p class="report-intro">
+            Organização das aulas por prioridade, com base na incidência das
+            provas PRF e nos temas mais rentáveis de fiscalização rodoviária.
+          </p>
+          <p class="report-intro">
+            A prioridade é por tema/eixo de incidência, não significa que a aula
+            específica tenha caído em prova.
+          </p>
           <div id="granCursosPlanBody" class="gran-plan-body"></div>
         </section>
 
-        <section class="coverage-panel theory-coverage-panel report-panel" id="theoryCoveragePanel" hidden>
+        <section
+          class="coverage-panel theory-coverage-panel report-panel"
+          id="theoryCoveragePanel"
+          hidden
+        >
           <div class="subjects-head">
             <div>
               <strong>Cobertura de teoria</strong>
               <span id="theoryCoverageInfo"></span>
             </div>
-            <button id="closeTheoryCoverageReport" class="button button-secondary" type="button">Voltar</button>
+            <button
+              id="closeTheoryCoverageReport"
+              class="button button-secondary"
+              type="button"
+            >
+              Voltar
+            </button>
           </div>
-          <p class="report-intro">Audita se as questões têm apoio teórico confiável: teoria específica, microcards, artigos, vínculos com fontes, panoramas e lacunas sem suporte.</p>
+          <p class="report-intro">
+            Audita se as questões têm apoio teórico confiável: teoria
+            específica, microcards, artigos, vínculos com fontes, panoramas e
+            lacunas sem suporte.
+          </p>
           <div id="theoryCoverageStats" class="normative-stats"></div>
           <div class="coverage-table" id="theoryCoverageTable"></div>
         </section>
 
-        <section class="normative-panel report-panel" id="normativePanel" hidden>
+        <section
+          class="normative-panel report-panel"
+          id="normativePanel"
+          hidden
+        >
           <div class="subjects-head">
             <div>
               <strong>Revisão normativa</strong>
               <span id="normativeInfo"></span>
             </div>
-            <button id="closeNormativeReport" class="button button-secondary" type="button">Voltar</button>
+            <button
+              id="closeNormativeReport"
+              class="button button-secondary"
+              type="button"
+            >
+              Voltar
+            </button>
           </div>
-          <p class="report-intro">Lista questões impactadas por mudança normativa, separando o que pode ser adaptado, o que exige revisão manual, o que deve ser descartado e onde o gabarito mudou.</p>
+          <p class="report-intro">
+            Lista questões impactadas por mudança normativa, separando o que
+            pode ser adaptado, o que exige revisão manual, o que deve ser
+            descartado e onde o gabarito mudou.
+          </p>
           <div id="normativeStats" class="normative-stats"></div>
           <div class="normative-filters">
             <label class="field">
@@ -481,43 +843,106 @@
           <div id="normativeTable" class="normative-table"></div>
         </section>
 
-        <section class="law-compendium-panel report-panel" id="lawCompendiumPanel" hidden>
+        <section
+          class="law-compendium-panel report-panel"
+          id="lawCompendiumPanel"
+          hidden
+        >
           <div class="subjects-head">
             <div>
               <strong>Legislação PRF</strong>
               <span id="lawCompendiumInfo"></span>
             </div>
-            <button id="closeLawCompendium" class="button button-secondary" type="button">Voltar</button>
+            <button
+              id="closeLawCompendium"
+              class="button button-secondary"
+              type="button"
+            >
+              Voltar
+            </button>
           </div>
-          <p class="report-intro">Reúne a apostila da lei com normas vigentes validadas, histórico separado, dispositivos estruturados e vínculos com questões e comentários quando houver referência segura.</p>
+          <p class="report-intro">
+            Reúne a apostila da lei com normas vigentes validadas, histórico
+            separado, dispositivos estruturados e vínculos com questões e
+            comentários quando houver referência segura.
+          </p>
           <div id="lawCompendiumStats" class="normative-stats"></div>
           <div class="law-compendium-layout">
-            <aside class="law-source-list" id="lawSourceList" aria-label="Normas da apostila"></aside>
-            <article class="law-source-detail" id="lawSourceDetail" aria-label="Apostila da Lei"></article>
+            <aside
+              class="law-source-list"
+              id="lawSourceList"
+              aria-label="Normas da apostila"
+            ></aside>
+            <article
+              class="law-source-detail"
+              id="lawSourceDetail"
+              aria-label="Apostila da Lei"
+            ></article>
           </div>
         </section>
 
-        <section class="contran-map-panel report-panel" id="contranMapPanel" hidden>
+        <section
+          class="contran-map-panel report-panel"
+          id="contranMapPanel"
+          hidden
+        >
           <div class="subjects-head">
             <div>
               <strong>Mapa CONTRAN PRF 2021</strong>
               <span id="contranMapInfo"></span>
             </div>
-            <button id="closeContranMap" class="button button-secondary" type="button">Voltar</button>
+            <button
+              id="closeContranMap"
+              class="button button-secondary"
+              type="button"
+            >
+              Voltar
+            </button>
           </div>
-          <p class="report-intro">Consulte a correspondência entre resoluções CONTRAN cobradas no edital PRF 2021 e as normas atualmente vigentes usadas para estudo.</p>
+          <p class="report-intro">
+            Consulte a correspondência entre resoluções CONTRAN cobradas no
+            edital PRF 2021 e as normas atualmente vigentes usadas para estudo.
+          </p>
           <form class="contran-map-search" id="contranMapForm">
             <label class="field">
               <span>Resolução do edital</span>
-              <input id="contranMapInput" type="search" placeholder="Ex.: 806/2020, Res. 789/2020 ou CONTRAN 552/2015">
+              <input
+                id="contranMapInput"
+                type="search"
+                placeholder="Ex.: 806/2020, Res. 789/2020 ou CONTRAN 552/2015"
+              />
             </label>
             <button class="button button-primary" type="submit">Buscar</button>
           </form>
           <div class="contran-map-examples" aria-label="Exemplos de consulta">
-            <button class="button button-secondary" type="button" data-contran-example="806/2020">806/2020</button>
-            <button class="button button-secondary" type="button" data-contran-example="789/2020">789/2020</button>
-            <button class="button button-secondary" type="button" data-contran-example="552/2015">552/2015</button>
-            <button class="button button-secondary" type="button" data-action="contran-map-show-all">Ver todos</button>
+            <button
+              class="button button-secondary"
+              type="button"
+              data-contran-example="806/2020"
+            >
+              806/2020
+            </button>
+            <button
+              class="button button-secondary"
+              type="button"
+              data-contran-example="789/2020"
+            >
+              789/2020
+            </button>
+            <button
+              class="button button-secondary"
+              type="button"
+              data-contran-example="552/2015"
+            >
+              552/2015
+            </button>
+            <button
+              class="button button-secondary"
+              type="button"
+              data-action="contran-map-show-all"
+            >
+              Ver todos
+            </button>
           </div>
           <div id="contranMapStatus" class="contran-map-status"></div>
           <div id="contranMapResults" class="contran-map-results"></div>
@@ -526,24 +951,94 @@
     </div>
 
     <div id="supportOverlay" class="support-overlay" hidden></div>
-    <aside id="supportDrawer" class="support-drawer" role="dialog" aria-modal="true" aria-labelledby="supportTitle" hidden>
+    <aside
+      id="supportDrawer"
+      class="support-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="supportTitle"
+      hidden
+    >
       <header class="support-head">
         <div>
           <strong id="supportTitle">Apoio da questão</strong>
           <span id="supportSubtitle">Explicação, teoria e histórico</span>
         </div>
-        <button id="closeSupport" class="button button-ghost icon-button" type="button" aria-label="Fechar painel">X</button>
+        <button
+          id="closeSupport"
+          class="button button-ghost icon-button"
+          type="button"
+          aria-label="Fechar painel"
+        >
+          X
+        </button>
       </header>
 
       <nav class="support-tabs" aria-label="Abas de apoio">
-        <button id="supportTabTeaching" class="support-tab" type="button" data-support-tab="teaching">Resposta atual</button>
-        <button id="supportTabAppliedTheory" class="support-tab" type="button" data-support-tab="appliedTheory">Teoria aplicada</button>
-        <button id="supportTabQuickTheory" class="support-tab" type="button" data-support-tab="quickTheory">Teoria rápida</button>
-        <button id="supportTabNormative" class="support-tab" type="button" data-support-tab="normative">Atualização normativa</button>
-        <button id="supportTabComment" class="support-tab is-active" type="button" data-support-tab="comment">Explicação histórica</button>
-        <button id="supportTabTheory" class="support-tab" type="button" data-support-tab="theory">PDF</button>
-        <button id="supportTabHistory" class="support-tab" type="button" data-support-tab="history">Histórico</button>
-        <button id="supportTabSimilar" class="support-tab" type="button" data-support-tab="similar">Semelhantes</button>
+        <button
+          id="supportTabTeaching"
+          class="support-tab"
+          type="button"
+          data-support-tab="teaching"
+        >
+          Resposta atual
+        </button>
+        <button
+          id="supportTabAppliedTheory"
+          class="support-tab"
+          type="button"
+          data-support-tab="appliedTheory"
+        >
+          Teoria aplicada
+        </button>
+        <button
+          id="supportTabQuickTheory"
+          class="support-tab"
+          type="button"
+          data-support-tab="quickTheory"
+        >
+          Teoria rápida
+        </button>
+        <button
+          id="supportTabNormative"
+          class="support-tab"
+          type="button"
+          data-support-tab="normative"
+        >
+          Atualização normativa
+        </button>
+        <button
+          id="supportTabComment"
+          class="support-tab is-active"
+          type="button"
+          data-support-tab="comment"
+        >
+          Explicação histórica
+        </button>
+        <button
+          id="supportTabTheory"
+          class="support-tab"
+          type="button"
+          data-support-tab="theory"
+        >
+          PDF
+        </button>
+        <button
+          id="supportTabHistory"
+          class="support-tab"
+          type="button"
+          data-support-tab="history"
+        >
+          Histórico
+        </button>
+        <button
+          id="supportTabSimilar"
+          class="support-tab"
+          type="button"
+          data-support-tab="similar"
+        >
+          Semelhantes
+        </button>
       </nav>
 
       <article class="support-tab-panel" id="supportTeachingPanel" hidden>

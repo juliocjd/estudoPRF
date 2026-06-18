@@ -2600,6 +2600,12 @@ function qntcColumn(columnName, fallback = "''") {
     : `${fallback} AS ${columnName}`;
 }
 
+function contranUnpublishedColumn(columnName, fallback = "''") {
+  return tableColumnExists('contran_prf_unpublished_questions', columnName)
+    ? columnName
+    : `${fallback} AS ${columnName}`;
+}
+
 function getQuestionsAiFlagCount() {
   if (!columnExists('questions', 'possui_comentario_ia')) {
     return 0;
@@ -6757,6 +6763,13 @@ function getContranPrfUnpublishedQuestion(questionId) {
       audit_version,
       status_auditoria,
       validacao_normativa,
+      ${contranUnpublishedColumn('article_reference')},
+      ${contranUnpublishedColumn('article_full_text')},
+      ${contranUnpublishedColumn('article_full_text_status')},
+      ${contranUnpublishedColumn('needs_manual_review', '0')},
+      ${contranUnpublishedColumn('review_reason')},
+      ${contranUnpublishedColumn('pedagogical_patch_version')},
+      ${contranUnpublishedColumn('comment_style')},
       active,
       visible,
       deprecated,
@@ -6802,6 +6815,13 @@ function getContranPrfUnpublishedQuestion(questionId) {
     auditVersion: row.audit_version || '',
     statusAuditoria: row.status_auditoria || '',
     validacaoNormativa: row.validacao_normativa || '',
+    articleReference: row.article_reference || '',
+    articleFullTextStatus: row.article_full_text_status || '',
+    articleFullText: row.article_full_text_status === 'included_full' ? (row.article_full_text || '') : '',
+    needsManualReview: row.needs_manual_review === 1 || row.needs_manual_review === true || row.needs_manual_review === '1',
+    reviewReason: row.review_reason || '',
+    pedagogicalPatchVersion: row.pedagogical_patch_version || '',
+    commentStyle: row.comment_style || '',
     active: row.active !== 0,
     visible: row.visible !== 0,
     deprecated: Boolean(row.deprecated),

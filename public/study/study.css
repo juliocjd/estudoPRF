@@ -3590,6 +3590,39 @@ body.is-report-page {
   margin: 0;
 }
 
+.contran-teaching-comment {
+  display: grid;
+  gap: 14px;
+}
+
+.contran-teaching-comment .historical-comment-content h4 {
+  margin: 14px 0 6px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.contran-teaching-block {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+}
+
+.contran-teaching-block > strong {
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.contran-teaching-block p,
+.contran-full-article p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.contran-full-article {
+  margin-top: 2px;
+}
+
 .normative-warning,
 .normative-note {
   margin: 0;

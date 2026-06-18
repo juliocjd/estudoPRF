@@ -2981,6 +2981,8 @@ function renderQuestion(question, options = {}) {
     canRevealExplanation(question) && (
       question.comment.html
       || question.comment.text
+      || question.contranPrfUnpublished?.historicalExplanation
+      || question.contranPrfUnpublished?.teacherComment
       || hasQuickTheory
       || question.normativeUpdate?.exists
       || (
@@ -3079,6 +3081,10 @@ function isContranPrfUnpublishedQuestion(question) {
 
 function renderHistoricalCommentPanel(question) {
   if (!els.commentBody) return;
+  if (isContranPrfUnpublishedQuestion(question)) {
+    renderContranPrfUnpublishedCommentPanel(question);
+    return;
+  }
   const answering = question.answering || {};
   const historicalAnswer = answering.historicalAnswer || question.comment?.historicalAnswer || question.comment?.extractedAnswer || '';
   const studyAnswer = answering.studyAnswer || question.comment?.studyAnswer || '';
@@ -3133,6 +3139,66 @@ function renderHistoricalCommentPanel(question) {
       </div>
     </section>
   `;
+}
+
+function renderContranPrfUnpublishedCommentPanel(question) {
+  const meta = question?.contranPrfUnpublished || {};
+  const professorComment = meta.historicalExplanation || meta.teacherComment || meta.explanation || question.comment?.text || '';
+  const articleStatus = meta.articleFullTextStatus || '';
+  const canShowFullArticle = articleStatus === 'included_full' && meta.articleFullText;
+  const manualReview = meta.needsManualReview
+    ? `<p class="normative-warning is-warning">Marcada para revisÃ£o normativa posterior${meta.reviewReason ? `: ${escapeHtml(meta.reviewReason)}` : '.'}</p>`
+    : '';
+  setHistoricalCommentStatus('');
+  state.historicalCommentEditMode = false;
+  els.commentBody.innerHTML = `
+    <section class="historical-comment-view contran-teaching-comment" data-historical-comment-card>
+      ${manualReview}
+      <div class="historical-comment-content">
+        ${professorComment ? pedagogicalPlainTextMarkup(professorComment) : `<p class="empty">${escapeHtml('ComentÃ¡rio ainda nÃ£o coletado.')}</p>`}
+      </div>
+      ${meta.beginnerExplanation ? `
+        <section class="contran-teaching-block">
+          <strong>ExplicaÃ§Ã£o para iniciante</strong>
+          ${pedagogicalPlainTextMarkup(meta.beginnerExplanation)}
+        </section>
+      ` : ''}
+      ${meta.trapExplanation ? `
+        <section class="contran-teaching-block">
+          <strong>Pegadinha</strong>
+          ${pedagogicalPlainTextMarkup(meta.trapExplanation)}
+        </section>
+      ` : ''}
+      ${meta.sourceNormativeReference ? `
+        <section class="contran-teaching-block">
+          <strong>Fundamento normativo</strong>
+          ${pedagogicalPlainTextMarkup(meta.sourceNormativeReference)}
+        </section>
+      ` : ''}
+      ${canShowFullArticle ? `
+        <details class="quick-theory-official contran-full-article">
+          <summary>Ver fundamento normativo na Ã­ntegra</summary>
+          <div>${pedagogicalPlainTextMarkup(meta.articleFullText)}</div>
+        </details>
+      ` : ''}
+    </section>
+  `;
+}
+
+function pedagogicalPlainTextMarkup(value) {
+  const paragraphs = String(value || '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  if (!paragraphs.length) return '';
+  return paragraphs.map((paragraph) => {
+    const lines = paragraph.split('\n').map((line) => line.trim()).filter(Boolean);
+    if (lines.length === 1 && /^[^:]{3,60}:$/.test(lines[0])) {
+      return `<h4>${escapeHtml(lines[0].replace(/:$/, ''))}</h4>`;
+    }
+    return `<p>${escapeHtml(lines.join('\n')).replace(/\n/g, '<br>')}</p>`;
+  }).join('');
 }
 
 function historicalCommentToolbar({ editing }) {
@@ -5304,7 +5370,12 @@ function applyStatementLengthClass(question) {
 
 function preferredSupportTab(question = state.currentQuestion) {
   const canRevealCurrentLaw = canRevealCurrentLawAnswer(question);
-  const hasHistoricalComment = Boolean(question?.comment?.html || question?.comment?.text);
+  const hasHistoricalComment = Boolean(
+    question?.comment?.html
+    || question?.comment?.text
+    || question?.contranPrfUnpublished?.historicalExplanation
+    || question?.contranPrfUnpublished?.teacherComment
+  );
   if (question?.comment?.userEditedAt && hasHistoricalComment) return 'comment';
   if (hasAppliedTheorySupport(question) && canRevealAppliedTheory(question)) return 'appliedTheory';
   if (canRevealCurrentLaw && (question?.currentLawAnswer?.exists || question?.metadata?.desatualizada)) return 'teaching';
