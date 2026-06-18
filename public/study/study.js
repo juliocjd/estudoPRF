@@ -348,6 +348,7 @@ let excludedMatterTimer = null;
 let examSearchTimer = null;
 const mobileLayoutQuery = window.matchMedia('(max-width: 760px)');
 let lockedBodyScrollY = 0;
+let questionRequestToken = 0;
 
 boot().catch(handleBootError);
 
@@ -1687,12 +1688,14 @@ function renderMastery(mastery) {
 }
 
 async function loadQuestions(options = {}) {
+  const requestToken = options.requestToken || beginQuestionRequest();
   const params = buildQuestionParams();
   if (options.targetId) {
     params.set('targetId', String(options.targetId));
   }
 
   const data = await api(`/api/questions?${params}`);
+  if (!isCurrentQuestionRequest(requestToken)) return false;
   state.page = data.page;
   state.totalPages = data.totalPages;
   state.total = data.total;
@@ -1709,8 +1712,22 @@ async function loadQuestions(options = {}) {
     return;
   }
 
-  await selectQuestion(state.rows[state.rowIndex].id, { adaptiveTarget: options.adaptiveTarget });
+  const selected = await selectQuestion(state.rows[state.rowIndex].id, {
+    adaptiveTarget: options.adaptiveTarget,
+    requestToken
+  });
+  if (selected === false) return false;
   renderPager();
+  return true;
+}
+
+function beginQuestionRequest() {
+  questionRequestToken += 1;
+  return questionRequestToken;
+}
+
+function isCurrentQuestionRequest(requestToken) {
+  return !requestToken || requestToken === questionRequestToken;
 }
 
 async function loadCurrentModeTarget() {
@@ -1922,17 +1939,19 @@ async function loadSmartQueueV2Target() {
 }
 
 async function loadAdaptiveTarget(plan = 'prf_otimizado') {
+  const requestToken = beginQuestionRequest();
   const params = buildQuestionParams();
   params.set('plan', plan);
   if (state.activeProfile) params.set('profile', state.activeProfile);
   const target = await api(`/api/adaptive-study/next?${params}`);
+  if (!isCurrentQuestionRequest(requestToken)) return false;
   if (!target?.questionId) {
     els.answerStatus.textContent = target.error || 'Nada encontrado';
-    return;
+    return loadQuestions({ requestToken });
   }
   state.adaptiveTarget = target;
   state.page = 1;
-  await loadQuestions({ targetId: target.questionId, adaptiveTarget: target });
+  return loadQuestions({ targetId: target.questionId, adaptiveTarget: target, requestToken });
 }
 
 async function recordQuestionEvent(eventType, eventValue = '') {
@@ -2802,6 +2821,7 @@ function populateNormativeSelect(select, rows, emptyLabel) {
 }
 
 async function selectQuestion(questionId, options = {}) {
+  if (!isCurrentQuestionRequest(options.requestToken)) return false;
   state.selectedId = questionId;
   state.answerResult = options.answerResult || null;
   state.adaptiveTarget = options.adaptiveTarget || null;
@@ -2815,6 +2835,7 @@ async function selectQuestion(questionId, options = {}) {
   startTimer();
 
   const question = await api(`/api/questions/${questionId}`);
+  if (!isCurrentQuestionRequest(options.requestToken)) return false;
   if (question.error) {
     state.theoryUrl = '';
     els.openTheory.disabled = true;
@@ -2822,7 +2843,7 @@ async function selectQuestion(questionId, options = {}) {
     renderQuestionSituationTone(null);
     renderContranPrf2021QuestionAlert(null);
     els.statement.innerHTML = `<p class="empty">${escapeHtml(question.error)}</p>`;
-    return;
+    return false;
   }
 
   renderQuestion(question, options);
@@ -2836,6 +2857,7 @@ async function selectQuestion(questionId, options = {}) {
     console.warn('Nao foi possivel salvar o estado de estudo.', error);
   });
   recordQuestionEvent('started_question');
+  return true;
 }
 
 function scrollToStatementStart() {
