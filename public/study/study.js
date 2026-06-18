@@ -42,7 +42,15 @@ const state = {
     hideStudyExcluded: true,
     hideDuplicates: false,
     representative: false,
-    normative: ''
+    normative: '',
+    contranUnpublished: false,
+    contranCurrentResolution: '',
+    contranHistoricalResolution: '',
+    contranAxis: '',
+    contranTopic: '',
+    contranSubtopic: '',
+    contranQuestionType: '',
+    contranDifficulty: ''
   },
   exams: [],
   examOptionByLabel: new Map(),
@@ -142,6 +150,14 @@ const els = {
   hideDuplicates: document.querySelector('#hideDuplicates'),
   representativeOnly: document.querySelector('#representativeOnly'),
   normativeFilter: document.querySelector('#normativeFilter'),
+  contranUnpublishedOnly: document.querySelector('#contranUnpublishedOnly'),
+  contranCurrentResolutionSelect: document.querySelector('#contranCurrentResolutionSelect'),
+  contranHistoricalResolutionSelect: document.querySelector('#contranHistoricalResolutionSelect'),
+  contranAxisSelect: document.querySelector('#contranAxisSelect'),
+  contranTopicSelect: document.querySelector('#contranTopicSelect'),
+  contranSubtopicSelect: document.querySelector('#contranSubtopicSelect'),
+  contranQuestionTypeSelect: document.querySelector('#contranQuestionTypeSelect'),
+  contranDifficultySelect: document.querySelector('#contranDifficultySelect'),
   resumeLast: document.querySelector('#resumeLast'),
   prevPage: document.querySelector('#prevPage'),
   nextPage: document.querySelector('#nextPage'),
@@ -224,6 +240,7 @@ const els = {
   supportAppliedTheoryBody: document.querySelector('#supportAppliedTheoryBody'),
   supportQuickTheoryPanel: document.querySelector('#supportQuickTheoryPanel'),
   supportTabQuickTheory: document.querySelector('#supportTabQuickTheory'),
+  supportTabComment: document.querySelector('#supportTabComment'),
   supportNormativePanel: document.querySelector('#supportNormativePanel'),
   supportTabNormative: document.querySelector('#supportTabNormative'),
   supportHistoryPanel: document.querySelector('#supportHistoryPanel'),
@@ -517,6 +534,32 @@ function bindEvents() {
     state.page = 1;
     updateAdvancedFiltersSummary();
     loadQuestions();
+  });
+
+  const contranFilterControls = [
+    [els.contranCurrentResolutionSelect, 'contranCurrentResolution'],
+    [els.contranHistoricalResolutionSelect, 'contranHistoricalResolution'],
+    [els.contranAxisSelect, 'contranAxis'],
+    [els.contranTopicSelect, 'contranTopic'],
+    [els.contranSubtopicSelect, 'contranSubtopic'],
+    [els.contranQuestionTypeSelect, 'contranQuestionType'],
+    [els.contranDifficultySelect, 'contranDifficulty']
+  ];
+  els.contranUnpublishedOnly?.addEventListener('change', () => {
+    state.filters.contranUnpublished = els.contranUnpublishedOnly.checked;
+    state.page = 1;
+    updateAdvancedFiltersSummary();
+    loadQuestions();
+  });
+  contranFilterControls.forEach(([control, key]) => {
+    control?.addEventListener('change', () => {
+      state.filters[key] = control.value;
+      if (control.value) state.filters.contranUnpublished = true;
+      if (els.contranUnpublishedOnly) els.contranUnpublishedOnly.checked = state.filters.contranUnpublished;
+      state.page = 1;
+      updateAdvancedFiltersSummary();
+      loadQuestions();
+    });
   });
 
   els.resumeLast.addEventListener('change', async () => {
@@ -1196,7 +1239,15 @@ function clearFilters() {
     hideStudyExcluded: state.studyMode !== 'all',
     hideDuplicates: false,
     representative: false,
-    normative: ''
+    normative: '',
+    contranUnpublished: false,
+    contranCurrentResolution: '',
+    contranHistoricalResolution: '',
+    contranAxis: '',
+    contranTopic: '',
+    contranSubtopic: '',
+    contranQuestionType: '',
+    contranDifficulty: ''
   };
   state.page = 1;
   els.searchInput.value = '';
@@ -1213,6 +1264,14 @@ function clearFilters() {
   els.hideDuplicates.checked = false;
   els.representativeOnly.checked = false;
   els.normativeFilter.value = '';
+  if (els.contranUnpublishedOnly) els.contranUnpublishedOnly.checked = false;
+  if (els.contranCurrentResolutionSelect) els.contranCurrentResolutionSelect.value = '';
+  if (els.contranHistoricalResolutionSelect) els.contranHistoricalResolutionSelect.value = '';
+  if (els.contranAxisSelect) els.contranAxisSelect.value = '';
+  if (els.contranTopicSelect) els.contranTopicSelect.value = '';
+  if (els.contranSubtopicSelect) els.contranSubtopicSelect.value = '';
+  if (els.contranQuestionTypeSelect) els.contranQuestionTypeSelect.value = '';
+  if (els.contranDifficultySelect) els.contranDifficultySelect.value = '';
   updateAdvancedFiltersSummary();
 }
 
@@ -1230,7 +1289,15 @@ function updateAdvancedFiltersSummary() {
     state.filters.hideStudyExcluded,
     state.filters.hideDuplicates,
     state.filters.representative,
-    state.filters.normative
+    state.filters.normative,
+    state.filters.contranUnpublished,
+    state.filters.contranCurrentResolution,
+    state.filters.contranHistoricalResolution,
+    state.filters.contranAxis,
+    state.filters.contranTopic,
+    state.filters.contranSubtopic,
+    state.filters.contranQuestionType,
+    state.filters.contranDifficulty
   ].filter(Boolean).length;
 
   els.activeFiltersLabel.textContent = `(${active} ativo${active === 1 ? '' : 's'})`;
@@ -1346,7 +1413,8 @@ async function loadStats() {
     statMarkup(stats.readyToStudy ?? stats.knownAnswers ?? 0, 'prontas para estudar'),
     statMarkup(stats.dueReviews || 0, 'revisar hoje'),
     statMarkup(stats.repairQuestions || 0, 'revisar erros'),
-    statMarkup(stats.answered || 0, 'resolvidas')
+    statMarkup(stats.answered || 0, 'resolvidas'),
+    stats.contranPrfUnpublished ? statMarkup(stats.contranPrfUnpublished, 'ineditas PRF/CONTRAN') : ''
   ].join('');
   state.studyTimeSummary = stats.studyTime || {};
   renderStudyTimeSummary();
@@ -1362,6 +1430,45 @@ async function loadFilters() {
   renderExcludedMatterOptions(filters.matters || []);
 
   renderSubjectOptions();
+  renderContranUnpublishedFilterOptions(filters.contranUnpublished || {});
+}
+
+function renderContranUnpublishedFilterOptions(filters = {}) {
+  const disabled = !filters.available;
+  if (els.contranUnpublishedOnly) {
+    els.contranUnpublishedOnly.disabled = disabled;
+  }
+  const controls = [
+    [els.contranCurrentResolutionSelect, filters.currentResolutions || [], 'Todas'],
+    [els.contranHistoricalResolutionSelect, filters.historicalResolutions || [], 'Todas'],
+    [els.contranAxisSelect, filters.axes || [], 'Todos'],
+    [els.contranTopicSelect, filters.topics || [], 'Todos'],
+    [els.contranSubtopicSelect, filters.subtopics || [], 'Todos'],
+    [els.contranQuestionTypeSelect, filters.types || [], 'Todos'],
+    [els.contranDifficultySelect, filters.difficulties || [], 'Todas']
+  ];
+  for (const [control, rows, emptyLabel] of controls) {
+    if (!control) continue;
+    const current = control.value;
+    control.disabled = disabled;
+    control.innerHTML = `<option value="">${escapeHtml(emptyLabel)}</option>` + rows.map((row) => {
+      const value = row.value || '';
+      return `<option value="${escapeAttr(value)}">${escapeHtml(formatContranFilterValue(value))} (${Number(row.count || 0).toLocaleString('pt-BR')})</option>`;
+    }).join('');
+    control.value = [...control.options].some((option) => option.value === current) ? current : '';
+  }
+}
+
+function formatContranFilterValue(value) {
+  const text = String(value || '');
+  const labels = {
+    CERTO_ERRADO: 'Certo/Errado',
+    MULTIPLA_ESCOLHA: 'Múltipla escolha',
+    facil: 'Fácil',
+    medio: 'Médio',
+    dificil: 'Difícil'
+  };
+  return labels[text] || text;
 }
 
 function renderExcludedMatterOptions(matters) {
@@ -1575,6 +1682,14 @@ function buildQuestionParams() {
   if (state.filters.hideDuplicates) params.set('hideDuplicates', '1');
   if (state.filters.representative) params.set('representative', '1');
   if (state.filters.normative) params.set('normative', state.filters.normative);
+  if (state.filters.contranUnpublished) params.set('unpublished', 'contran-prf');
+  if (state.filters.contranCurrentResolution) params.set('currentResolution', state.filters.contranCurrentResolution);
+  if (state.filters.contranHistoricalResolution) params.set('historicalResolution', state.filters.contranHistoricalResolution);
+  if (state.filters.contranAxis) params.set('axis', state.filters.contranAxis);
+  if (state.filters.contranTopic) params.set('topic', state.filters.contranTopic);
+  if (state.filters.contranSubtopic) params.set('subtopic', state.filters.contranSubtopic);
+  if (state.filters.contranQuestionType) params.set('questionType', state.filters.contranQuestionType);
+  if (state.filters.contranDifficulty) params.set('difficulty', state.filters.contranDifficulty);
   return params;
 }
 
@@ -2710,7 +2825,7 @@ function renderQuestion(question, options = {}) {
   renderMastery(question.mastery);
   renderQuestionSituationTone(question);
   renderContranPrf2021QuestionAlert(question);
-  els.statement.innerHTML = formatStatementHtml(question) || question.statementHtml || `<p>${escapeHtml(question.statementText || 'Sem enunciado')}</p>`;
+  els.statement.innerHTML = `${renderContranPrfUnpublishedNotice(question)}${formatStatementHtml(question) || question.statementHtml || `<p>${escapeHtml(question.statementText || 'Sem enunciado')}</p>`}`;
   applyStatementLengthClass(question);
   renderAnswerStatus(question);
 
@@ -2763,7 +2878,9 @@ function renderQuestion(question, options = {}) {
   els.openTeaching.disabled = !hasTeachingSupport;
   els.toggleComment.disabled = !hasSupportExplanation;
   els.openTeaching.textContent = 'Resposta pela legislacao atual';
-  els.toggleComment.textContent = 'Explicação histórica';
+  const commentLabel = isContranPrfUnpublishedQuestion(question) ? 'Comentário do professor' : 'Explicação histórica';
+  els.toggleComment.textContent = commentLabel;
+  if (els.supportTabComment) els.supportTabComment.textContent = commentLabel;
   if (els.supportTabTeaching) {
     els.supportTabTeaching.disabled = !hasTeachingSupport;
   }
@@ -2779,17 +2896,18 @@ function renderQuestion(question, options = {}) {
   const answering = question.answering || {};
   const historicalAnswer = answering.historicalAnswer || question.comment.historicalAnswer || question.comment.extractedAnswer || '';
   const studyAnswer = answering.studyAnswer || question.comment.studyAnswer || '';
+  const answerInfoLabel = isContranPrfUnpublishedQuestion(question) ? 'Gabarito' : 'Gabarito histórico';
   const info = [
     question.comment.userEditedAt ? 'comentário atualizado por você' : '',
     question.comment.sourceType === 'ai' ? 'gerado por IA' : '',
-    historicalAnswer ? `Gabarito histórico: ${historicalAnswer}` : '',
+    historicalAnswer ? `${answerInfoLabel}: ${historicalAnswer}` : '',
     question.comment.professor || '',
     question.comment.aiModel || ''
   ].filter(Boolean).join(' - ');
   els.commentInfo.textContent = [
     question.comment.userEditedAt ? 'comentário atualizado por você' : '',
     question.comment.sourceType === 'ai' ? 'gerado por IA' : '',
-    historicalAnswer ? `Gabarito histórico: ${historicalAnswer}` : '',
+    historicalAnswer ? `${answerInfoLabel}: ${historicalAnswer}` : '',
     question.comment.professor || '',
     question.comment.aiModel || ''
   ].filter(Boolean).join(' - ') || info;
@@ -2813,6 +2931,28 @@ function renderQuestion(question, options = {}) {
   if (previousQuestionId !== nextQuestionId && options.scrollToStatement !== false) {
     scrollToStatementStart();
   }
+}
+
+function renderContranPrfUnpublishedNotice(question) {
+  const meta = question?.contranPrfUnpublished;
+  if (!meta?.exists) return '';
+  const details = [
+    meta.currentResolution ? `Atual: ${meta.currentResolution}` : '',
+    meta.axis || '',
+    meta.topic || '',
+    meta.difficulty ? formatContranFilterValue(meta.difficulty) : ''
+  ].filter(Boolean).join(' - ');
+  return `
+    <aside class="unpublished-question-notice" aria-label="Questão inédita">
+      <strong>${escapeHtml(meta.badge || 'Questao inedita - elaborada para treino PRF/CONTRAN')}</strong>
+      <span>${escapeHtml(meta.notice || 'Nao e questao oficial de concurso.')}</span>
+      ${details ? `<small>${escapeHtml(details)}</small>` : ''}
+    </aside>
+  `;
+}
+
+function isContranPrfUnpublishedQuestion(question) {
+  return Boolean(question?.contranPrfUnpublished?.exists || question?.metadata?.isUnpublished);
 }
 
 function renderHistoricalCommentPanel(question) {
@@ -4493,6 +4633,9 @@ function renderQuestionBadges(question) {
   const badges = [];
   const meta = question?.metadata;
   const studyStatus = question?.studyStatus;
+  if (question?.contranPrfUnpublished?.exists || meta?.isUnpublished) {
+    badges.push('<span class="question-badge is-unpublished">Inédita PRF/CONTRAN</span>');
+  }
   if (studyStatus?.isOutOfStudy) {
     const label = studyStatus.status === 'review_later' ? 'Revisar depois' : 'Fora do estudo';
     badges.push(`<span class="question-badge is-study-excluded">${escapeHtml(label)}</span>`);
@@ -5051,11 +5194,14 @@ function preferredSupportTab(question = state.currentQuestion) {
 }
 
 function supportTabTitle(tab, question = state.currentQuestion) {
+  const commentTitle = isContranPrfUnpublishedQuestion(question)
+    ? ['Comentário do professor', 'Gabarito comentado, pegadinha e justificativas']
+    : ['Explicação histórica', 'Comentário do professor e gabarito histórico'];
   const titles = {
     teaching: ['Resposta pela legislacao atual', 'Gabarito atual, fundamento e conclusao de estudo'],
     appliedTheory: ['Teoria aplicada', 'Regra que resolve esta questao'],
     quickTheory: ['Teoria rapida', 'Regra, artigo e pegadinha de prova'],
-    comment: ['Explicacao historica', 'Comentario do professor e gabarito historico'],
+    comment: commentTitle,
     normative: ['Atualizacao normativa', 'Analise auxiliar da desatualizacao'],
     theory: ['Teoria relacionada', 'Material em PDF da materia/assunto'],
     history: ['Historico da questao', 'Tentativas registradas no banco local'],
@@ -5067,12 +5213,15 @@ function supportTabTitle(tab, question = state.currentQuestion) {
 }
 
 function inlineSupportTabs() {
+  const commentLabel = isContranPrfUnpublishedQuestion(state.currentQuestion)
+    ? 'Comentário do professor'
+    : 'Explicação histórica';
   return [
     ['teaching', 'Resposta atual', els.supportTabTeaching],
     ['appliedTheory', 'Teoria aplicada', els.supportTabAppliedTheory],
     ['quickTheory', 'Teoria rápida', els.supportTabQuickTheory],
     ['normative', 'Atualização normativa', els.supportTabNormative],
-    ['comment', 'Explicação histórica', null],
+    ['comment', commentLabel, null],
     ['theory', 'PDF', null],
     ['history', 'Histórico', null],
     ['similar', 'Semelhantes', null]
@@ -5456,10 +5605,13 @@ function renderSupportVisibility() {
   els.supportHistoryPanel.hidden = state.supportTab !== 'history';
   els.supportSimilarPanel.hidden = state.supportTab !== 'similar';
 
+  const commentTitle = isContranPrfUnpublishedQuestion(state.currentQuestion)
+    ? ['Comentário do professor', 'Gabarito comentado, pegadinha e justificativas']
+    : ['Explicação histórica', 'Comentário do professor e gabarito histórico'];
   const titles = {
     teaching: ['Comentário atualizado', 'Regra atual provável e orientação de estudo'],
     quickTheory: ['Teoria rápida', 'Regra, artigo e pegadinha de prova'],
-    comment: ['Explicação histórica', 'Comentário do professor e gabarito histórico'],
+    comment: commentTitle,
     normative: ['Atualização normativa', 'Análise auxiliar da desatualização'],
     theory: ['Teoria relacionada', 'Material em PDF da matéria/assunto'],
     history: ['Histórico da questão', 'Tentativas registradas no banco local'],

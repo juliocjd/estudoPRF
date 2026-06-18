@@ -32,8 +32,11 @@ data/*
 !data/question_applied_theory_v6_exact_anchors/**
 !data/diagnostico_question_applied_theory_exact_anchors_v6.md
 !data/diagnostico_question_applied_theory_exact_anchors_v6.json
+!data/contran_prf_unpublished_v5/
+!data/contran_prf_unpublished_v5/**
 exports/
 postgres-export/
+tmp/
 tmp-*.sqlite
 assets/
 .browser-profile/

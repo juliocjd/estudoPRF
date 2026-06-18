@@ -1,0 +1,95 @@
+{
+  "batch_id": "CONTRAN_PRF_V5_REFEITO_DO_ZERO_2026_06",
+  "created_at": "2026-06-18T00:51:44Z",
+  "total": 413,
+  "counts": {
+    "CERTO_ERRADO": 324,
+    "MULTIPLA_ESCOLHA": 89
+  },
+  "resolution_counts": {
+    "Res. CONTRAN 945/2022": 35,
+    "Res. CONTRAN 882/2021": 45,
+    "Res. CONTRAN 938/2022": 20,
+    "Res. CONTRAN 525/2015": 25,
+    "Res. CONTRAN 798/2020": 30,
+    "Res. CONTRAN 918/2022": 33,
+    "Res. CONTRAN 900/2022": 13,
+    "Res. CONTRAN 909/2022": 13,
+    "Res. CONTRAN 985/2022": 13,
+    "Res. CONTRAN 723/2018": 15,
+    "Res. CONTRAN 920/2022": 13,
+    "Res. CONTRAN 960/2022": 13,
+    "Res. CONTRAN 969/2022": 13,
+    "Res. CONTRAN 970/2022": 13,
+    "Res. CONTRAN 993/2023": 13,
+    "Res. CONTRAN 955/2022": 13,
+    "Res. CONTRAN 819/2021": 13,
+    "Res. CONTRAN 432/2013": 15,
+    "Res. CONTRAN 1004/2023": 13,
+    "Res. CONTRAN 809/2020": 13,
+    "Res. CONTRAN 940/2022": 13,
+    "Res. CONTRAN 943/2022": 13,
+    "Res. CONTRAN 1014/2025": 13
+  },
+  "axis_counts": {
+    "Carga, peso, dimensoes e amarracao": 80,
+    "Tacografo e jornada do motorista": 45,
+    "Fiscalizacao eletronica, autuacao e processo administrativo": 130,
+    "Equipamentos, identificacao e seguranca veicular": 52,
+    "Temas de pegadinha e revisao final": 106
+  },
+  "ce_answers": {
+    "C": 162,
+    "E": 162
+  },
+  "mc_answers": {
+    "A": 18,
+    "B": 18,
+    "C": 18,
+    "D": 18,
+    "E": 17
+  },
+  "errors": [],
+  "files": {
+    "contran_prf_questoes_ineditas_v5_refeito_do_zero.jsonl": {
+      "sha256": "58c615da7eec783408144e8db8dd242c95997b107ec8fc869d8560e12d72240f",
+      "bytes": 1643433
+    },
+    "contran_prf_questoes_ineditas_v5_refeito_do_zero.json": {
+      "sha256": "2242edbb14cee8320120cf800c239ac83cbba6aafd897df586f0c576ca69b977",
+      "bytes": 1758937
+    },
+    "contran_prf_questoes_ineditas_v5_refeito_do_zero.csv": {
+      "sha256": "45c30a4abe47bf6cf757520410d4287a14830e30f38a7e56f4be3fae4331faba",
+      "bytes": 724656
+    },
+    "caderno_contran_prf_questoes_ineditas_v5_refeito_do_zero.md": {
+      "sha256": "d42028602e7974f99d85d99dc0a76b35a318b1342970cc7b786e9a849ef3e209",
+      "bytes": 655041
+    },
+    "relatorio_auditoria_banco_questoes_contran_prf_v5_refeito_do_zero.md": {
+      "sha256": "2b9ba9ed21413bedccc6bb77518eb023c0ab1d6b5c17eb4341c8981c692e9ded",
+      "bytes": 1897
+    },
+    "README_IMPORTACAO_BANCO_QUESTOES_CONTRAN_PRF_V5_REFEITO_DO_ZERO.md": {
+      "sha256": "6899cf0a779ae834c8fd811bfca3e5d0b25c85ba8e5695c823415ec91c23e8c1",
+      "bytes": 1047
+    },
+    "PROMPT_CODEX_ROLLBACK_CONTRAN_PRF_V3_3.md": {
+      "sha256": "ef71e64bb5827466475157efac807d033b31e951003d6d61bd7287d8ecd6f12b",
+      "bytes": 1631
+    },
+    "PROMPT_CODEX_INSERIR_QUESTOES_CONTRAN_PRF_V5_REFEITO_DO_ZERO.md": {
+      "sha256": "a72c8c4ece37a0e6e0139f742c90780afc8d2e01db2ca4ea44e2459936b647dd",
+      "bytes": 2512
+    },
+    "caderno_contran_prf_questoes_ineditas_v5_refeito_do_zero.pdf": {
+      "sha256": "edf7e3b64d8dfcadae80d60efdac4d5a152799839f7190fd652d09aca902513f",
+      "bytes": 311878
+    },
+    "relatorio_auditoria_banco_questoes_contran_prf_v5_refeito_do_zero.pdf": {
+      "sha256": "212d8dc380c781d8533a7858f2ade2f8d78ac8e3cd5cc27c33050810d2b52bc9",
+      "bytes": 3830
+    }
+  }
+}

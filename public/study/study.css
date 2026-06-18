@@ -488,6 +488,12 @@ button:disabled {
   color: #334155;
 }
 
+.question-badge.is-unpublished {
+  border-color: rgba(14, 116, 144, 0.28);
+  background: #ecfeff;
+  color: #155e75;
+}
+
 .study-actions {
   display: flex;
   flex-wrap: wrap;
@@ -763,6 +769,28 @@ button:disabled {
 
 .statement p:last-child {
   margin-bottom: 0;
+}
+
+.unpublished-question-notice {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(14, 116, 144, 0.28);
+  border-left: 4px solid #0891b2;
+  border-radius: var(--radius-sm);
+  background: #ecfeff;
+  color: #164e63;
+}
+
+.unpublished-question-notice strong {
+  font-size: 13px;
+}
+
+.unpublished-question-notice span,
+.unpublished-question-notice small {
+  color: #155e75;
+  line-height: 1.45;
 }
 
 .statement br + br {

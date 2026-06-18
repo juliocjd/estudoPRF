@@ -44,6 +44,16 @@ const STUDY_TIME_ZONE = process.env.STUDY_TIME_ZONE || 'America/Sao_Paulo';
 const THEORY_DIRECTORY_MIN_SCORE = 0.3;
 const THEORY_PAGE_MIN_SCORE = 0.12;
 const THEORY_CONTENT_FALLBACK_MIN_SCORE = 0.18;
+const CONTRAN_PRF_UNPUBLISHED_BADGE = 'Questão inédita - elaborada para treino PRF/CONTRAN';
+const CONTRAN_PRF_UNPUBLISHED_NOTICE = 'Questão inédita - elaborada para treino PRF/CONTRAN. Não é questão oficial de concurso.';
+const CONTRAN_PRF_UNPUBLISHED_VERSION = 'CONTRAN_PRF_V5_REFEITO_DO_ZERO_2026_06';
+const CONTRAN_PRF_PRIORITY_AXES = [
+  'Carga, peso, dimensões e amarração',
+  'Tacógrafo e jornada do motorista',
+  'Fiscalização eletrônica, autuação e processo administrativo',
+  'Equipamentos, identificação e segurança veicular',
+  'Temas de pegadinha'
+];
 const THEORY_SEARCH_STOPWORDS = new Set([
   'acerca', 'acima', 'agora', 'ainda', 'alem', 'algo', 'algum', 'alguma', 'algumas', 'alguns',
   'ante', 'apos', 'aquele', 'aquela', 'aquelas', 'aqueles', 'assim', 'cada', 'caso', 'com',
@@ -514,6 +524,7 @@ function getStats() {
     normativeTeachingTotal: getNormativeTeachingCount(),
     normativeTeachingPending: getNormativeTeachingManualReviewCount(),
     normativeTeachingDiscard: getNormativeTeachingDiscardCount(),
+    contranPrfUnpublished: getContranPrfUnpublishedCount(),
     outOfStudyQuestions: getQuestionStudyStatusCount('excluded'),
     reviewLaterQuestions: getQuestionStudyStatusCount('review_later'),
     missingAnswers: db.prepare(`
@@ -557,6 +568,19 @@ function getStudyTimeDaily(searchParams = new URLSearchParams()) {
   };
 }
 
+function getContranPrfUnpublishedCount() {
+  if (!hasContranPrfUnpublishedTable()) return 0;
+  return db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM contran_prf_unpublished_questions
+    WHERE is_unpublished = 1
+      AND batch_id = ?
+      AND COALESCE(active, 1) = 1
+      AND COALESCE(visible, 1) = 1
+      AND COALESCE(deprecated, 0) = 0
+  `).get(CONTRAN_PRF_UNPUBLISHED_VERSION).n || 0;
+}
+
 function getPlanoPrf(searchParams = new URLSearchParams()) {
   const nivelPorMateria = {};
   for (const [key, value] of searchParams.entries()) {
@@ -579,11 +603,81 @@ function getPlanoPrf(searchParams = new URLSearchParams()) {
     data_prova: searchParams.get('data_prova') || ''
   };
   const plan = gerar_plano_prf(config);
+  const unpublishedSupplement = getContranPrfUnpublishedPlanSupplement();
+  if (unpublishedSupplement.available) {
+    plan.json.material_complementar_contran_prf = unpublishedSupplement;
+    plan.markdown += renderContranPrfUnpublishedPlanMarkdown(unpublishedSupplement);
+  }
   return {
     available: true,
     plan: plan.json,
     markdown: plan.markdown
   };
+}
+
+function getContranPrfUnpublishedPlanSupplement() {
+  if (!hasContranPrfUnpublishedTable()) {
+    return { available: false, reason: 'Banco inedito PRF/CONTRAN nao importado.' };
+  }
+  const axes = db.prepare(`
+    SELECT axis, COUNT(*) AS total
+    FROM contran_prf_unpublished_questions
+    WHERE is_unpublished = 1
+      AND COALESCE(active, 1) = 1
+      AND COALESCE(visible, 1) = 1
+      AND COALESCE(deprecated, 0) = 0
+    GROUP BY axis
+    ORDER BY CASE axis
+      WHEN 'Carga, peso, dimensões e amarração' THEN 1
+      WHEN 'Tacógrafo e jornada do motorista' THEN 2
+      WHEN 'Fiscalização eletrônica, autuação e processo administrativo' THEN 3
+      WHEN 'Equipamentos, identificação e segurança veicular' THEN 4
+      WHEN 'Temas de pegadinha' THEN 5
+      ELSE 99
+    END, axis
+  `).all();
+  const resolutions = db.prepare(`
+    SELECT current_resolution AS resolution, COUNT(*) AS total
+    FROM contran_prf_unpublished_questions
+    WHERE is_unpublished = 1
+      AND COALESCE(active, 1) = 1
+      AND COALESCE(visible, 1) = 1
+      AND COALESCE(deprecated, 0) = 0
+    GROUP BY current_resolution
+    ORDER BY current_resolution
+  `).all();
+  return {
+    available: true,
+    badge: CONTRAN_PRF_UNPUBLISHED_BADGE,
+    warning: CONTRAN_PRF_UNPUBLISHED_NOTICE,
+    version: CONTRAN_PRF_UNPUBLISHED_VERSION,
+    total: axes.reduce((sum, item) => sum + Number(item.total || 0), 0),
+    priorityAxes: CONTRAN_PRF_PRIORITY_AXES,
+    axes,
+    resolutions,
+    usagePolicy: [
+      'Usar como material complementar das resoluções CONTRAN prioritárias.',
+      'Selecionar questões inéditas para reforço quando o aluno errar itens oficiais.',
+      'Usar questões inéditas quando houver poucos itens oficiais sobre determinada resolução.',
+      'Não misturar com estatística de cobrança real em provas anteriores.'
+    ]
+  };
+}
+
+function renderContranPrfUnpublishedPlanMarkdown(supplement) {
+  if (!supplement?.available) return '';
+  const lines = ['', '## Material complementar - Questões inéditas PRF/CONTRAN'];
+  lines.push(`- Aviso: ${supplement.warning}`);
+  lines.push(`- Total importado: ${supplement.total}`);
+  lines.push('- Uso: reforço complementar em resoluções CONTRAN prioritárias, sem contar como cobrança real de prova.');
+  lines.push('');
+  lines.push('| Eixo | Questões inéditas |');
+  lines.push('| --- | ---: |');
+  for (const axis of supplement.axes || []) {
+    lines.push(`| ${axis.axis || 'Sem eixo'} | ${axis.total} |`);
+  }
+  lines.push('');
+  return `${lines.join('\n')}\n`;
 }
 
 function getStudyTimeSummary() {
@@ -717,7 +811,47 @@ function getFilters() {
 
   return {
     matters,
-    subjects
+    subjects,
+    contranUnpublished: getContranPrfUnpublishedFilters()
+  };
+}
+
+function getContranPrfUnpublishedFilters() {
+  if (!hasContranPrfUnpublishedTable()) {
+    return {
+      available: false,
+      total: 0,
+      currentResolutions: [],
+      historicalResolutions: [],
+      axes: [],
+      topics: [],
+      subtopics: [],
+      types: [],
+      difficulties: []
+    };
+  }
+  const optionRows = (column, label = column) => db.prepare(`
+    SELECT ${column} AS value, COUNT(*) AS count
+    FROM contran_prf_unpublished_questions
+    WHERE is_unpublished = 1
+      AND COALESCE(active, 1) = 1
+      AND COALESCE(visible, 1) = 1
+      AND COALESCE(deprecated, 0) = 0
+      AND COALESCE(${column}, '') != ''
+    GROUP BY ${column}
+    ORDER BY ${label}
+  `).all();
+  return {
+    available: true,
+    total: getContranPrfUnpublishedCount(),
+    badge: CONTRAN_PRF_UNPUBLISHED_BADGE,
+    currentResolutions: optionRows('current_resolution'),
+    historicalResolutions: optionRows('historical_resolution'),
+    axes: optionRows('axis'),
+    topics: optionRows('topic'),
+    subtopics: optionRows('subtopic'),
+    types: optionRows('question_type'),
+    difficulties: optionRows('difficulty')
   };
 }
 
@@ -1139,6 +1273,10 @@ function hasLawSectionMaterialsTable() {
 
 function hasContranPrf2021MapTable() {
   return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contran_prf_2021_current_map'").get());
+}
+
+function hasContranPrfUnpublishedTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contran_prf_unpublished_questions'").get());
 }
 
 function getContranPrf2021Resolution(searchParams = new URLSearchParams()) {
@@ -2992,6 +3130,14 @@ function buildQuestionWhere(searchParams, extra = {}) {
   const hideDuplicates = searchParams.get('hideDuplicates') === '1' || extra.hideDuplicates;
   const representative = searchParams.get('representative') === '1' || extra.representative;
   const normative = String(searchParams.get('normative') || extra.normative || '').trim();
+  const unpublished = String(searchParams.get('unpublished') || extra.unpublished || '').trim();
+  const currentResolution = String(searchParams.get('currentResolution') || extra.currentResolution || '').trim();
+  const historicalResolution = String(searchParams.get('historicalResolution') || extra.historicalResolution || '').trim();
+  const axis = String(searchParams.get('axis') || extra.axis || '').trim();
+  const topic = String(searchParams.get('topic') || extra.topic || '').trim();
+  const subtopic = String(searchParams.get('subtopic') || extra.subtopic || '').trim();
+  const questionType = String(searchParams.get('questionType') || extra.questionType || '').trim();
+  const difficultyFilter = String(searchParams.get('difficulty') || extra.difficulty || '').trim();
   const hideDiscarded = searchParams.get('hideDiscarded') === '1' || extra.hideDiscarded;
   const hideManualReview = searchParams.get('hideManualReview') === '1' || extra.hideManualReview;
   const onlyChangedAnswer = searchParams.get('onlyChangedAnswer') === '1' || extra.onlyChangedAnswer;
@@ -3067,11 +3213,36 @@ function buildQuestionWhere(searchParams, extra = {}) {
     applyCurrentLawMainStudyFilter(where);
   }
   applyNormativeQuestionFilters(where, normative, { hideDiscarded, hideManualReview, onlyChangedAnswer });
+  applyContranPrfUnpublishedVisibilityFilter(where);
+  applyContranPrfUnpublishedFilters(where, values, {
+    unpublished,
+    currentResolution,
+    historicalResolution,
+    axis,
+    topic,
+    subtopic,
+    questionType,
+    difficulty: difficultyFilter
+  });
 
   return {
     whereSql: where.length ? `WHERE ${where.join(' AND ')}` : '',
     values
   };
+}
+
+function applyContranPrfUnpublishedVisibilityFilter(where) {
+  if (!hasContranPrfUnpublishedTable()) return;
+  where.push(`NOT EXISTS (
+    SELECT 1
+    FROM contran_prf_unpublished_questions cq_visibility
+    WHERE cq_visibility.question_id = q.id_question
+      AND (
+        COALESCE(cq_visibility.active, 1) = 0
+        OR COALESCE(cq_visibility.visible, 1) = 0
+        OR COALESCE(cq_visibility.deprecated, 0) = 1
+      )
+  )`);
 }
 
 function getExcludedMaterias(searchParams, extra = {}) {
@@ -3245,6 +3416,40 @@ function normativeManualCondition(alias) {
     OR LOWER(COALESCE(${alias}.mudanca_gabarito, '')) LIKE '%revisão manual%'
     OR LOWER(COALESCE(${alias}.mudanca_gabarito, '')) LIKE '%revisao manual%'
     OR LOWER(COALESCE(${alias}.nivel_seguranca, '')) IN ('baixo', 'manual'))`;
+}
+
+function applyContranPrfUnpublishedFilters(where, values, filters = {}) {
+  const entries = [
+    ['current_resolution', filters.currentResolution],
+    ['historical_resolution', filters.historicalResolution],
+    ['axis', filters.axis],
+    ['topic', filters.topic],
+    ['subtopic', filters.subtopic],
+    ['question_type', filters.questionType],
+    ['difficulty', filters.difficulty]
+  ].filter(([, value]) => String(value || '').trim());
+  const wantsUnpublished = filters.unpublished === 'contran-prf' || filters.unpublished === '1' || filters.unpublished === 'true';
+  if (!wantsUnpublished && entries.length === 0) return;
+  if (!hasContranPrfUnpublishedTable()) {
+    where.push('0 = 1');
+    return;
+  }
+  const clauses = [
+    'cq.question_id = q.id_question',
+    'cq.is_unpublished = 1',
+    'COALESCE(cq.active, 1) = 1',
+    'COALESCE(cq.visible, 1) = 1',
+    'COALESCE(cq.deprecated, 0) = 0'
+  ];
+  for (const [column, value] of entries) {
+    clauses.push(`cq.${column} = ?`);
+    values.push(value);
+  }
+  where.push(`EXISTS (
+    SELECT 1
+    FROM contran_prf_unpublished_questions cq
+    WHERE ${clauses.join(' AND ')}
+  )`);
 }
 
 function duplicateKeySql(alias) {
@@ -6195,6 +6400,96 @@ function normalizePlain(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function getContranPrfUnpublishedQuestion(questionId) {
+  if (!hasContranPrfUnpublishedTable()) {
+    return { exists: false };
+  }
+  const row = db.prepare(`
+    SELECT
+      question_id,
+      external_id,
+      question_type,
+      correct_answer,
+      explanation,
+      historical_explanation,
+      beginner_explanation,
+      trap_explanation,
+      current_resolution,
+      historical_resolution,
+      topic,
+      subtopic,
+      axis,
+      difficulty,
+      source_normative_reference,
+      source_url,
+      additional_source_urls,
+      teacher_comment,
+      alternative_explanations,
+      is_unpublished,
+      is_official,
+      origin,
+      exam_board,
+      exam_year,
+      official_exam,
+      source,
+      tags,
+      banco_version,
+      batch_id,
+      audit_version,
+      status_auditoria,
+      validacao_normativa,
+      active,
+      visible,
+      deprecated,
+      superseded_by_batch_id
+    FROM contran_prf_unpublished_questions
+    WHERE question_id = ?
+      AND is_unpublished = 1
+  `).get(questionId);
+  if (!row) return { exists: false };
+  return {
+    exists: true,
+    badge: CONTRAN_PRF_UNPUBLISHED_BADGE,
+    notice: CONTRAN_PRF_UNPUBLISHED_NOTICE,
+    questionId: row.question_id,
+    externalId: row.external_id || '',
+    questionType: row.question_type || '',
+    correctAnswer: row.correct_answer || '',
+    explanation: row.explanation || '',
+    historicalExplanation: row.historical_explanation || '',
+    beginnerExplanation: row.beginner_explanation || '',
+    trapExplanation: row.trap_explanation || '',
+    currentResolution: row.current_resolution || '',
+    historicalResolution: row.historical_resolution || '',
+    topic: row.topic || '',
+    subtopic: row.subtopic || '',
+    axis: row.axis || '',
+    difficulty: row.difficulty || '',
+    sourceNormativeReference: row.source_normative_reference || '',
+    sourceUrl: row.source_url || '',
+    additionalSourceUrls: safeJsonParse(row.additional_source_urls, []),
+    teacherComment: row.teacher_comment || row.explanation || '',
+    alternativeExplanations: safeJsonParse(row.alternative_explanations, {}),
+    isUnpublished: Boolean(row.is_unpublished),
+    isOfficial: Boolean(row.is_official),
+    origin: row.origin || '',
+    examBoard: row.exam_board || '',
+    examYear: row.exam_year || null,
+    officialExam: Boolean(row.official_exam),
+    source: row.source || '',
+    tags: String(row.tags || '').split(';').map((tag) => tag.trim()).filter(Boolean),
+    bancoVersion: row.banco_version || '',
+    batchId: row.batch_id || '',
+    auditVersion: row.audit_version || '',
+    statusAuditoria: row.status_auditoria || '',
+    validacaoNormativa: row.validacao_normativa || '',
+    active: row.active !== 0,
+    visible: row.visible !== 0,
+    deprecated: Boolean(row.deprecated),
+    supersededByBatchId: row.superseded_by_batch_id || ''
+  };
+}
+
 async function getQuestion(questionId) {
   const question = db.prepare(`
     SELECT
@@ -6274,6 +6569,7 @@ async function getQuestion(questionId) {
   const adaptive = getQuestionAdaptiveSummary(questionId);
   const studyStatus = getQuestionStudyStatus(questionId);
   const contranPrf2021Matches = getQuestionContranPrf2021Matches(question);
+  const contranPrfUnpublished = getContranPrfUnpublishedQuestion(questionId);
 
   return {
     id: question.id_question,
@@ -6288,12 +6584,15 @@ async function getQuestion(questionId) {
       assunto: question.assunto || '',
       tipo: question.type_question || '',
       anulada: Boolean(question.anulada),
-      desatualizada: Boolean(question.desatualizada)
+      desatualizada: Boolean(question.desatualizada),
+      isUnpublished: Boolean(contranPrfUnpublished?.exists),
+      origin: contranPrfUnpublished?.origin || ''
     },
     normativeUpdate,
     currentLawAnswer,
     normativeTeachingComment,
     contranPrf2021Matches,
+    contranPrfUnpublished,
     appliedTheoryCard,
     legalStudy,
     answering: {
