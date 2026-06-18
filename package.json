@@ -79,6 +79,8 @@
     "contran-qbank-v5:validate": "node --no-warnings scripts/validate-contran-prf-unpublished-qbank-v5.mjs",
     "contran-qbank-v5:import:dry-run": "node --no-warnings scripts/import-contran-prf-unpublished-qbank-v5.mjs --db questoes-prf.sqlite --dry-run",
     "contran-qbank-v5:import": "node --no-warnings scripts/import-contran-prf-unpublished-qbank-v5.mjs --db questoes-prf.sqlite",
+    "contran-qbank-v5:import:pg": "node --no-warnings scripts/import-contran-prf-unpublished-qbank-v5-postgres.mjs",
+    "contran-qbank-v5:import:pg:dry-run": "node --no-warnings scripts/import-contran-prf-unpublished-qbank-v5-postgres.mjs --dry-run",
     "contran-qbank-v5:map-profiles": "node --no-warnings scripts/map-contran-prf-unpublished-qbank-v5-profiles.mjs --db questoes-prf.sqlite",
     "contran-qbank-v5:test": "node --test scripts/test-contran-prf-unpublished-qbank-v5.mjs",
     "index-theory-pages": "node --no-warnings scripts/index-theory-pages.mjs --db questoes-prf.sqlite --pdfs pdfs",

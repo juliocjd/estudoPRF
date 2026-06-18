@@ -1009,7 +1009,7 @@ export function normalizeQbankItem(rawItem, index = 0) {
   };
 }
 
-function buildCommentHtml(item) {
+export function buildCommentHtml(item) {
   const sections = [
     ['Aviso ao aluno', USER_NOTICE],
     ['Comentário do professor', item.teacherComment || item.explanation],
@@ -1033,7 +1033,7 @@ function buildCommentHtml(item) {
   `.trim()).join('\n');
 }
 
-function buildCommentText(item) {
+export function buildCommentText(item) {
   return [
     USER_NOTICE,
     `Gabarito: ${item.correctAnswer}`,

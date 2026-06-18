@@ -1502,7 +1502,10 @@ async function loadFilters() {
 function renderContranUnpublishedFilterOptions(filters = {}) {
   const disabled = !filters.available;
   if (els.contranUnpublishedOnly) {
+    const reason = filters.reason || 'Banco de questoes ineditas indisponivel no servidor ativo.';
     els.contranUnpublishedOnly.disabled = disabled;
+    els.contranUnpublishedOnly.title = disabled ? reason : '';
+    els.contranUnpublishedOnly.closest('label')?.setAttribute('title', disabled ? reason : '');
   }
   const controls = [
     [els.contranCurrentResolutionSelect, filters.currentResolutions || [], 'Todas'],

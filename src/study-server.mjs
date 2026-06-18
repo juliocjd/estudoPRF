@@ -1050,6 +1050,7 @@ function getContranPrfUnpublishedFilters() {
   if (!hasContranPrfUnpublishedTable()) {
     return {
       available: false,
+      reason: 'Tabela contran_prf_unpublished_questions nao encontrada no banco ativo.',
       total: 0,
       currentResolutions: [],
       historicalResolutions: [],
