@@ -8,6 +8,10 @@ import { initLawCompendiumSchema as initLawCompendiumSchemaShared, safeJson as p
 import { loadEnvFiles } from '../scripts/lib/env.mjs';
 import { getContranPrfResolutionExamStats } from '../scripts/contran-prf-exam-counts.mjs';
 import { gerar_plano_prf } from '../scripts/plano_estudos_prf.mjs';
+import {
+  GRAN_CURSOS_TRANSITO_PRF_LESSONS,
+  GRAN_CURSOS_TRANSITO_PRF_META
+} from '../data/gran_cursos_transito_prf/gran-cursos-transito-prf-lessons.mjs';
 
 loadEnvFiles();
 
@@ -91,6 +95,7 @@ if (!skipStartupSchemaMaintenance) {
   initLegalKnowledgeSchema(db, activeDbClient);
   initQuestionAppliedTheorySchema(db, activeDbClient);
   initLawCompendiumSchemaShared(db, activeDbClient);
+  if (activeDbClient === 'sqlite') initGranCursosLessonProgressSchema(db);
 }
 
 export async function handleStudyRequest(request, response) {
@@ -184,6 +189,30 @@ async function routeRequest(request, response) {
 
   if (url.pathname === '/api/plano-prf' && request.method === 'GET') {
     sendJson(response, 200, getPlanoPrf(url.searchParams));
+    return;
+  }
+
+  if (url.pathname === '/api/gran-cursos-transito-prf/lessons' && request.method === 'GET') {
+    sendJson(response, 200, getGranCursosTransitoPrfLessons());
+    return;
+  }
+
+  if (url.pathname === '/api/gran-cursos-transito-prf/progress' && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const result = updateGranCursosLessonProgress(body);
+    sendJson(response, result?.error ? 400 : 200, result);
+    return;
+  }
+
+  if (url.pathname === '/api/gran-cursos-transito-prf/progress/bulk' && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const result = updateGranCursosLessonProgressBulk(body);
+    sendJson(response, result?.error ? 400 : 200, result);
+    return;
+  }
+
+  if (url.pathname === '/api/gran-cursos-transito-prf/progress/reset' && request.method === 'POST') {
+    sendJson(response, 200, resetGranCursosLessonProgress());
     return;
   }
 
@@ -678,6 +707,207 @@ function renderContranPrfUnpublishedPlanMarkdown(supplement) {
   }
   lines.push('');
   return `${lines.join('\n')}\n`;
+}
+
+function initGranCursosLessonProgressSchema(database) {
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS gran_cursos_lesson_progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL DEFAULT 'local',
+      lesson_number INTEGER NOT NULL,
+      watched INTEGER NOT NULL DEFAULT 0,
+      watched_at TEXT,
+      source TEXT NOT NULL DEFAULT 'gran_cursos_transito_prf',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, lesson_number)
+    );
+    CREATE INDEX IF NOT EXISTS idx_gran_cursos_lesson_progress_user
+      ON gran_cursos_lesson_progress(user_id, lesson_number);
+  `);
+}
+
+function getGranCursosTransitoPrfLessons() {
+  if (activeDbClient !== 'sqlite') {
+    const lessons = GRAN_CURSOS_TRANSITO_PRF_LESSONS.map((lesson) => ({
+      ...lesson,
+      watched: false,
+      watched_at: '',
+      updated_at: ''
+    }));
+    return {
+      available: true,
+      meta: GRAN_CURSOS_TRANSITO_PRF_META,
+      lessons,
+      summary: buildGranCursosLessonSummary(lessons),
+      filters: buildGranCursosLessonFilters(lessons),
+      persistence: { available: false, reason: 'Persistencia de aulas Gran Cursos disponivel apenas no SQLite local.' }
+    };
+  }
+  initGranCursosLessonProgressSchema(db);
+  const progressRows = db.prepare(`
+    SELECT lesson_number, watched, watched_at, updated_at
+    FROM gran_cursos_lesson_progress
+    WHERE user_id = 'local'
+  `).all();
+  const progress = new Map(progressRows.map((row) => [Number(row.lesson_number), row]));
+  const lessons = GRAN_CURSOS_TRANSITO_PRF_LESSONS.map((lesson) => {
+    const row = progress.get(Number(lesson.lesson_number));
+    return {
+      ...lesson,
+      watched: dbBoolean(row?.watched),
+      watched_at: row?.watched_at || '',
+      updated_at: row?.updated_at || ''
+    };
+  });
+  return {
+    available: true,
+    meta: GRAN_CURSOS_TRANSITO_PRF_META,
+    lessons,
+    summary: buildGranCursosLessonSummary(lessons),
+    filters: buildGranCursosLessonFilters(lessons)
+  };
+}
+
+function updateGranCursosLessonProgress(body = {}) {
+  if (activeDbClient !== 'sqlite') return { error: 'Persistencia de aulas Gran Cursos indisponivel neste banco.' };
+  initGranCursosLessonProgressSchema(db);
+  const lessonNumber = Number(body.lesson_number || body.lessonNumber || 0);
+  if (!GRAN_CURSOS_TRANSITO_PRF_LESSONS.some((lesson) => Number(lesson.lesson_number) === lessonNumber)) {
+    return { error: 'Aula nao encontrada.' };
+  }
+  const watched = body.watched === true || body.watched === 1 || body.watched === '1';
+  db.prepare(`
+    INSERT INTO gran_cursos_lesson_progress (
+      user_id, lesson_number, watched, watched_at, source, created_at, updated_at
+    )
+    VALUES ('local', ?, ?, CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END, 'gran_cursos_transito_prf', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id, lesson_number) DO UPDATE SET
+      watched = excluded.watched,
+      watched_at = CASE WHEN excluded.watched = 1 THEN COALESCE(gran_cursos_lesson_progress.watched_at, CURRENT_TIMESTAMP) ELSE NULL END,
+      updated_at = CURRENT_TIMESTAMP,
+      source = excluded.source
+  `).run(lessonNumber, watched ? 1 : 0, watched ? 1 : 0);
+  return getGranCursosTransitoPrfLessons();
+}
+
+function updateGranCursosLessonProgressBulk(body = {}) {
+  if (activeDbClient !== 'sqlite') return { error: 'Persistencia de aulas Gran Cursos indisponivel neste banco.' };
+  initGranCursosLessonProgressSchema(db);
+  const watched = body.watched === true || body.watched === 1 || body.watched === '1';
+  const axis = String(body.axis || '').trim();
+  const priority = String(body.priority || '').trim();
+  const lessonNumbers = GRAN_CURSOS_TRANSITO_PRF_LESSONS
+    .filter((lesson) => !axis || lesson.axis === axis)
+    .filter((lesson) => !priority || lesson.priority === priority)
+    .map((lesson) => Number(lesson.lesson_number));
+  if (!lessonNumbers.length) return { error: 'Nenhuma aula encontrada para a acao em lote.' };
+
+  const upsert = db.prepare(`
+    INSERT INTO gran_cursos_lesson_progress (
+      user_id, lesson_number, watched, watched_at, source, created_at, updated_at
+    )
+    VALUES ('local', ?, ?, CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END, 'gran_cursos_transito_prf', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id, lesson_number) DO UPDATE SET
+      watched = excluded.watched,
+      watched_at = CASE WHEN excluded.watched = 1 THEN COALESCE(gran_cursos_lesson_progress.watched_at, CURRENT_TIMESTAMP) ELSE NULL END,
+      updated_at = CURRENT_TIMESTAMP,
+      source = excluded.source
+  `);
+  db.exec('BEGIN');
+  try {
+    for (const lessonNumber of lessonNumbers) upsert.run(lessonNumber, watched ? 1 : 0, watched ? 1 : 0);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+  return getGranCursosTransitoPrfLessons();
+}
+
+function resetGranCursosLessonProgress() {
+  if (activeDbClient !== 'sqlite') return { error: 'Persistencia de aulas Gran Cursos indisponivel neste banco.' };
+  initGranCursosLessonProgressSchema(db);
+  db.prepare(`
+    UPDATE gran_cursos_lesson_progress
+    SET watched = 0, watched_at = NULL, updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = 'local'
+  `).run();
+  return getGranCursosTransitoPrfLessons();
+}
+
+function buildGranCursosLessonSummary(lessons) {
+  const total = lessons.length;
+  const watched = lessons.filter((lesson) => lesson.watched).length;
+  const withDuration = lessons.filter((lesson) => Number.isFinite(Number(lesson.duration_seconds)));
+  const totalSeconds = withDuration.reduce((sum, lesson) => sum + Number(lesson.duration_seconds || 0), 0);
+  const watchedSeconds = withDuration
+    .filter((lesson) => lesson.watched)
+    .reduce((sum, lesson) => sum + Number(lesson.duration_seconds || 0), 0);
+  return {
+    total,
+    watched,
+    pending: total - watched,
+    progressPct: total ? round((watched / total) * 100, 1) : 0,
+    durationAvailableLessons: withDuration.length,
+    totalSeconds,
+    watchedSeconds,
+    pendingSeconds: totalSeconds - watchedSeconds,
+    byPriority: summarizeGranLessons(lessons, 'priority'),
+    byAxis: summarizeGranLessons(lessons, 'axis')
+  };
+}
+
+function summarizeGranLessons(lessons, key) {
+  const map = new Map();
+  for (const lesson of lessons) {
+    const value = lesson[key] || '';
+    if (!map.has(value)) {
+      map.set(value, {
+        key: value,
+        label: key === 'priority' ? lesson.priority_label : value,
+        total: 0,
+        watched: 0,
+        pending: 0,
+        totalSeconds: 0,
+        watchedSeconds: 0
+      });
+    }
+    const item = map.get(value);
+    item.total += 1;
+    if (lesson.watched) item.watched += 1;
+    else item.pending += 1;
+    if (Number.isFinite(Number(lesson.duration_seconds))) {
+      item.totalSeconds += Number(lesson.duration_seconds);
+      if (lesson.watched) item.watchedSeconds += Number(lesson.duration_seconds);
+    }
+  }
+  return [...map.values()].map((item) => ({
+    ...item,
+    progressPct: item.total ? round((item.watched / item.total) * 100, 1) : 0,
+    pendingSeconds: item.totalSeconds - item.watchedSeconds
+  }));
+}
+
+function buildGranCursosLessonFilters(lessons) {
+  const optionRows = (key) => [...new Map(lessons.map((lesson) => [lesson[key], {
+    value: lesson[key],
+    count: lessons.filter((candidate) => candidate[key] === lesson[key]).length
+  }])).values()].sort((left, right) => String(left.value).localeCompare(String(right.value)));
+  return {
+    priorities: [
+      { value: 'ESSENCIAL', label: 'Essenciais', count: lessons.filter((lesson) => lesson.priority === 'ESSENCIAL').length },
+      { value: 'IMPORTANTE', label: 'Importantes', count: lessons.filter((lesson) => lesson.priority === 'IMPORTANTE').length },
+      { value: 'REVISAO_RAPIDA', label: 'Revisão rápida' }
+    ].map((item) => ({
+      ...item,
+      count: lessons.filter((lesson) => lesson.priority === item.value).length
+    })),
+    incidenceLevels: optionRows('incidence_level'),
+    axes: optionRows('axis'),
+    themes: optionRows('theme'),
+    references: optionRows('resolution_article').filter((item) => item.value)
+  };
 }
 
 function getStudyTimeSummary() {

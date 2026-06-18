@@ -77,8 +77,39 @@ const state = {
   contranMapLastQuery: '',
   contranMapRows: [],
   studyTimeTab: 'today',
-  studyTimeSummary: null
+  studyTimeSummary: null,
+  granCursosPlanVisible: false,
+  granCursosPlan: null,
+  granCursosPlanFilters: {
+    quick: 'start',
+    priority: '',
+    status: '',
+    axis: '',
+    theme: '',
+    lesson: '',
+    reference: '',
+    q: ''
+  }
 };
+
+const GRAN_CORE_LESSON_NUMBERS = new Set([
+  25, 105, 106, 107, 108, 109, 110, 111, 178, 183, 179, 180, 127,
+  172, 173, 97, 19,
+  98, 99, 171, 118, 119, 120, 121, 144, 145, 146, 147, 148, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+  49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,
+  26, 149, 150, 151, 152, 153, 27, 130, 131, 28, 137, 138, 139, 140, 141, 142, 143
+]);
+
+const GRAN_TRAP_LESSON_NUMBERS = new Set([
+  93, 94, 95,
+  174, 175, 176, 177,
+  18,
+  181, 182,
+  122,
+  156,
+  20,
+  127, 154, 155
+]);
 
 const REPORT_ROUTES = {
   coverage: {
@@ -90,6 +121,11 @@ const REPORT_ROUTES = {
     path: '/relatorios/principais-prf',
     title: 'Principais PRF',
     load: () => loadPrincipaisPrf()
+  },
+  granCursosPlan: {
+    path: '/relatorios/plano-aulas-gran-cursos-transito-prf',
+    title: 'Plano de Aulas Gran Cursos - Trânsito PRF',
+    load: () => loadGranCursosPlan()
   },
   theoryCoverage: {
     path: '/relatorios/cobertura-teoria',
@@ -269,6 +305,11 @@ const els = {
   principaisPrfPanel: document.querySelector('#principaisPrfPanel'),
   principaisPrfInfo: document.querySelector('#principaisPrfInfo'),
   principaisPrfBody: document.querySelector('#principaisPrfBody'),
+  toggleGranCursosPlan: document.querySelector('#toggleGranCursosPlan'),
+  closeGranCursosPlan: document.querySelector('#closeGranCursosPlan'),
+  granCursosPlanPanel: document.querySelector('#granCursosPlanPanel'),
+  granCursosPlanInfo: document.querySelector('#granCursosPlanInfo'),
+  granCursosPlanBody: document.querySelector('#granCursosPlanBody'),
   theoryCoveragePanel: document.querySelector('#theoryCoveragePanel'),
   theoryCoverageInfo: document.querySelector('#theoryCoverageInfo'),
   theoryCoverageStats: document.querySelector('#theoryCoverageStats'),
@@ -547,6 +588,7 @@ function bindEvents() {
   ];
   els.contranUnpublishedOnly?.addEventListener('change', () => {
     state.filters.contranUnpublished = els.contranUnpublishedOnly.checked;
+    if (state.filters.contranUnpublished) activateContranUnpublishedMode();
     state.page = 1;
     updateAdvancedFiltersSummary();
     loadQuestions();
@@ -554,7 +596,10 @@ function bindEvents() {
   contranFilterControls.forEach(([control, key]) => {
     control?.addEventListener('change', () => {
       state.filters[key] = control.value;
-      if (control.value) state.filters.contranUnpublished = true;
+      if (control.value) {
+        state.filters.contranUnpublished = true;
+        activateContranUnpublishedMode();
+      }
       if (els.contranUnpublishedOnly) els.contranUnpublishedOnly.checked = state.filters.contranUnpublished;
       state.page = 1;
       updateAdvancedFiltersSummary();
@@ -618,6 +663,10 @@ function bindEvents() {
     closeAllDropdowns();
     await openReportPage('principaisPrf');
   });
+  els.toggleGranCursosPlan?.addEventListener('click', async () => {
+    closeAllDropdowns();
+    await openReportPage('granCursosPlan');
+  });
   els.toggleTheoryCoverage?.addEventListener('click', async () => {
     closeAllDropdowns();
     await openReportPage('theoryCoverage');
@@ -647,6 +696,9 @@ function bindEvents() {
     navigateStudyHome();
   });
   els.closeCoverageReport?.addEventListener('click', () => {
+    navigateStudyHome();
+  });
+  els.closeGranCursosPlan?.addEventListener('click', () => {
     navigateStudyHome();
   });
   els.closePrincipaisPrf?.addEventListener('click', () => {
@@ -1213,6 +1265,20 @@ function bindDropdowns() {
       closeAllDropdowns();
     }
   });
+}
+
+function activateContranUnpublishedMode() {
+  state.filters.materia = '';
+  state.filters.assunto = '';
+  state.filters.examKey = '';
+  state.filters.excludedMaterias = [];
+  state.filters.normative = '';
+  if (els.matterSelect) els.matterSelect.value = '';
+  renderSubjectOptions();
+  if (els.subjectSelect) els.subjectSelect.value = '';
+  if (els.examInput) els.examInput.value = '';
+  renderExcludedMatterOptions();
+  if (els.normativeFilter) els.normativeFilter.value = '';
 }
 
 function closeAllDropdowns() {
@@ -5679,10 +5745,18 @@ function renderLawCompendiumVisibility() {
   updateReportViewState();
 }
 
+function renderGranCursosPlanVisibility() {
+  if (!els.granCursosPlanPanel || !els.toggleGranCursosPlan) return;
+  els.granCursosPlanPanel.hidden = !state.granCursosPlanVisible;
+  els.toggleGranCursosPlan.textContent = 'Plano de Aulas Gran Cursos - Trânsito PRF';
+  updateReportViewState();
+}
+
 function updateReportViewState() {
   const hasOpenReport = Boolean(
     state.coverageVisible
     || state.principaisPrfVisible
+    || state.granCursosPlanVisible
     || state.theoryCoverageVisible
     || state.subjectsVisible
     || state.normativeVisible
@@ -5703,6 +5777,7 @@ function updateReportViewState() {
 function closeReportPanels() {
   state.coverageVisible = false;
   state.principaisPrfVisible = false;
+  state.granCursosPlanVisible = false;
   state.theoryCoverageVisible = false;
   state.subjectsVisible = false;
   state.normativeVisible = false;
@@ -5710,6 +5785,7 @@ function closeReportPanels() {
   state.lawCompendiumVisible = false;
   renderCoverageVisibility();
   renderPrincipaisPrfVisibility();
+  renderGranCursosPlanVisibility();
   renderTheoryCoverageVisibility();
   renderSubjectsVisibility();
   renderNormativeVisibility();
@@ -5750,6 +5826,7 @@ async function openReportPage(reportKey, options = {}) {
 function setActiveReport(reportKey) {
   state.coverageVisible = reportKey === 'coverage';
   state.principaisPrfVisible = reportKey === 'principaisPrf';
+  state.granCursosPlanVisible = reportKey === 'granCursosPlan';
   state.theoryCoverageVisible = reportKey === 'theoryCoverage';
   state.subjectsVisible = reportKey === 'subjects';
   state.normativeVisible = reportKey === 'normative';
@@ -5757,6 +5834,7 @@ function setActiveReport(reportKey) {
   state.lawCompendiumVisible = reportKey === 'lawCompendium';
   renderCoverageVisibility();
   renderPrincipaisPrfVisibility();
+  renderGranCursosPlanVisibility();
   renderTheoryCoverageVisibility();
   renderSubjectsVisibility();
   renderNormativeVisibility();
@@ -5767,6 +5845,7 @@ function setActiveReport(reportKey) {
 function getActiveReportKey() {
   if (state.coverageVisible) return 'coverage';
   if (state.principaisPrfVisible) return 'principaisPrf';
+  if (state.granCursosPlanVisible) return 'granCursosPlan';
   if (state.theoryCoverageVisible) return 'theoryCoverage';
   if (state.subjectsVisible) return 'subjects';
   if (state.normativeVisible) return 'normative';
@@ -5848,6 +5927,7 @@ function renderPrincipaisPrfPlan(plan = {}) {
   const checklist = plan.checklist_legislacao_atualizada || [];
   const goals = plan.metas_questoes_por_materia || [];
   const alerts = plan.alertas || [];
+  const unpublishedSupplement = plan.material_complementar_contran_prf || null;
   return `
     <section class="principais-prf-alert">
       <strong>Conferência obrigatória</strong>
@@ -5877,6 +5957,7 @@ function renderPrincipaisPrfPlan(plan = {}) {
         ${traffic.slice(0, 10).map(renderPrincipaisPrfTrafficTopic).join('')}
       </div>
     </section>
+    ${renderPrincipaisPrfUnpublishedSupplement(unpublishedSupplement)}
     <section class="principais-prf-split">
       <div class="principais-prf-section">
         <h2>Simulados</h2>
@@ -5890,6 +5971,35 @@ function renderPrincipaisPrfPlan(plan = {}) {
     <section class="principais-prf-section">
       <h2>Checklist de atualização normativa</h2>
       <ul class="principais-prf-checklist">${checklist.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+    </section>
+  `;
+}
+
+function renderPrincipaisPrfUnpublishedSupplement(supplement) {
+  if (!supplement?.available) return '';
+  const axes = supplement.axes || [];
+  const policies = supplement.usagePolicy || [];
+  return `
+    <section class="principais-prf-section principais-prf-unpublished">
+      <h2>Questões inéditas PRF/CONTRAN</h2>
+      <div class="principais-prf-unpublished-summary">
+        <span><strong>${Number(supplement.total || 0).toLocaleString('pt-BR')}</strong> questões inéditas</span>
+        <span>${escapeHtml(supplement.badge || 'Questão inédita - elaborada para treino PRF/CONTRAN')}</span>
+      </div>
+      <p>${escapeHtml(supplement.warning || 'Não é questão oficial de concurso.')}</p>
+      <div class="principais-prf-bars">
+        ${axes.map((axis) => {
+          const total = Number(axis.total || 0);
+          const percent = supplement.total ? (total / Number(supplement.total)) * 100 : 0;
+          return `
+            <article class="principais-prf-bar">
+              <div><strong>${escapeHtml(axis.axis || 'Sem eixo')}</strong><span>${total.toLocaleString('pt-BR')}</span></div>
+              <div class="principais-prf-bar-track"><span style="width: ${Math.max(2, Math.min(100, percent))}%"></span></div>
+            </article>
+          `;
+        }).join('')}
+      </div>
+      <ul class="principais-prf-checklist">${policies.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
     </section>
   `;
 }
@@ -5952,6 +6062,566 @@ function contranExamCountLabel(counts = {}) {
     `PRF 2019: ${counts.prf_2019_objetiva || '0'}`,
     `PRF 2013: ${counts.prf_2013_objetiva || '0'}`
   ].join(' · ');
+}
+
+async function loadGranCursosPlan() {
+  if (!els.granCursosPlanInfo || !els.granCursosPlanBody) return;
+  els.granCursosPlanInfo.textContent = 'carregando aulas';
+  els.granCursosPlanBody.innerHTML = '<p class="empty">Carregando plano de aulas Gran Cursos...</p>';
+  try {
+    const data = await api('/api/gran-cursos-transito-prf/lessons');
+    state.granCursosPlan = data;
+    renderGranCursosPlan();
+  } catch (error) {
+    els.granCursosPlanInfo.textContent = 'erro ao carregar';
+    els.granCursosPlanBody.innerHTML = `<p class="empty">Nao foi possivel carregar o plano: ${escapeHtml(error.message)}</p>`;
+  }
+}
+
+function renderGranCursosPlan() {
+  if (!els.granCursosPlanInfo || !els.granCursosPlanBody) return;
+  const data = state.granCursosPlan || {};
+  const lessons = sortGranCursosLessonsByRecommendation(data.lessons || []);
+  const filteredLessons = filterGranCursosLessons(lessons);
+  const summary = data.summary || {};
+  els.granCursosPlanInfo.textContent = [
+    `${Number(summary.total || lessons.length || 0).toLocaleString('pt-BR')} aulas`,
+    `${Number(summary.watched || 0).toLocaleString('pt-BR')} assistidas`,
+    `${Number(summary.pending || 0).toLocaleString('pt-BR')} pendentes`,
+    formatDurationLong(summary.totalSeconds || 0)
+  ].join(' · ');
+  els.granCursosPlanBody.innerHTML = `
+    ${renderGranCursosSummary(summary, lessons)}
+    ${renderGranCursosRecommendedOrder(lessons)}
+    ${renderGranCursosFilters(data.filters || {}, filteredLessons.length, lessons.length)}
+    ${renderGranCursosActions()}
+    ${renderGranCursosTable(filteredLessons)}
+  `;
+  bindGranCursosPlanControls();
+}
+
+function renderGranCursosSummary(summary = {}, lessons = []) {
+  const total = Number(summary.total || 0);
+  const watched = Number(summary.watched || 0);
+  const pending = Number(summary.pending || 0);
+  const progress = Number(summary.progressPct || 0);
+  const byPriority = summary.byPriority || [];
+  const nextLesson = lessons.find((lesson) => !lesson.watched) || lessons[0] || null;
+  return `
+    ${renderGranCursosNextLesson(nextLesson)}
+    <section class="gran-plan-summary" aria-label="Resumo do plano">
+      <span class="metric-card gran-metric"><strong>${total.toLocaleString('pt-BR')}</strong><small>aulas totais</small></span>
+      <span class="metric-card gran-metric"><strong>${watched.toLocaleString('pt-BR')}</strong><small>assistidas</small></span>
+      <span class="metric-card gran-metric"><strong>${pending.toLocaleString('pt-BR')}</strong><small>pendentes</small></span>
+      <span class="metric-card gran-metric"><strong>${progress.toLocaleString('pt-BR')}%</strong><small>progresso</small></span>
+      <span class="metric-card gran-metric"><strong>${formatDurationLong(summary.pendingSeconds || 0)}</strong><small>tempo pendente</small></span>
+    </section>
+    <section class="gran-plan-section gran-progress-section">
+      <header><h2>Prioridade e andamento</h2><span>${formatDurationLong(summary.totalSeconds || 0)} de aula mapeada</span></header>
+      <div class="gran-progress-grid">
+        ${byPriority.map(renderGranProgressRow).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderGranCursosNextLesson(lesson) {
+  if (!lesson) {
+    return `
+      <section class="gran-next-card">
+        <div>
+          <span>Próxima aula recomendada</span>
+          <strong>Plano concluído</strong>
+          <small>Nenhuma aula pendente na ordem recomendada.</small>
+        </div>
+      </section>
+    `;
+  }
+  return `
+    <section class="gran-next-card">
+      <div>
+        <span>Próxima aula recomendada</span>
+        <strong>#${Number(lesson.recommended_order || 0).toLocaleString('pt-BR')} · Aula Gran ${Number(lesson.lesson_number || 0).toLocaleString('pt-BR')}</strong>
+        <small>${escapeHtml(lesson.title || '')}</small>
+      </div>
+      <div>
+        <span class="gran-priority-badge ${priorityClass(lesson.priority)}">${escapeHtml(lesson.priority_label || lesson.priority || '')}</span>
+        <span class="gran-incidence-badge ${incidenceClass(lesson.incidence_level)}">${escapeHtml(incidenceLabel(lesson.incidence_level))}</span>
+      </div>
+    </section>
+  `;
+}
+
+function renderGranProgressRow(item = {}) {
+  const total = Number(item.total || 0);
+  const watched = Number(item.watched || 0);
+  const percent = Number(item.progressPct || 0);
+  return `
+    <article class="gran-progress-row">
+      <div>
+        <strong>${escapeHtml(item.priorityLabel || item.label || item.priority || item.key || 'Prioridade')}</strong>
+        <span>${watched.toLocaleString('pt-BR')} / ${total.toLocaleString('pt-BR')} assistidas · ${formatDurationLong(item.pendingSeconds || 0)} pendentes</span>
+      </div>
+      <div class="principais-prf-bar-track"><span style="width: ${Math.max(2, Math.min(100, percent))}%"></span></div>
+    </article>
+  `;
+}
+
+function renderGranCursosRecommendedOrder(lessons = []) {
+  const groups = [...lessons]
+    .sort((a, b) => Number(a.recommended_order || 0) - Number(b.recommended_order || 0))
+    .reduce((acc, lesson) => {
+      const cycle = lesson.study_cycle || 'Ordem recomendada';
+      if (!acc.has(cycle)) acc.set(cycle, []);
+      acc.get(cycle).push(lesson);
+      return acc;
+    }, new Map());
+  return `
+    <section class="gran-plan-section">
+      <header><h2>Ordem recomendada</h2><span>Separada da estatistica real de provas anteriores</span></header>
+      <div class="gran-order-grid">
+        ${Array.from(groups.entries()).map(([cycle, items], index) => `
+          <article class="gran-order-card">
+            <strong>${String(index + 1).padStart(2, '0')} · ${escapeHtml(cycle)}</strong>
+            <span>${items.length.toLocaleString('pt-BR')} aulas · ${formatLessonNumberList(items)}</span>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderGranCursosFilters(filters = {}, visibleCount = 0, totalCount = 0) {
+  const current = state.granCursosPlanFilters;
+  const priorities = filters.priorities || [];
+  const axes = filters.axes || [];
+  const themes = filters.themes || [];
+  return `
+    <section class="gran-filter-panel">
+      <div class="gran-filter-head">
+        <strong>Filtros</strong>
+        <span>${visibleCount.toLocaleString('pt-BR')} de ${totalCount.toLocaleString('pt-BR')} aulas</span>
+      </div>
+      <div class="gran-quick-filters" aria-label="Filtros rápidos do plano Gran Cursos">
+        ${renderGranQuickFilterButton('start', 'Começar agora', 'Essenciais não assistidas')}
+        ${renderGranQuickFilterButton('core', 'Núcleo PRF mais cobrado', 'Eixos centrais de maior incidência')}
+        ${renderGranQuickFilterButton('traps', 'Pegadinhas', 'Pontos clássicos de confusão')}
+        ${renderGranQuickFilterButton('', 'Plano completo', 'Todas as aulas na ordem recomendada')}
+      </div>
+      <div class="gran-filter-grid">
+        <label class="compact-field">
+          <span>Prioridade</span>
+          <select data-gran-filter="priority">
+            <option value="">Todas</option>
+            ${priorities.map((item) => {
+              const value = item.priority || item.value || '';
+              const total = item.total ?? item.count ?? 0;
+              return `<option value="${escapeAttr(value)}" ${current.priority === value ? 'selected' : ''}>${escapeHtml(item.label || value)} (${Number(total).toLocaleString('pt-BR')})</option>`;
+            }).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          <span>Status</span>
+          <select data-gran-filter="status">
+            <option value="">Todos</option>
+            <option value="pending" ${current.status === 'pending' ? 'selected' : ''}>Pendentes</option>
+            <option value="watched" ${current.status === 'watched' ? 'selected' : ''}>Assistidas</option>
+          </select>
+        </label>
+        <label class="compact-field">
+          <span>Eixo</span>
+          <select data-gran-filter="axis">
+            <option value="">Todos</option>
+            ${axes.map((item) => {
+              const value = item.axis || item.value || '';
+              const total = item.total ?? item.count ?? 0;
+              return `<option value="${escapeAttr(value)}" ${current.axis === value ? 'selected' : ''}>${escapeHtml(value)} (${Number(total).toLocaleString('pt-BR')})</option>`;
+            }).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          <span>Tema</span>
+          <select data-gran-filter="theme">
+            <option value="">Todos</option>
+            ${themes.map((item) => {
+              const value = item.theme || item.value || '';
+              const total = item.total ?? item.count ?? 0;
+              return `<option value="${escapeAttr(value)}" ${current.theme === value ? 'selected' : ''}>${escapeHtml(value)} (${Number(total).toLocaleString('pt-BR')})</option>`;
+            }).join('')}
+          </select>
+        </label>
+        <label class="compact-field">
+          <span>Aula</span>
+          <input data-gran-filter="lesson" type="search" value="${escapeAttr(current.lesson)}" placeholder="Ex.: 105">
+        </label>
+        <label class="compact-field">
+          <span>Artigo/ref.</span>
+          <input data-gran-filter="reference" type="search" value="${escapeAttr(current.reference)}" placeholder="Ex.: Art. 99">
+        </label>
+        <label class="compact-field gran-filter-wide">
+          <span>Texto livre</span>
+          <input data-gran-filter="q" type="search" value="${escapeAttr(current.q)}" placeholder="Titulo, eixo, tema, observacao...">
+        </label>
+      </div>
+    </section>
+  `;
+}
+
+function renderGranQuickFilterButton(value, label, detail) {
+  const active = state.granCursosPlanFilters.quick === value;
+  return `
+    <button class="gran-quick-filter ${active ? 'is-active' : ''} ${value === 'start' ? 'is-primary' : ''}" type="button" data-gran-quick="${escapeAttr(value)}">
+      <strong>${escapeHtml(label)}</strong>
+      <span>${escapeHtml(detail)}</span>
+    </button>
+  `;
+}
+
+function renderGranCursosActions() {
+  const current = state.granCursosPlanFilters;
+  const hasAxis = Boolean(current.axis);
+  const hasPriority = Boolean(baseGranPriority(current.priority));
+  return `
+    <section class="gran-plan-actions" aria-label="Acoes do plano">
+      <button class="button button-secondary" type="button" data-gran-action="clear-filters">Limpar filtros</button>
+      <button class="button button-secondary" type="button" data-gran-action="copy-roadmap">Copiar roteiro</button>
+      <button class="button button-secondary" type="button" data-gran-action="export-csv">Exportar CSV</button>
+      <button class="button" type="button" data-gran-action="mark-axis" ${hasAxis ? '' : 'disabled'}>Marcar eixo</button>
+      <button class="button button-secondary" type="button" data-gran-action="unmark-axis" ${hasAxis ? '' : 'disabled'}>Desmarcar eixo</button>
+      <button class="button" type="button" data-gran-action="mark-priority" ${hasPriority ? '' : 'disabled'}>Marcar prioridade</button>
+      <button class="button button-secondary" type="button" data-gran-action="unmark-priority" ${hasPriority ? '' : 'disabled'}>Desmarcar prioridade</button>
+      <button class="button button-danger" type="button" data-gran-action="reset">Zerar assistidas</button>
+    </section>
+  `;
+}
+
+function renderGranCursosTable(lessons = []) {
+  if (!lessons.length) {
+    return '<p class="empty">Nenhuma aula encontrada com os filtros atuais.</p>';
+  }
+  return `
+    <section class="gran-plan-table-wrap" aria-label="Aulas Gran Cursos">
+      <table class="gran-plan-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Ordem</th>
+            <th>Aula Gran</th>
+            <th>Prioridade</th>
+            <th>Ciclo</th>
+            <th>Eixo e tema</th>
+            <th>Titulo</th>
+            <th>Duracao</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lessons.map(renderGranCursosLessonRow).join('')}
+        </tbody>
+      </table>
+    </section>
+  `;
+}
+
+function renderGranCursosLessonRow(lesson = {}) {
+  const watched = Boolean(lesson.watched);
+  const priority = lesson.priority || '';
+  const reviewNote = priority === 'REVISAO_RAPIDA'
+    ? 'Use depois do conteúdo principal ou para fechamento de lacunas.'
+    : '';
+  return `
+    <tr class="${watched ? 'is-watched' : ''}">
+      <td>
+        <label class="gran-watch-control">
+          <input type="checkbox" data-gran-watch="${Number(lesson.lesson_number)}" ${watched ? 'checked' : ''}>
+          <span class="gran-status-badge ${watched ? '' : 'gran-status-pending'}">${watchedLabel(watched)}</span>
+        </label>
+      </td>
+      <td><strong>#${Number(lesson.recommended_order || 0).toLocaleString('pt-BR')}</strong></td>
+      <td><strong>${Number(lesson.lesson_number || 0).toLocaleString('pt-BR')}</strong></td>
+      <td>
+        <span class="gran-priority-badge ${priorityClass(priority)}">${escapeHtml(lesson.priority_label || priority)}</span>
+        <span class="gran-incidence-badge ${incidenceClass(lesson.incidence_level)}">${escapeHtml(incidenceLabel(lesson.incidence_level))}</span>
+      </td>
+      <td>${escapeHtml(lesson.study_cycle || '')}</td>
+      <td>
+        <span class="gran-axis-badge">${escapeHtml(lesson.axis || '')}</span>
+        <small>${escapeHtml(lesson.theme || '')}</small>
+      </td>
+      <td>
+        <strong>${escapeHtml(lesson.title || '')}</strong>
+        <small>${escapeHtml(lesson.incidence_reason || '')}</small>
+        ${reviewNote ? `<em>${escapeHtml(reviewNote)}</em>` : ''}
+        ${lesson.notes ? `<em>${escapeHtml(lesson.notes)}</em>` : ''}
+      </td>
+      <td>${escapeHtml(lesson.duration || 'sem tempo')}</td>
+    </tr>
+  `;
+}
+
+function bindGranCursosPlanControls() {
+  if (!els.granCursosPlanBody) return;
+  els.granCursosPlanBody.querySelectorAll('[data-gran-filter]').forEach((input) => {
+    const applyFilter = () => {
+      state.granCursosPlanFilters[input.dataset.granFilter] = input.value;
+      renderGranCursosPlan();
+    };
+    input.addEventListener('change', applyFilter);
+    if (input.tagName !== 'SELECT') {
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') applyFilter();
+      });
+    }
+  });
+  els.granCursosPlanBody.querySelectorAll('[data-gran-quick]').forEach((button) => {
+    button.addEventListener('click', () => {
+      state.granCursosPlanFilters.quick = button.dataset.granQuick;
+      renderGranCursosPlan();
+    });
+  });
+  els.granCursosPlanBody.querySelectorAll('[data-gran-watch]').forEach((input) => {
+    input.addEventListener('change', () => {
+      saveGranCursosLessonProgress(Number(input.dataset.granWatch), input.checked);
+    });
+  });
+  els.granCursosPlanBody.querySelectorAll('[data-gran-action]').forEach((button) => {
+    button.addEventListener('click', () => handleGranCursosAction(button.dataset.granAction));
+  });
+}
+
+async function saveGranCursosLessonProgress(lessonNumber, watched) {
+  try {
+    const data = await api('/api/gran-cursos-transito-prf/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lessonNumber, watched })
+    });
+    state.granCursosPlan = data;
+    renderGranCursosPlan();
+  } catch (error) {
+    alert(`Nao foi possivel salvar o progresso: ${error.message}`);
+    await loadGranCursosPlan();
+  }
+}
+
+async function handleGranCursosAction(action) {
+  const current = state.granCursosPlanFilters;
+  try {
+    if (action === 'clear-filters') {
+      state.granCursosPlanFilters = { quick: '', priority: '', status: '', axis: '', theme: '', lesson: '', reference: '', q: '' };
+      renderGranCursosPlan();
+      return;
+    }
+    if (action === 'export-csv') {
+      exportGranCursosCsv();
+      return;
+    }
+    if (action === 'copy-roadmap') {
+      await copyGranCursosRoadmap();
+      return;
+    }
+    if (action === 'reset') {
+      const confirmed = window.confirm('Confirmar reset do progresso das aulas Gran Cursos? Isso nao altera questoes, gabaritos ou estatisticas.');
+      if (!confirmed) return;
+      state.granCursosPlan = await api('/api/gran-cursos-transito-prf/progress/reset', { method: 'POST' });
+      renderGranCursosPlan();
+      return;
+    }
+    const watched = action.startsWith('mark-');
+    const body = { watched };
+    if (action.endsWith('axis')) {
+      if (!current.axis) return;
+      body.axis = current.axis;
+    } else if (action.endsWith('priority')) {
+      const priority = baseGranPriority(current.priority);
+      if (!priority) return;
+      body.priority = priority;
+    } else {
+      return;
+    }
+    state.granCursosPlan = await api('/api/gran-cursos-transito-prf/progress/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    renderGranCursosPlan();
+  } catch (error) {
+    alert(`Nao foi possivel executar a acao: ${error.message}`);
+  }
+}
+
+function filterGranCursosLessons(lessons = []) {
+  const current = state.granCursosPlanFilters || {};
+  const priority = baseGranPriority(current.priority);
+  const status = current.status || '';
+  const lessonQuery = normalizeAnswerText(current.lesson);
+  const referenceQuery = normalizeAnswerText(current.reference);
+  const textQuery = normalizeAnswerText(current.q);
+  return lessons.filter((lesson) => {
+    const lessonNumber = Number(lesson.lesson_number || 0);
+    if (current.quick === 'start' && (lesson.priority !== 'ESSENCIAL' || lesson.watched)) return false;
+    if (current.quick === 'core' && !GRAN_CORE_LESSON_NUMBERS.has(lessonNumber)) return false;
+    if (current.quick === 'traps' && !GRAN_TRAP_LESSON_NUMBERS.has(lessonNumber)) return false;
+    if (priority && lesson.priority !== priority) return false;
+    if (status === 'watched' && !lesson.watched) return false;
+    if (status === 'pending' && lesson.watched) return false;
+    if (current.axis && lesson.axis !== current.axis) return false;
+    if (current.theme && lesson.theme !== current.theme) return false;
+    if (lessonQuery && !String(lesson.lesson_number || '').includes(lessonQuery)) return false;
+    const referenceHaystack = normalizeAnswerText([
+      lesson.title,
+      lesson.original_title,
+      lesson.normalized_title,
+      lesson.theme
+    ].join(' '));
+    if (referenceQuery && !referenceHaystack.includes(referenceQuery)) return false;
+    const haystack = normalizeAnswerText([
+      lesson.lesson_number,
+      lesson.title,
+      lesson.provider,
+      lesson.discipline,
+      lesson.professor,
+      lesson.priority_label,
+      lesson.study_cycle,
+      lesson.axis,
+      lesson.theme,
+      lesson.incidence_reason,
+      lesson.notes,
+      lesson.source
+    ].join(' '));
+    if (textQuery && !haystack.includes(textQuery)) return false;
+    return true;
+  });
+}
+
+function sortGranCursosLessonsByRecommendation(lessons = []) {
+  return [...lessons].sort((left, right) => {
+    const orderDiff = Number(left.recommended_order || 9999) - Number(right.recommended_order || 9999);
+    if (orderDiff) return orderDiff;
+    const weightDiff = Number(right.priority_weight || 0) - Number(left.priority_weight || 0);
+    if (weightDiff) return weightDiff;
+    return Number(left.lesson_number || 0) - Number(right.lesson_number || 0);
+  });
+}
+
+function exportGranCursosCsv() {
+  const lessons = filterGranCursosLessons(sortGranCursosLessonsByRecommendation(state.granCursosPlan?.lessons || []));
+  const header = [
+    'lesson_number',
+    'title',
+    'provider',
+    'discipline',
+    'professor',
+    'duration',
+    'priority',
+    'priority_label',
+    'priority_weight',
+    'incidence_level',
+    'study_cycle',
+    'axis',
+    'theme',
+    'recommended_order',
+    'watched'
+  ];
+  const rows = lessons.map((lesson) => header.map((key) => csvCell(key === 'watched' ? watchedLabel(Boolean(lesson.watched)) : lesson[key])).join(','));
+  const blob = new Blob([[header.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'plano-aulas-gran-cursos-transito-prf.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function copyGranCursosRoadmap() {
+  const lessons = filterGranCursosLessons(sortGranCursosLessonsByRecommendation(state.granCursosPlan?.lessons || []));
+  const lines = [
+    'Plano de Aulas Gran Cursos - Trânsito PRF',
+    'Roteiro em ordem recomendada por incidência',
+    'Aviso: A prioridade é por tema/eixo de incidência, não significa que a aula específica tenha caído em prova.',
+    '',
+    ...lessons.map((lesson) => [
+      `#${Number(lesson.recommended_order || 0).toLocaleString('pt-BR')}`,
+      `Aula Gran ${Number(lesson.lesson_number || 0).toLocaleString('pt-BR')}`,
+      lesson.priority_label || lesson.priority || '',
+      incidenceLabel(lesson.incidence_level),
+      lesson.axis || '',
+      lesson.title || ''
+    ].filter(Boolean).join(' | '))
+  ];
+  const text = lines.join('\n');
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    textarea.remove();
+  }
+}
+
+function watchedLabel(watched) {
+  return watched ? 'Assistida' : 'Pendente';
+}
+
+function baseGranPriority(value) {
+  return String(value || '').replace(/_.+$/, '');
+}
+
+function priorityClass(priority) {
+  return {
+    ESSENCIAL: 'is-essential',
+    IMPORTANTE: 'is-important',
+    REVISAO_RAPIDA: 'is-review',
+    essential: 'is-essential',
+    important: 'is-important',
+    review: 'is-review'
+  }[priority] || '';
+}
+
+function incidenceLabel(level) {
+  return {
+    ALTISSIMA: 'Incidência altíssima',
+    ALTA: 'Incidência alta',
+    MEDIA: 'Incidência média',
+    BAIXA: 'Incidência baixa'
+  }[level] || 'Incidência não classificada';
+}
+
+function incidenceClass(level) {
+  return {
+    ALTISSIMA: 'is-very-high',
+    ALTA: 'is-high',
+    MEDIA: 'is-medium',
+    BAIXA: 'is-low'
+  }[level] || '';
+}
+
+function formatLessonNumberList(items = []) {
+  const numbers = items.map((item) => Number(item.lesson_number || 0)).filter(Boolean);
+  if (numbers.length <= 8) return `Aulas ${numbers.join(', ')}`;
+  return `Aulas ${numbers.slice(0, 8).join(', ')}...`;
+}
+
+function formatDurationLong(seconds) {
+  const total = Number(seconds || 0);
+  if (!total) return 'tempo indisponivel';
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.round((total % 3600) / 60);
+  if (!hours) return `${minutes}min`;
+  return `${hours}h${String(minutes).padStart(2, '0')}min`;
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 async function loadContranMapList() {

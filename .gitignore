@@ -34,6 +34,8 @@ data/*
 !data/diagnostico_question_applied_theory_exact_anchors_v6.json
 !data/contran_prf_unpublished_v5/
 !data/contran_prf_unpublished_v5/**
+!data/gran_cursos_transito_prf/
+!data/gran_cursos_transito_prf/**
 exports/
 postgres-export/
 tmp/

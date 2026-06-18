@@ -378,6 +378,7 @@ export function importQbankToSqlite(db, items, options = {}) {
     inserted: 0,
     updated: 0,
     ignored: 0,
+    profileMappings: null,
     errors: []
   };
 
@@ -594,6 +595,8 @@ export function importQbankToSqlite(db, items, options = {}) {
       else report.inserted += 1;
     }
 
+    report.profileMappings = seedContranPrfUnpublishedProfileMappings(db);
+
     const dbValidation = validateImportedQbank(db);
     report.validation = dbValidation;
     if (!dbValidation.ok) {
@@ -727,6 +730,31 @@ export function validateImportedQbank(db) {
   `).n;
   if (missingQuestionRows) errors.push(`metadados sem questions correspondente: ${missingQuestionRows}`);
 
+  if (tableExists(db, 'question_exam_subjects') && tableExists(db, 'exam_subject_weights')) {
+    const trafficProfiles = one(`
+      SELECT COUNT(DISTINCT profile_id) AS n
+      FROM exam_subject_weights
+      WHERE lower(COALESCE(subject_key, '')) LIKE '%transito%'
+         OR lower(COALESCE(subject_label, '')) LIKE '%transito%'
+    `).n || 0;
+    const missingProfileMappings = one(`
+      SELECT COUNT(*) AS n
+      FROM contran_prf_unpublished_questions cq
+      WHERE cq.batch_id = ?
+        AND cq.active = 1
+        AND cq.visible = 1
+        AND cq.deprecated = 0
+        AND (
+          SELECT COUNT(DISTINCT qes.profile_id)
+          FROM question_exam_subjects qes
+          WHERE qes.question_id = cq.question_id
+        ) < ?
+    `, QBANK_VERSION, trafficProfiles).n || 0;
+    if (trafficProfiles && missingProfileMappings) {
+      errors.push(`questoes V5 sem mapeamento completo para perfis PRF: ${missingProfileMappings}`);
+    }
+  }
+
   return {
     ok: errors.length === 0,
     errors,
@@ -736,6 +764,79 @@ export function validateImportedQbank(db) {
       multiplaEscolha: counts.me || 0
     }
   };
+}
+
+export function seedContranPrfUnpublishedProfileMappings(db, options = {}) {
+  const batchId = String(options.batchId || QBANK_VERSION);
+  const source = String(options.source || 'contran_prf_unpublished_v5_profile_mapping');
+  const report = {
+    available: false,
+    profiles: 0,
+    rows: 0,
+    source
+  };
+
+  if (!tableExists(db, 'question_exam_subjects') || !tableExists(db, 'exam_subject_weights')) {
+    report.reason = 'tabelas de perfil de prova ausentes';
+    return report;
+  }
+
+  const rows = db.prepare(`
+    SELECT profile_id, subject_key, subject_label, block_key
+    FROM exam_subject_weights
+    WHERE lower(COALESCE(subject_key, '')) LIKE '%transito%'
+       OR lower(COALESCE(subject_label, '')) LIKE '%transito%'
+    ORDER BY profile_id, expected_pct DESC, expected_items DESC, subject_key
+  `).all();
+  const byProfile = new Map();
+  for (const row of rows) {
+    if (!byProfile.has(row.profile_id)) byProfile.set(row.profile_id, row);
+  }
+
+  const insert = db.prepare(`
+    INSERT INTO question_exam_subjects (
+      question_id, profile_id, subject_key, subject_label, block_key, confidence, source
+    )
+    SELECT
+      question_id,
+      ?,
+      ?,
+      ?,
+      ?,
+      1,
+      ?
+    FROM contran_prf_unpublished_questions
+    WHERE batch_id = ?
+      AND is_unpublished = 1
+      AND active = 1
+      AND visible = 1
+      AND deprecated = 0
+    ON CONFLICT(question_id, profile_id, subject_key) DO UPDATE SET
+      subject_label = excluded.subject_label,
+      block_key = excluded.block_key,
+      confidence = excluded.confidence,
+      source = excluded.source
+  `);
+
+  for (const row of byProfile.values()) {
+    const result = insert.run(
+      row.profile_id,
+      row.subject_key,
+      row.subject_label,
+      row.block_key || '',
+      source,
+      batchId
+    );
+    report.profiles += 1;
+    report.rows += Number(result.changes || 0);
+  }
+
+  report.available = true;
+  return report;
+}
+
+function tableExists(db, tableName) {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(tableName));
 }
 
 export function rollbackPreviousContranPrfUnpublishedBatches(db, options = {}) {

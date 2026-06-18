@@ -75,98 +75,110 @@
       </section>
 
       <section class="advanced-filters" id="advancedFilters" hidden aria-label="Filtros avançados">
-        <label class="checkline">
-          <input id="commentedOnly" type="checkbox">
-          <span>Com comentário</span>
-        </label>
-        <label class="checkline">
-          <input id="unansweredOnly" type="checkbox">
-          <span>Não resolvidas</span>
-        </label>
-        <label class="checkline">
-          <input id="wrongOnly" type="checkbox">
-          <span>Errei por último</span>
-        </label>
-        <label class="checkline">
-          <input id="hideOutdated" type="checkbox">
-          <span>Ocultar desatualizadas</span>
-        </label>
-        <label class="checkline">
-          <input id="hideStudyExcluded" type="checkbox" checked>
-          <span>Ocultar fora do estudo</span>
-        </label>
-        <label class="checkline">
-          <input id="hideDuplicates" type="checkbox">
-          <span>Ocultar duplicadas</span>
-        </label>
-        <label class="checkline">
-          <input id="representativeOnly" type="checkbox">
-          <span>Representativas</span>
-        </label>
-        <label class="field advanced-field-wide">
-          <span>Excluir matérias</span>
-          <div id="excludedMatterList" class="matter-exclusion-list" role="group" aria-label="Matérias que não quero estudar"></div>
-        </label>
-        <label class="field compact-field">
-          <span>Atualização normativa</span>
-          <select id="normativeFilter">
-            <option value="">Todas</option>
-            <option value="safe">Somente seguras</option>
-            <option value="hide-manual">Ocultar revisão manual</option>
-            <option value="hide-discarded">Ocultar descartadas</option>
-            <option value="changed">Somente gabarito alterado</option>
-          </select>
-        </label>
-        <label class="checkline">
-          <input id="contranUnpublishedOnly" type="checkbox">
-          <span>In&eacute;ditas PRF/CONTRAN</span>
-        </label>
-        <label class="field compact-field">
-          <span>Resolu&ccedil;&atilde;o atual</span>
-          <select id="contranCurrentResolutionSelect">
-            <option value="">Todas</option>
-          </select>
-        </label>
-        <label class="field compact-field">
-          <span>Resolu&ccedil;&atilde;o hist&oacute;rica</span>
-          <select id="contranHistoricalResolutionSelect">
-            <option value="">Todas</option>
-          </select>
-        </label>
-        <label class="field compact-field">
-          <span>Eixo de estudo</span>
-          <select id="contranAxisSelect">
-            <option value="">Todos</option>
-          </select>
-        </label>
-        <label class="field compact-field">
-          <span>Tema</span>
-          <select id="contranTopicSelect">
-            <option value="">Todos</option>
-          </select>
-        </label>
-        <label class="field compact-field">
-          <span>Subtema</span>
-          <select id="contranSubtopicSelect">
-            <option value="">Todos</option>
-          </select>
-        </label>
-        <label class="field compact-field">
-          <span>Tipo</span>
-          <select id="contranQuestionTypeSelect">
-            <option value="">Todos</option>
-          </select>
-        </label>
-        <label class="field compact-field">
-          <span>Dificuldade</span>
-          <select id="contranDifficultySelect">
-            <option value="">Todas</option>
-          </select>
-        </label>
-        <label class="checkline">
-          <input id="resumeLast" type="checkbox">
-          <span>Continuar estudo</span>
-        </label>
+        <div class="advanced-filter-group advanced-toggle-grid" aria-label="Filtros rápidos">
+          <label class="checkline">
+            <input id="commentedOnly" type="checkbox">
+            <span>Com comentário</span>
+          </label>
+          <label class="checkline">
+            <input id="unansweredOnly" type="checkbox">
+            <span>Não resolvidas</span>
+          </label>
+          <label class="checkline">
+            <input id="wrongOnly" type="checkbox">
+            <span>Errei por último</span>
+          </label>
+          <label class="checkline">
+            <input id="hideOutdated" type="checkbox">
+            <span>Ocultar desatualizadas</span>
+          </label>
+          <label class="checkline">
+            <input id="hideStudyExcluded" type="checkbox" checked>
+            <span>Ocultar fora do estudo</span>
+          </label>
+          <label class="checkline">
+            <input id="hideDuplicates" type="checkbox">
+            <span>Ocultar duplicadas</span>
+          </label>
+          <label class="checkline">
+            <input id="representativeOnly" type="checkbox">
+            <span>Representativas</span>
+          </label>
+          <label class="checkline">
+            <input id="resumeLast" type="checkbox">
+            <span>Continuar estudo</span>
+          </label>
+        </div>
+
+        <div class="advanced-filter-group advanced-support-grid">
+          <label class="field">
+            <span>Atualização normativa</span>
+            <select id="normativeFilter">
+              <option value="">Todas</option>
+              <option value="safe">Somente seguras</option>
+              <option value="hide-manual">Ocultar revisão manual</option>
+              <option value="hide-discarded">Ocultar descartadas</option>
+              <option value="changed">Somente gabarito alterado</option>
+            </select>
+          </label>
+          <label class="field advanced-field-wide">
+            <span>Excluir matérias</span>
+            <div id="excludedMatterList" class="matter-exclusion-list" role="group" aria-label="Matérias que não quero estudar"></div>
+          </label>
+        </div>
+
+        <div class="advanced-filter-group contran-filter-group" aria-label="Questões inéditas PRF/CONTRAN">
+          <div class="contran-filter-head">
+            <label class="checkline checkline-emphasis">
+              <input id="contranUnpublishedOnly" type="checkbox">
+              <span>Somente inéditas PRF/CONTRAN</span>
+            </label>
+          </div>
+          <div class="contran-select-grid">
+            <label class="field compact-field">
+              <span>Resolu&ccedil;&atilde;o atual</span>
+              <select id="contranCurrentResolutionSelect">
+                <option value="">Todas</option>
+              </select>
+            </label>
+            <label class="field compact-field">
+              <span>Resolu&ccedil;&atilde;o hist&oacute;rica</span>
+              <select id="contranHistoricalResolutionSelect">
+                <option value="">Todas</option>
+              </select>
+            </label>
+            <label class="field compact-field">
+              <span>Eixo de estudo</span>
+              <select id="contranAxisSelect">
+                <option value="">Todos</option>
+              </select>
+            </label>
+            <label class="field compact-field">
+              <span>Tema</span>
+              <select id="contranTopicSelect">
+                <option value="">Todos</option>
+              </select>
+            </label>
+            <label class="field compact-field">
+              <span>Subtema</span>
+              <select id="contranSubtopicSelect">
+                <option value="">Todos</option>
+              </select>
+            </label>
+            <label class="field compact-field">
+              <span>Tipo</span>
+              <select id="contranQuestionTypeSelect">
+                <option value="">Todos</option>
+              </select>
+            </label>
+            <label class="field compact-field">
+              <span>Dificuldade</span>
+              <select id="contranDifficultySelect">
+                <option value="">Todas</option>
+              </select>
+            </label>
+          </div>
+        </div>
       </section>
 
       <main class="workspace">
@@ -210,6 +222,7 @@
               <div class="dropdown-menu" role="menu" hidden>
                 <button id="toggleCoverage" class="menu-item" type="button">Base x Prova</button>
                 <button id="togglePrincipaisPrf" class="menu-item" type="button">Principais PRF</button>
+                <button id="toggleGranCursosPlan" class="menu-item" type="button">Plano de Aulas Gran Cursos - Trânsito PRF</button>
                 <button id="toggleTheoryCoverage" class="menu-item" type="button">Cobertura de teoria</button>
                 <button id="toggleSubjects" class="menu-item" type="button">Ranking de assuntos</button>
                 <button id="toggleNormative" class="menu-item" type="button">Revisão normativa</button>
@@ -381,6 +394,19 @@
           </div>
           <p class="report-intro">Plano de estudo PRF gerado com pesos das provas objetivas PRF 2021, 2019 e 2013, mantendo normas cobradas na prova separadas das normas atuais de estudo.</p>
           <div id="principaisPrfBody" class="principais-prf-body"></div>
+        </section>
+
+        <section class="gran-plan-panel report-panel" id="granCursosPlanPanel" hidden>
+          <div class="subjects-head">
+            <div>
+              <strong>Plano de Aulas Gran Cursos - Legislação de Trânsito PRF</strong>
+              <span id="granCursosPlanInfo"></span>
+            </div>
+            <button id="closeGranCursosPlan" class="button button-secondary" type="button">Voltar</button>
+          </div>
+          <p class="report-intro">Organização das aulas por prioridade, com base na incidência das provas PRF e nos temas mais rentáveis de fiscalização rodoviária.</p>
+          <p class="report-intro">A prioridade é por tema/eixo de incidência, não significa que a aula específica tenha caído em prova.</p>
+          <div id="granCursosPlanBody" class="gran-plan-body"></div>
         </section>
 
         <section class="coverage-panel theory-coverage-panel report-panel" id="theoryCoveragePanel" hidden>

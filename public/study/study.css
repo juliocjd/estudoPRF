@@ -323,11 +323,55 @@ button:disabled {
 
 .advanced-filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 10px;
-  padding: 10px 24px;
+  grid-template-columns: minmax(260px, 0.95fr) minmax(280px, 0.9fr) minmax(520px, 1.55fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-muted);
+}
+
+.advanced-filter-group {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.advanced-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.advanced-support-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.contran-filter-group {
+  display: grid;
+  gap: 10px;
+  border-color: rgba(0, 128, 128, 0.2);
+  background: rgba(0, 128, 128, 0.045);
+}
+
+.contran-filter-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.contran-select-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.contran-select-grid .compact-field {
+  min-width: 0;
 }
 
 .checkline {
@@ -335,7 +379,7 @@ button:disabled {
   grid-template-columns: 18px minmax(0, 1fr);
   gap: 7px;
   align-items: center;
-  min-height: 38px;
+  min-height: 34px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 0 9px;
@@ -343,6 +387,30 @@ button:disabled {
   color: var(--text);
   font-size: 12px;
   font-weight: 700;
+}
+
+.checkline input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.checkline span {
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+
+.checkline-emphasis {
+  min-height: 36px;
+  border-color: rgba(0, 128, 128, 0.35);
+  background: #f8ffff;
+  color: #075f68;
+}
+
+.checkline-emphasis:has(input:checked) {
+  border-color: #0f8b8d;
+  background: #e9fbfb;
+  box-shadow: 0 0 0 2px rgba(15, 139, 141, 0.12);
 }
 
 .button,
@@ -605,6 +673,18 @@ button:disabled {
   box-shadow: none;
   background: transparent;
   padding: 0;
+}
+
+body.is-report-page {
+  overflow-x: hidden;
+}
+
+.is-report-page .workspace,
+.is-report-page .report-panel,
+.is-report-page .report-panel > *,
+.gran-plan-body {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .is-report-page .mobile-filter-toggle,
@@ -1386,6 +1466,30 @@ button:disabled {
   font-size: 15px;
 }
 
+.principais-prf-unpublished {
+  border-color: rgba(0, 128, 128, 0.22);
+  background: rgba(0, 128, 128, 0.05);
+}
+
+.principais-prf-unpublished-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.principais-prf-unpublished-summary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid rgba(0, 128, 128, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
 .principais-prf-bars {
   display: grid;
   gap: 8px;
@@ -1473,6 +1577,385 @@ button:disabled {
   margin: 0;
   color: var(--text);
   line-height: 1.4;
+}
+
+.gran-plan-body,
+.gran-plan-section {
+  display: grid;
+  gap: 12px;
+}
+
+.gran-plan-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.gran-next-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  background: linear-gradient(180deg, #fff, #fff7f7);
+}
+
+.gran-next-card div {
+  display: grid;
+  gap: 5px;
+}
+
+.gran-next-card div:last-child {
+  justify-items: end;
+}
+
+.gran-next-card > div:first-child > span:first-child {
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.gran-next-card strong {
+  color: var(--text);
+  font-size: 18px;
+}
+
+.gran-next-card small {
+  color: var(--text-muted);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.gran-metric {
+  min-height: 72px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.gran-plan-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: var(--surface);
+}
+
+.gran-plan-section header,
+.gran-filter-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.gran-plan-section h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.gran-plan-section header span,
+.gran-filter-head span,
+.gran-progress-row span,
+.gran-order-card span,
+.gran-plan-table small,
+.gran-plan-table em {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gran-progress-grid,
+.gran-order-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.gran-progress-row,
+.gran-order-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  background: var(--surface-muted);
+}
+
+.gran-progress-row > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.gran-order-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.gran-order-card {
+  align-content: start;
+  background: #fff;
+}
+
+.gran-filter-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  background: #f8fbff;
+}
+
+.gran-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.gran-quick-filters {
+  display: grid;
+  grid-template-columns: 1.25fr repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gran-quick-filter {
+  display: grid;
+  gap: 3px;
+  min-height: 58px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+  background: #fff;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.gran-quick-filter strong {
+  font-size: 13px;
+}
+
+.gran-quick-filter span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.gran-quick-filter.is-active {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: #eff6ff;
+}
+
+.gran-quick-filter.is-primary {
+  border-color: rgba(220, 38, 38, 0.32);
+}
+
+.gran-quick-filter.is-primary.is-active {
+  background: #fef2f2;
+}
+
+.gran-quick-filter.is-primary strong {
+  color: #991b1b;
+}
+
+.gran-filter-grid .compact-field {
+  min-width: 0;
+}
+
+.gran-filter-wide {
+  grid-column: span 2;
+}
+
+.gran-plan-actions {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gran-plan-actions .button {
+  min-height: 38px;
+  padding-inline: 8px;
+  white-space: normal;
+}
+
+.gran-plan-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.gran-plan-table {
+  width: 100%;
+  min-width: 1220px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.gran-plan-table th,
+.gran-plan-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.gran-plan-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.gran-plan-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.gran-plan-table tr.is-watched {
+  background: #f0fdf4;
+}
+
+.gran-plan-table td:nth-child(1) {
+  width: 150px;
+}
+
+.gran-plan-table td:nth-child(2) {
+  width: 70px;
+}
+
+.gran-plan-table td:nth-child(3) {
+  width: 90px;
+}
+
+.gran-plan-table td:nth-child(4) {
+  width: 130px;
+}
+
+.gran-plan-table td:nth-child(5) {
+  width: 170px;
+}
+
+.gran-plan-table td:nth-child(6) {
+  width: 270px;
+}
+
+.gran-plan-table td:nth-child(7) {
+  min-width: 330px;
+}
+
+.gran-plan-table td:nth-child(8) {
+  width: 100px;
+}
+
+.gran-watch-control {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.gran-priority-badge,
+.gran-incidence-badge,
+.gran-axis-badge,
+.gran-status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: #fff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.gran-priority-badge.is-essential {
+  border-color: rgba(220, 38, 38, 0.28);
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.gran-priority-badge.is-important {
+  border-color: rgba(217, 119, 6, 0.28);
+  background: #fff7ed;
+  color: #92400e;
+}
+
+.gran-priority-badge.is-review {
+  border-color: rgba(37, 99, 235, 0.24);
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.gran-incidence-badge {
+  margin-top: 6px;
+  border-color: rgba(100, 116, 139, 0.22);
+  background: #f8fafc;
+  color: #334155;
+}
+
+.gran-incidence-badge.is-very-high {
+  border-color: rgba(220, 38, 38, 0.26);
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.gran-incidence-badge.is-high {
+  border-color: rgba(217, 119, 6, 0.28);
+  background: #ffedd5;
+  color: #92400e;
+}
+
+.gran-incidence-badge.is-medium {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.gran-incidence-badge.is-low {
+  border-color: rgba(100, 116, 139, 0.22);
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.gran-axis-badge {
+  margin-bottom: 6px;
+  border-color: rgba(15, 118, 110, 0.22);
+  background: rgba(240, 253, 250, 0.9);
+  color: #0f766e;
+}
+
+.gran-status-badge {
+  border-color: rgba(22, 163, 74, 0.26);
+  background: #dcfce7;
+  color: #166534;
+}
+
+.gran-status-pending {
+  border-color: rgba(100, 116, 139, 0.24);
+  background: #f8fafc;
+  color: #475569;
+}
+
+.gran-plan-table td > strong,
+.gran-plan-table td > small,
+.gran-plan-table td > em {
+  display: block;
+}
+
+.gran-plan-table em {
+  margin-top: 5px;
+  font-style: normal;
 }
 
 .subjects-list {
@@ -3479,7 +3962,19 @@ button:disabled {
   }
 
   .advanced-filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+  }
+
+  .advanced-toggle-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .advanced-support-grid {
+    grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr);
+  }
+
+  .contran-select-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .context-bar {
@@ -3619,6 +4114,12 @@ button:disabled {
   .advanced-filters,
   .study-metrics,
   .answer-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .advanced-toggle-grid,
+  .advanced-support-grid,
+  .contran-select-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3770,6 +4271,11 @@ button:disabled {
 
   .context-bar {
     gap: 8px;
+    position: sticky;
+    top: 8px;
+    z-index: 35;
+    background: rgba(248, 250, 252, 0.96);
+    backdrop-filter: blur(6px);
   }
 
   .context-main {
@@ -3788,8 +4294,7 @@ button:disabled {
   }
 
   .study-now-group,
-  .mode-dropdown,
-  .reports-dropdown {
+  .mode-dropdown {
     display: none !important;
   }
 
@@ -3819,6 +4324,23 @@ button:disabled {
 
   .support-dropdown {
     grid-column: 1 / -1;
+  }
+
+  .reports-dropdown {
+    display: block !important;
+    grid-column: 1 / -1;
+    order: -1;
+  }
+
+  .reports-dropdown > .button {
+    width: 100%;
+    border-color: rgba(37, 99, 235, 0.24);
+    background: var(--info-soft);
+    color: var(--primary);
+  }
+
+  .reports-dropdown .dropdown-menu {
+    max-height: min(58vh, 420px);
   }
 
   .support-dropdown > .button {
@@ -4092,15 +4614,33 @@ button:disabled {
   }
 
   .principais-prf-grid,
+  .gran-plan-summary,
+  .gran-next-card,
+  .gran-quick-filters,
+  .gran-filter-grid,
+  .gran-plan-actions,
   .principais-prf-split,
   .principais-prf-topic dl {
     grid-template-columns: 1fr;
   }
 
+  .gran-filter-wide {
+    grid-column: auto;
+  }
+
+  .gran-next-card div:last-child {
+    justify-items: start;
+  }
+
   .principais-prf-bar > div:first-child,
+  .gran-progress-row > div:first-child,
   .principais-prf-session header,
   .principais-prf-topic header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .gran-plan-table {
+    min-width: 1040px;
   }
 }
