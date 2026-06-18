@@ -438,6 +438,7 @@ function bindEvents() {
   });
 
   els.matterSelect.addEventListener('change', async () => {
+    activateManualQuestionListMode();
     state.filters.materia = els.matterSelect.value;
     state.filters.assunto = '';
     state.page = 1;
@@ -448,6 +449,7 @@ function bindEvents() {
   });
 
   els.subjectSelect.addEventListener('change', async () => {
+    activateManualQuestionListMode();
     state.filters.assunto = els.subjectSelect.value;
     state.page = 1;
     updateAdvancedFiltersSummary();
@@ -1282,6 +1284,12 @@ function activateContranUnpublishedMode() {
   if (els.normativeFilter) els.normativeFilter.value = '';
 }
 
+function activateManualQuestionListMode() {
+  if (state.studyMode !== 'all') setStudyMode('all');
+  state.filters.hideStudyExcluded = false;
+  if (els.hideStudyExcluded) els.hideStudyExcluded.checked = false;
+}
+
 function closeAllDropdowns() {
   document.querySelectorAll('[data-dropdown]').forEach((dropdown) => {
     const trigger = dropdown.querySelector('button[aria-expanded]');
@@ -1689,6 +1697,7 @@ function renderMastery(mastery) {
 
 async function loadQuestions(options = {}) {
   const requestToken = options.requestToken || beginQuestionRequest();
+  renderQuestionLoading('Carregando questoes dos filtros atuais...');
   const params = buildQuestionParams();
   if (options.targetId) {
     params.set('targetId', String(options.targetId));
@@ -1728,6 +1737,28 @@ function beginQuestionRequest() {
 
 function isCurrentQuestionRequest(requestToken) {
   return !requestToken || requestToken === questionRequestToken;
+}
+
+function renderQuestionLoading(message = 'Carregando questao...') {
+  state.selectedId = null;
+  state.currentQuestion = null;
+  state.answerResult = null;
+  state.eliminatedAnswers = new Set();
+  state.theoryUrl = '';
+  if (state.timerId) {
+    clearInterval(state.timerId);
+    state.timerId = null;
+  }
+  resetQuestionTimer();
+  if (els.pageLabel) els.pageLabel.textContent = '...';
+  if (els.questionMeta) els.questionMeta.textContent = 'Carregando';
+  if (els.questionQuickStatus) els.questionQuickStatus.textContent = 'Buscando questoes';
+  if (els.questionTitle) els.questionTitle.textContent = 'Questao';
+  if (els.statement) els.statement.innerHTML = `<p class="empty">${escapeHtml(message)}</p>`;
+  if (els.alternatives) els.alternatives.innerHTML = '';
+  if (els.answerStatus) els.answerStatus.textContent = '';
+  if (els.answerHint) els.answerHint.textContent = 'Aguarde o carregamento';
+  if (els.submitAnswer) els.submitAnswer.disabled = true;
 }
 
 async function loadCurrentModeTarget() {

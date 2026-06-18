@@ -1032,19 +1032,71 @@ function getFilters() {
     ORDER BY materia
   `).all();
 
+  const unpublishedResolutionCounts = getContranPrfUnpublishedResolutionCountMap();
   const subjects = db.prepare(`
     SELECT materia, assunto AS name, COUNT(*) AS count
     FROM questions
     WHERE COALESCE(assunto, '') != ''
     GROUP BY materia, assunto
     ORDER BY materia, assunto
-  `).all();
+  `).all().map((subject) => {
+    const resolutionKey = getOfficialContranSubjectResolutionKey(subject);
+    if (!resolutionKey) return subject;
+    return {
+      ...subject,
+      count: Number(subject.count || 0) + Number(unpublishedResolutionCounts.get(resolutionKey) || 0)
+    };
+  });
 
   return {
     matters,
     subjects,
     contranUnpublished: getContranPrfUnpublishedFilters()
   };
+}
+
+function getContranPrfUnpublishedResolutionCountMap() {
+  const counts = new Map();
+  if (!hasContranPrfUnpublishedTable()) return counts;
+  const rows = db.prepare(`
+    SELECT current_resolution AS resolution, COUNT(*) AS count
+    FROM contran_prf_unpublished_questions
+    WHERE is_unpublished = 1
+      AND COALESCE(active, 1) = 1
+      AND COALESCE(visible, 1) = 1
+      AND COALESCE(deprecated, 0) = 0
+      AND COALESCE(current_resolution, '') != ''
+    GROUP BY current_resolution
+  `).all();
+  for (const row of rows) {
+    const key = normalizeContranResolutionKey(row.resolution);
+    if (!key) continue;
+    counts.set(key, Number(counts.get(key) || 0) + Number(row.count || 0));
+  }
+  return counts;
+}
+
+function getOfficialContranSubjectResolutionKey(subject = {}) {
+  const matter = String(subject.materia || '').trim();
+  const name = String(subject.name || subject.assunto || '').trim();
+  if (!/^Resolu[cç][aã]o\s+CONTRAN\s+n[ºo.]?\s*\d+\/\d{4}/i.test(name)) return '';
+  if (matter && !normalizePlainAscii(matter).includes('legislacao de transito')) return '';
+  return normalizeContranResolutionKey(name);
+}
+
+function normalizeContranResolutionKey(value) {
+  const normalized = normalizePlainAscii(value).toUpperCase();
+  if (!normalized.includes('CONTRAN')) return '';
+  const match = normalized.match(/\b(\d{1,4})\s*\/\s*(\d{4})\b/);
+  return match ? `${Number(match[1])}/${match[2]}` : '';
+}
+
+function normalizePlainAscii(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 function getContranPrfUnpublishedFilters() {
@@ -3379,12 +3431,19 @@ function buildQuestionWhere(searchParams, extra = {}) {
     where.push('(q.statement_text LIKE ? OR q.materia LIKE ? OR q.assunto LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
     values.push(...Array(4).fill(`%${q}%`));
   }
-  if (materia) {
+  const combinedResolutionKey = getOfficialContranSubjectResolutionKey({ materia, name: assunto });
+  if (combinedResolutionKey) {
+    applyOfficialAndUnpublishedContranResolutionFilter(where, values, {
+      materia,
+      assunto,
+      resolutionKey: combinedResolutionKey
+    });
+  } else if (materia) {
     where.push('q.materia = ?');
     values.push(materia);
   }
   applyExcludedMateriasFilter(where, values, excludedMaterias);
-  if (assunto) {
+  if (assunto && !combinedResolutionKey) {
     where.push('q.assunto = ?');
     values.push(assunto);
   }
@@ -3492,6 +3551,34 @@ function applyExcludedMateriasFilter(where, values, materias, alias = 'q') {
   if (!materias.length) return;
   where.push(`COALESCE(${alias}.materia, '') NOT IN (${materias.map(() => '?').join(', ')})`);
   values.push(...materias);
+}
+
+function applyOfficialAndUnpublishedContranResolutionFilter(where, values, { materia = '', assunto = '', resolutionKey = '' } = {}) {
+  const clauses = [];
+  const officialClauses = [];
+  if (materia) {
+    officialClauses.push('q.materia = ?');
+    values.push(materia);
+  }
+  if (assunto) {
+    officialClauses.push('q.assunto = ?');
+    values.push(assunto);
+  }
+  if (officialClauses.length) clauses.push(`(${officialClauses.join(' AND ')})`);
+  if (resolutionKey && hasContranPrfUnpublishedTable()) {
+    clauses.push(`EXISTS (
+      SELECT 1
+      FROM contran_prf_unpublished_questions cq_resolution
+      WHERE cq_resolution.question_id = q.id_question
+        AND cq_resolution.is_unpublished = 1
+        AND COALESCE(cq_resolution.active, 1) = 1
+        AND COALESCE(cq_resolution.visible, 1) = 1
+        AND COALESCE(cq_resolution.deprecated, 0) = 0
+        AND cq_resolution.current_resolution LIKE ?
+    )`);
+    values.push(`%${resolutionKey}%`);
+  }
+  if (clauses.length) where.push(`(${clauses.join(' OR ')})`);
 }
 
 function parseExamFilterKey(value) {
