@@ -123,8 +123,8 @@ button:disabled {
 
 .topbar-metrics {
   display: grid;
-  grid-template-columns: repeat(5, minmax(118px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(6, minmax(88px, 1fr));
+  gap: 6px;
   align-items: stretch;
   min-width: 0;
 }
@@ -164,15 +164,28 @@ button:disabled {
   white-space: nowrap;
 }
 
+.topbar-metrics .stat {
+  min-height: 42px;
+  padding: 5px 7px;
+}
+
+.topbar-metrics .stat strong {
+  font-size: 14px;
+}
+
+.topbar-metrics .stat span {
+  font-size: 10px;
+}
+
 .study-time-panel {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 5px;
   align-items: center;
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 5px 7px;
+  padding: 4px 6px;
   background: var(--surface-muted);
 }
 
@@ -209,7 +222,7 @@ button:disabled {
   display: block;
   overflow: hidden;
   color: var(--text);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
