@@ -357,6 +357,17 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const contranNormativeArticlesMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/contran-normative-articles$/);
+  if (contranNormativeArticlesMatch && request.method === 'GET') {
+    sendJson(response, 200, getQuestionContranNormativeArticles(Number(contranNormativeArticlesMatch[1])));
+    return;
+  }
+
+  if (url.pathname === '/api/contran-normative/missing' && request.method === 'GET') {
+    sendJson(response, 200, getContranNormativeMissingArticles(url.searchParams));
+    return;
+  }
+
   const questionLegalStudyMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/legal-study$/);
   if (questionLegalStudyMatch && request.method === 'GET') {
     sendJson(response, 200, getQuestionLegalStudy(Number(questionLegalStudyMatch[1])));
@@ -3506,6 +3517,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
   }
   if (hideStudyExcluded) {
     applyQuestionStudyStatusFilter(where);
+    applyFutureReviewFilter(where);
     applyNormativeTeachingDiscardFilter(where);
     applyCurrentLawMainStudyFilter(where);
   }
@@ -3640,6 +3652,26 @@ function applyQuestionStudyStatusFilter(where) {
     FROM question_study_status qss
     WHERE qss.question_id = q.id_question
       AND qss.status IN ('excluded', 'review_later')
+  )`);
+}
+
+function applyFutureReviewFilter(where, alias = 'q') {
+  where.push(`NOT EXISTS (
+    SELECT 1
+    FROM question_mastery qm_future
+    WHERE qm_future.question_id = ${alias}.id_question
+      AND qm_future.next_due_at IS NOT NULL
+      AND CAST(qm_future.next_due_at AS TEXT) != ''
+      AND qm_future.next_due_at > CURRENT_TIMESTAMP
+      AND (
+        EXISTS (
+          SELECT 1
+          FROM study_answers sa_future
+          WHERE sa_future.question_id = qm_future.question_id
+        )
+        OR COALESCE(qm_future.attempts, 0) > 0
+        OR qm_future.last_result IS NOT NULL
+      )
   )`);
 }
 
@@ -6826,6 +6858,216 @@ function getContranPrfUnpublishedQuestion(questionId) {
     visible: row.visible !== 0,
     deprecated: Boolean(row.deprecated),
     supersededByBatchId: row.superseded_by_batch_id || ''
+  };
+}
+
+function hasContranNormativeReferenceTables() {
+  try {
+    return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contran_question_normative_references'").get())
+      && Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contran_normative_articles'").get());
+  } catch {
+    return false;
+  }
+}
+
+function hasMissingNormativeArticlesQueue() {
+  try {
+    return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'missing_normative_articles_queue'").get());
+  } catch {
+    return false;
+  }
+}
+
+function getQuestionContranNormativeArticles(questionId) {
+  const unpublished = getContranPrfUnpublishedQuestion(questionId);
+  if (!unpublished?.exists || unpublished.isOfficial || unpublished.officialExam) {
+    return { ok: false, questionId, references: [], error: 'Questao inedita PRF/CONTRAN nao encontrada.' };
+  }
+  if (!hasContranNormativeReferenceTables()) {
+    return {
+      ok: true,
+      questionId,
+      externalId: unpublished.externalId || '',
+      normativeReferenceText: unpublished.sourceNormativeReference || unpublished.articleReference || '',
+      references: legacyContranNormativeReferenceFallback(unpublished)
+    };
+  }
+  const rows = db.prepare(`
+    SELECT
+      cqr.id,
+      cqr.question_id,
+      cqr.external_id,
+      cqr.resolution,
+      cqr.resolution_number,
+      cqr.resolution_year,
+      cqr.article,
+      cqr.paragraph,
+      cqr.item,
+      cqr.subitem,
+      cqr.annex,
+      cqr.raw_reference,
+      cqr.display_order,
+      cqr.needs_normative_reference_review,
+      cna.id AS article_id,
+      cna.title,
+      cna.full_text,
+      cna.plain_text,
+      cna.source_name,
+      cna.source_url,
+      cna.source_version_date
+    FROM contran_question_normative_references cqr
+    LEFT JOIN contran_normative_articles cna ON (
+      cna.id = cqr.normative_article_id
+      OR (
+        cqr.normative_article_id IS NULL
+        AND cna.resolution_number = cqr.resolution_number
+        AND cna.resolution_year = cqr.resolution_year
+        AND COALESCE(cna.article, '') = COALESCE(cqr.article, '')
+        AND COALESCE(cna.paragraph, '') = COALESCE(cqr.paragraph, '')
+        AND COALESCE(cna.item, '') = COALESCE(cqr.item, '')
+        AND COALESCE(cna.subitem, '') = COALESCE(cqr.subitem, '')
+        AND COALESCE(cna.annex, '') = COALESCE(cqr.annex, '')
+        AND cna.is_current = 1
+      )
+    )
+    WHERE cqr.question_id = ?
+    ORDER BY cqr.display_order, cqr.id
+  `).all(questionId);
+
+  return {
+    ok: true,
+    questionId,
+    externalId: unpublished.externalId || '',
+    normativeReferenceText: rows[0]?.raw_reference || unpublished.sourceNormativeReference || unpublished.articleReference || '',
+    references: rows.length ? rows.map((row) => {
+      const label = contranNormativeReferenceLabel(row);
+      const hasFullText = Boolean(row.article_id && row.full_text);
+      return {
+        id: row.id,
+        articleId: row.article_id || null,
+        resolution: row.resolution || '',
+        resolutionNumber: row.resolution_number || '',
+        resolutionYear: row.resolution_year || '',
+        article: row.article || '',
+        paragraph: row.paragraph || '',
+        item: row.item || '',
+        subitem: row.subitem || '',
+        annex: row.annex || '',
+        label,
+        title: row.title || label,
+        fullText: hasFullText ? row.full_text : '',
+        plainText: hasFullText ? (row.plain_text || row.full_text) : '',
+        sourceName: row.source_name || '',
+        sourceUrl: row.source_url || '',
+        sourceVersionDate: row.source_version_date || '',
+        found: hasFullText,
+        needsReview: Boolean(row.needs_normative_reference_review),
+        missingMessage: hasFullText ? '' : `Texto integral ainda nao cadastrado para este dispositivo. Fundamento indicado: ${label}.`
+      };
+    }) : [genericMissingContranNormativeReference(unpublished)]
+  };
+}
+
+function genericMissingContranNormativeReference(unpublished) {
+  const label = String(unpublished.sourceNormativeReference || unpublished.articleReference || 'fundamento normativo informado').replace(/[.\s]+$/, '');
+  return {
+    id: `missing-${unpublished.questionId}`,
+    articleId: null,
+    resolution: unpublished.currentResolution || '',
+    resolutionNumber: '',
+    resolutionYear: '',
+    article: '',
+    paragraph: '',
+    item: '',
+    subitem: '',
+    annex: '',
+    label,
+    title: label,
+    fullText: '',
+    plainText: '',
+    sourceName: '',
+    sourceUrl: '',
+    sourceVersionDate: '',
+    found: false,
+    needsReview: true,
+    missingMessage: `Texto integral ainda nao cadastrado para este dispositivo. Fundamento indicado: ${label}.`
+  };
+}
+
+function legacyContranNormativeReferenceFallback(unpublished) {
+  if (unpublished.articleFullTextStatus !== 'included_full' || !unpublished.articleFullText) return [];
+  const label = unpublished.articleReference || unpublished.sourceNormativeReference || 'Fundamento normativo';
+  return [{
+    id: `legacy-${unpublished.questionId}`,
+    articleId: null,
+    resolution: unpublished.currentResolution || '',
+    resolutionNumber: '',
+    resolutionYear: '',
+    article: '',
+    paragraph: '',
+    item: '',
+    subitem: '',
+    annex: '',
+    label,
+    title: label,
+    fullText: unpublished.articleFullText,
+    plainText: unpublished.articleFullText,
+    sourceName: unpublished.source || '',
+    sourceUrl: unpublished.sourceUrl || '',
+    sourceVersionDate: unpublished.pedagogicalPatchVersion || '',
+    found: true,
+    needsReview: false,
+    missingMessage: ''
+  }];
+}
+
+function contranNormativeReferenceLabel(row) {
+  const resolution = row.resolution || [row.resolution_number, row.resolution_year].filter(Boolean).join('/');
+  const parts = [];
+  if (row.annex) parts.push(`Anexo ${row.annex}`);
+  if (row.article) parts.push(`Art. ${row.article}`);
+  if (row.paragraph) parts.push(`§ ${row.paragraph}`);
+  if (row.item) parts.push(row.item);
+  const device = parts.join(', ') || 'Dispositivo';
+  return `${device}${resolution ? ` da ${resolution}` : ''}`;
+}
+
+function getContranNormativeMissingArticles(searchParams) {
+  if (!hasMissingNormativeArticlesQueue()) {
+    return { ok: true, total: 0, rows: [] };
+  }
+  const limit = Math.min(500, Math.max(1, Number(searchParams.get('limit') || 100)));
+  const rows = db.prepare(`
+    SELECT
+      resolution,
+      article,
+      paragraph,
+      item,
+      annex,
+      status,
+      COUNT(DISTINCT question_id) AS impacted_questions,
+      MIN(question_id) AS example_question_id,
+      MIN(external_id) AS example_external_id
+    FROM missing_normative_articles_queue
+    WHERE status = 'PENDENTE'
+    GROUP BY resolution, article, paragraph, item, annex, status
+    ORDER BY impacted_questions DESC, resolution, article
+    LIMIT ?
+  `).all(limit);
+  return {
+    ok: true,
+    total: rows.length,
+    rows: rows.map((row) => ({
+      resolution: row.resolution || '',
+      article: row.article || '',
+      paragraph: row.paragraph || '',
+      item: row.item || '',
+      annex: row.annex || '',
+      status: row.status || '',
+      impactedQuestions: row.impacted_questions || 0,
+      exampleQuestionId: row.example_question_id || null,
+      exampleExternalId: row.example_external_id || ''
+    }))
   };
 }
 

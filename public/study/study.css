@@ -3623,6 +3623,94 @@ body.is-report-page {
   margin-top: 2px;
 }
 
+.normative-reference-accordion {
+  display: grid;
+  gap: 10px;
+}
+
+.normative-reference-short {
+  margin: 0;
+  font-weight: 800;
+}
+
+.normative-reference-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.normative-reference-preference {
+  align-items: center;
+  color: var(--text-muted);
+  display: inline-flex;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.normative-reference-preference select {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  padding: 7px 8px;
+}
+
+.normative-reference-status {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.normative-reference-list {
+  display: grid;
+  gap: 8px;
+}
+
+.normative-article-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.normative-article-item summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.normative-article-item summary span {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.normative-article-text {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.normative-article-text p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 720px) {
+  .normative-reference-actions,
+  .normative-reference-preference,
+  .normative-article-item summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .normative-warning,
 .normative-note {
   margin: 0;

@@ -37,6 +37,7 @@ data/*
 !data/gran_cursos_transito_prf/
 !data/gran_cursos_transito_prf/**
 exports/
+reports/
 postgres-export/
 tmp/
 tmp-*.sqlite
@@ -46,3 +47,20 @@ aulas.generated.txt
 aulas.prf*.txt
 aulas.prf*.json
 config.local.json
+
+# Generated audit/export/review artifacts
+RELATORIO_*.md
+relatorio_*.md
+diff_pos_*.md
+export_pos_*.csv
+export_pos_*.jsonl
+export_questoes_*.csv
+export_questoes_*.jsonl
+manifest_export_*.json
+missing_normative_articles_*.json
+comentarios_genericos_*.csv
+fundamentos_genericos_*.csv
+validacao_*.csv
+v*_worklist_*.csv
+v*_worklist_*.json
+v*_worklist_*.jsonl
