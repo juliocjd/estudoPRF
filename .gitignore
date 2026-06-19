@@ -57,6 +57,9 @@ export_pos_*.jsonl
 export_questoes_*.csv
 export_questoes_*.jsonl
 manifest_export_*.json
+manifest_backup_*.json
+backup_pre_v*.jsonl
+backup_pre_v*.csv
 missing_normative_articles_*.json
 comentarios_genericos_*.csv
 fundamentos_genericos_*.csv
