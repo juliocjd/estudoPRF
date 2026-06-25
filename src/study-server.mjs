@@ -1226,6 +1226,19 @@ function examFilterKey(row = {}) {
   ].map((part) => encodeURIComponent(String(part || ''))).join('|')}`;
 }
 
+function buildQuestionExamLabel(row = {}) {
+  return [
+    row.banca || '',
+    row.orgao_sigla || row.orgaoSigla || row.orgao_nome || row.orgaoNome || '',
+    row.cargo || '',
+    row.concurso_ano || row.ano || ''
+  ]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean)
+    .filter((part, index, parts) => parts.indexOf(part) === index)
+    .join(' - ');
+}
+
 function getTheoryPage(searchParams) {
   if (!hasTheoryPagesTable()) {
     return { available: false, reason: 'Indice de teoria nao criado.' };
@@ -3362,6 +3375,7 @@ function getQuestions(searchParams) {
     LEFT JOIN comments c ON c.question_id = q.id_question
     ${whereSql}
   `).get(...values).n;
+  const emptyState = total === 0 ? getQuestionEmptyState(searchParams) : null;
 
   const targetId = Number(searchParams.get('targetId') || 0);
   let targetIndex = -1;
@@ -3408,11 +3422,102 @@ function getQuestions(searchParams) {
     total,
     totalPages: Math.max(1, Math.ceil(total / limit)),
     targetIndex: targetIndex >= 0 ? targetIndex % limit : -1,
+    emptyReason: emptyState?.reason || '',
+    emptyMessage: emptyState?.message || '',
+    nextDueAt: emptyState?.nextDueAt || '',
+    futureReviewCount: emptyState?.futureReviewCount || 0,
+    currentLawHiddenCount: emptyState?.currentLawHiddenCount || 0,
+    totalWithoutStudyFilters: emptyState?.totalWithoutStudyFilters || 0,
     rows: rows.map((row) => ({
       ...row,
       statement_preview: trimPreview(row.statement_text, 220)
     }))
   };
+}
+
+function getQuestionEmptyState(searchParams) {
+  if (searchParams.get('hideStudyExcluded') !== '1') return null;
+  const base = buildQuestionWhere(searchParams, { skipStudyFilters: true });
+  const baseStats = db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    ${base.whereSql}
+  `).get(...base.values);
+  const totalWithoutStudyFilters = Number(baseStats?.total || 0);
+  const currentLawHiddenCount = countCurrentLawHiddenQuestions(base.whereSql, base.values);
+
+  const { whereSql, values } = buildQuestionWhere(searchParams, { skipFutureReviewFilter: true });
+  const row = db.prepare(`
+    SELECT
+      COUNT(*) AS total_without_future_filter,
+      MIN(qm.next_due_at) AS next_due_at
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
+    ${whereSql}
+      ${whereSql ? 'AND' : 'WHERE'} qm.next_due_at IS NOT NULL
+      AND CAST(qm.next_due_at AS TEXT) != ''
+      AND qm.next_due_at > CURRENT_TIMESTAMP
+  `).get(...values);
+  const count = Number(row?.total_without_future_filter || 0);
+  if (currentLawHiddenCount > 0) {
+    const parts = [];
+    if (count && row?.next_due_at) {
+      parts.push(`${count} ${count === 1 ? 'quest\u00e3o j\u00e1 est\u00e1 agendada' : 'quest\u00f5es j\u00e1 est\u00e3o agendadas'} para revis\u00e3o futura. Pr\u00f3xima revis\u00e3o: ${formatDateTimeForMessage(row.next_due_at)}.`);
+    }
+    parts.push(`${currentLawHiddenCount} ${currentLawHiddenCount === 1 ? 'quest\u00e3o oficial est\u00e1 oculta' : 'quest\u00f5es oficiais est\u00e3o ocultas'} porque ainda aguardam auditoria de gabarito pela lei atual.`);
+    return {
+      reason: 'study_filters_no_available_questions',
+      nextDueAt: row?.next_due_at || '',
+      futureReviewCount: count,
+      currentLawHiddenCount,
+      totalWithoutStudyFilters,
+      message: `Este filtro possui ${totalWithoutStudyFilters} quest\u00f5es no total, mas nenhuma dispon\u00edvel agora no modo rob\u00f4. ${parts.join(' ')}`
+    };
+  }
+  if (!count || !row?.next_due_at) return null;
+  return {
+    reason: 'future_review_only',
+    nextDueAt: row.next_due_at,
+    futureReviewCount: count,
+    message: `Todas as questões deste filtro já foram respondidas e estão agendadas para revisão futura. Próxima revisão: ${formatDateTimeForMessage(row.next_due_at)}.`
+  };
+}
+
+function countCurrentLawHiddenQuestions(whereSql, values) {
+  if (!hasCurrentLawAnswerTable()) return 0;
+  const row = db.prepare(`
+    SELECT COUNT(*) AS n
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    ${whereSql}
+      ${whereSql ? 'AND' : 'WHERE'} COALESCE(q.desatualizada, 0) = 1
+      AND NOT EXISTS (
+        SELECT 1
+        FROM question_current_law_answers qcla_hidden
+        WHERE qcla_hidden.question_id = q.id_question
+          AND qcla_hidden.current_law_status = 'verified'
+          AND qcla_hidden.can_auto_score_current_law IS TRUE
+          AND COALESCE(qcla_hidden.current_answer, '') != ''
+          AND qcla_hidden.should_discard_from_current_law_study IS NOT TRUE
+          AND qcla_hidden.hide_from_main_study_until_verified IS NOT TRUE
+      )
+  `).get(...values);
+  return Number(row?.n || 0);
+}
+
+function formatDateTimeForMessage(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value || '');
+  return date.toLocaleString('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
 }
 
 function buildQuestionWhere(searchParams, extra = {}) {
@@ -3442,7 +3547,8 @@ function buildQuestionWhere(searchParams, extra = {}) {
   const hideDiscarded = searchParams.get('hideDiscarded') === '1' || extra.hideDiscarded;
   const hideManualReview = searchParams.get('hideManualReview') === '1' || extra.hideManualReview;
   const onlyChangedAnswer = searchParams.get('onlyChangedAnswer') === '1' || extra.onlyChangedAnswer;
-  const hideStudyExcluded = searchParams.get('hideStudyExcluded') === '1' || extra.hideStudyExcluded;
+  const hideStudyExcluded = !extra.skipStudyFilters
+    && (searchParams.get('hideStudyExcluded') === '1' || extra.hideStudyExcluded);
 
   if (q) {
     where.push('(q.statement_text LIKE ? OR q.materia LIKE ? OR q.assunto LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
@@ -3517,7 +3623,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
   }
   if (hideStudyExcluded) {
     applyQuestionStudyStatusFilter(where);
-    applyFutureReviewFilter(where);
+    if (!extra.skipFutureReviewFilter) applyFutureReviewFilter(where);
     applyNormativeTeachingDiscardFilter(where);
     applyCurrentLawMainStudyFilter(where);
   }
@@ -3578,9 +3684,17 @@ function applyOfficialAndUnpublishedContranResolutionFilter(where, values, { mat
     officialClauses.push('q.materia = ?');
     values.push(materia);
   }
+  const officialSubjectClauses = [];
   if (assunto) {
-    officialClauses.push('q.assunto = ?');
+    officialSubjectClauses.push('q.assunto = ?');
     values.push(assunto);
+  }
+  if (resolutionKey) {
+    officialSubjectClauses.push('q.assunto LIKE ?');
+    values.push(`%${resolutionKey}%`);
+  }
+  if (officialSubjectClauses.length) {
+    officialClauses.push(`(${officialSubjectClauses.join(' OR ')})`);
   }
   if (officialClauses.length) clauses.push(`(${officialClauses.join(' AND ')})`);
   if (resolutionKey && hasContranPrfUnpublishedTable()) {
@@ -7158,8 +7272,11 @@ async function getQuestion(questionId) {
     statementText: question.statement_text || '',
     alternatives,
     metadata: {
+      provaLabel: buildQuestionExamLabel(question),
       banca: question.banca || '',
       cargo: question.cargo || '',
+      orgaoSigla: question.orgao_sigla || '',
+      orgaoNome: question.orgao_nome || '',
       ano: question.concurso_ano || '',
       materia: question.materia || '',
       assunto: question.assunto || '',

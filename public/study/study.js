@@ -1886,7 +1886,7 @@ async function loadQuestions(options = {}) {
   }
 
   if (!state.rows.length) {
-    renderEmptyQuestion();
+    renderEmptyQuestion(data.emptyMessage || "");
     return;
   }
 
@@ -1992,7 +1992,7 @@ function buildQuestionParams() {
   return params;
 }
 
-function renderEmptyQuestion() {
+function renderEmptyQuestion(message = "") {
   state.selectedId = null;
   state.currentQuestion = null;
   state.answerResult = null;
@@ -2017,8 +2017,7 @@ function renderEmptyQuestion() {
   renderContranPrf2021QuestionAlert(null);
   els.normativeAlert.hidden = true;
   els.normativeAlert.innerHTML = "";
-  els.statement.innerHTML =
-    '<p class="empty">Nenhuma questão encontrada para os filtros atuais. Tente limpar os filtros ou mudar de assunto.</p>';
+  els.statement.innerHTML = `<p class="empty">${escapeHtml(message || "Nenhuma questão encontrada para os filtros atuais. Tente limpar os filtros ou mudar de assunto.")}</p>`;
   els.alternatives.innerHTML = "";
   els.answerStatus.textContent = "";
   els.answerStatus.disabled = true;
@@ -3301,10 +3300,10 @@ function renderQuestion(question, options = {}) {
   const adaptiveReason =
     options.adaptiveTarget?.reasonText || question.adaptive?.reasonText || "";
   const meta = question.metadata;
+  const examLabel = questionExamLabel(meta);
   els.questionTitle.textContent = "Questão";
   els.questionMeta.textContent = [
-    meta.banca,
-    meta.ano,
+    examLabel ? `Prova: ${examLabel}` : "",
     meta.materia,
     meta.assunto,
   ]
@@ -3452,6 +3451,20 @@ function renderQuestion(question, options = {}) {
   ) {
     scrollToStatementStart();
   }
+}
+
+function questionExamLabel(meta = {}) {
+  if (meta.provaLabel) return meta.provaLabel;
+  return [
+    meta.banca,
+    meta.orgaoSigla || meta.orgaoNome,
+    meta.cargo,
+    meta.ano,
+  ]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .filter((part, index, parts) => parts.indexOf(part) === index)
+    .join(" - ");
 }
 
 function renderContranPrfUnpublishedNotice(question) {
