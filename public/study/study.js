@@ -75,6 +75,8 @@ const state = {
   teachingEditMode: false,
   currentLawEditMode: false,
   historicalCommentEditMode: false,
+  questionEditMode: false,
+  questionEditStatus: "",
   historicalCommentSelection: null,
   historicalTableResize: null,
   contranMapLastQuery: "",
@@ -234,6 +236,9 @@ const els = {
   pageLabel: document.querySelector("#pageLabel"),
   questionMeta: document.querySelector("#questionMeta"),
   questionQuickStatus: document.querySelector("#questionQuickStatus"),
+  questionEditToggle: document.querySelector("#questionEditToggle"),
+  questionEditStatus: document.querySelector("#questionEditStatus"),
+  questionEditPanel: document.querySelector("#questionEditPanel"),
   questionBadges: document.querySelector("#questionBadges"),
   questionTitle: document.querySelector("#questionTitle"),
   normativeAlert: document.querySelector("#normativeAlert"),
@@ -1264,6 +1269,23 @@ function bindEvents() {
   els.restoreToStudy.addEventListener("click", () =>
     updateQuestionStudyStatus("active"),
   );
+  els.questionEditToggle?.addEventListener("click", () => {
+    if (!state.currentQuestion) return;
+    state.questionEditMode = !state.questionEditMode;
+    state.questionEditStatus = "";
+    renderQuestionEditPanel(state.currentQuestion);
+  });
+  els.questionEditPanel?.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-action]")?.dataset.action;
+    if (action !== "question-edit-cancel") return;
+    state.questionEditMode = false;
+    state.questionEditStatus = "";
+    renderQuestionEditPanel(state.currentQuestion);
+  });
+  els.questionEditPanel?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveQuestionCoreEdit(event.currentTarget.querySelector("form"));
+  });
 
   els.answerForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1914,6 +1936,8 @@ function renderQuestionLoading(message = "Carregando questao...") {
   state.answerResult = null;
   state.eliminatedAnswers = new Set();
   state.theoryUrl = "";
+  state.questionEditMode = false;
+  state.questionEditStatus = "";
   if (state.timerId) {
     clearInterval(state.timerId);
     state.timerId = null;
@@ -1926,6 +1950,7 @@ function renderQuestionLoading(message = "Carregando questao...") {
   if (els.questionTitle) els.questionTitle.textContent = "Questao";
   if (els.statement)
     els.statement.innerHTML = `<p class="empty">${escapeHtml(message)}</p>`;
+  renderQuestionEditPanel(null);
   if (els.alternatives) els.alternatives.innerHTML = "";
   if (els.answerStatus) els.answerStatus.textContent = "";
   if (els.answerHint) els.answerHint.textContent = "Aguarde o carregamento";
@@ -1998,6 +2023,8 @@ function renderEmptyQuestion(message = "") {
   state.answerResult = null;
   state.eliminatedAnswers = new Set();
   state.theoryUrl = "";
+  state.questionEditMode = false;
+  state.questionEditStatus = "";
   state.supportOpen = false;
   state.supportTab = "comment";
   state.inlineSupportTab = "comment";
@@ -2017,6 +2044,7 @@ function renderEmptyQuestion(message = "") {
   renderContranPrf2021QuestionAlert(null);
   els.normativeAlert.hidden = true;
   els.normativeAlert.innerHTML = "";
+  renderQuestionEditPanel(null);
   els.statement.innerHTML = `<p class="empty">${escapeHtml(message || "Nenhuma questão encontrada para os filtros atuais. Tente limpar os filtros ou mudar de assunto.")}</p>`;
   els.alternatives.innerHTML = "";
   els.answerStatus.textContent = "";
@@ -3295,6 +3323,8 @@ function renderQuestion(question, options = {}) {
     state.teachingEditMode = false;
     state.currentLawEditMode = false;
     state.historicalCommentEditMode = false;
+    state.questionEditMode = false;
+    state.questionEditStatus = "";
   }
   state.currentQuestion = question;
   const adaptiveReason =
@@ -3316,6 +3346,7 @@ function renderQuestion(question, options = {}) {
   renderQuestionSituationTone(question);
   renderContranPrf2021QuestionAlert(question);
   els.statement.innerHTML = `${renderContranPrfUnpublishedNotice(question)}${formatStatementHtml(question) || question.statementHtml || `<p>${escapeHtml(question.statementText || "Sem enunciado")}</p>`}`;
+  renderQuestionEditPanel(question);
   applyStatementLengthClass(question);
   renderAnswerStatus(question);
 
@@ -3450,6 +3481,139 @@ function renderQuestion(question, options = {}) {
     options.scrollToStatement !== false
   ) {
     scrollToStatementStart();
+  }
+}
+
+function renderQuestionEditPanel(question) {
+  if (!els.questionEditPanel || !els.questionEditToggle) return;
+  const canEdit = Boolean(question?.id || question?.questionId);
+  els.questionEditToggle.disabled = !canEdit;
+  els.questionEditToggle.textContent = state.questionEditMode
+    ? "Fechar edição"
+    : "Editar questão";
+
+  if (els.questionEditStatus) {
+    els.questionEditStatus.hidden = !state.questionEditStatus;
+    els.questionEditStatus.textContent = state.questionEditStatus;
+  }
+
+  if (!canEdit || !state.questionEditMode) {
+    els.questionEditPanel.hidden = true;
+    els.questionEditPanel.innerHTML = "";
+    return;
+  }
+
+  const currentAnswer = questionCoreAnswerValue(question);
+  els.questionEditPanel.hidden = false;
+  els.questionEditPanel.innerHTML = `
+    <form class="question-edit-form">
+      <label class="teaching-edit-field">
+        <span>Enunciado</span>
+        <textarea name="statementText" rows="8" required>${escapeHtml(question.statementText || "")}</textarea>
+      </label>
+      <label class="teaching-edit-field">
+        <span>Gabarito</span>
+        <select name="officialAnswer">
+          ${questionCoreAnswerOptions(question, currentAnswer)}
+        </select>
+      </label>
+      <div class="question-edit-actions">
+        <button class="button button-secondary" type="button" data-action="question-edit-cancel">Cancelar</button>
+        <button class="button button-primary" type="submit">Salvar</button>
+      </div>
+    </form>
+  `;
+}
+
+function questionCoreAnswerValue(question) {
+  return normalizeAnswerText(
+    question?.answering?.studyAnswer ||
+      question?.currentLawAnswer?.currentAnswer ||
+      question?.answering?.historicalAnswer ||
+      question?.comment?.historicalAnswer ||
+      question?.comment?.extractedAnswer ||
+      question?.contranPrfUnpublished?.correctAnswer ||
+      "",
+  );
+}
+
+function questionCoreAnswerOptions(question, currentAnswer) {
+  const type = String(question?.metadata?.tipo || "").toUpperCase();
+  const options =
+    type === "CERTO_ERRADO"
+      ? [
+          { value: "CERTO", label: "CERTO" },
+          { value: "ERRADO", label: "ERRADO" },
+        ]
+      : (question?.alternatives || []).map((alternative) => ({
+          value: alternative.letter,
+          label: `Alternativa ${alternative.letter}`,
+        }));
+  const normalizedOptions = new Set(
+    options.map((option) => normalizeAnswerText(option.value)),
+  );
+  if (currentAnswer && !normalizedOptions.has(currentAnswer)) {
+    options.unshift({ value: currentAnswer, label: currentAnswer });
+  }
+  options.unshift({ value: "", label: "Sem gabarito" });
+  return options
+    .map(
+      (option) => `
+        <option value="${escapeAttr(option.value)}" ${normalizeAnswerText(option.value) === currentAnswer ? "selected" : ""}>
+          ${escapeHtml(option.label)}
+        </option>
+      `,
+    )
+    .join("");
+}
+
+async function saveQuestionCoreEdit(form) {
+  if (!form || !state.selectedId) return;
+  const submit = form.querySelector('button[type="submit"]');
+  const previousText = submit?.textContent || "Salvar";
+  if (submit) {
+    submit.disabled = true;
+    submit.textContent = "Salvando...";
+  }
+  try {
+    const formData = new FormData(form);
+    const result = await api(`/api/questions/${state.selectedId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        statementText: formData.get("statementText"),
+        officialAnswer: formData.get("officialAnswer"),
+      }),
+    });
+    if (result.error) throw new Error(result.error);
+    state.questionEditMode = false;
+    state.questionEditStatus = "Questão atualizada";
+    if (result.question) {
+      renderQuestion(result.question, { scrollToStatement: false });
+    } else {
+      await openQuestionDirect(state.selectedId, { scrollToStatement: false });
+    }
+    loadStats().catch(() => {});
+  } catch (error) {
+    console.error(error);
+    state.questionEditStatus = questionEditErrorMessage(error);
+    renderQuestionEditPanel(state.currentQuestion);
+  } finally {
+    if (submit) {
+      submit.disabled = false;
+      submit.textContent = previousText;
+    }
+  }
+}
+
+function questionEditErrorMessage(error) {
+  const raw = String(error?.message || "").replace(/^HTTP\s+\d+:\s*/, "");
+  if (!raw) return "Nao foi possivel salvar";
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed?.error || raw;
+  } catch {
+    return raw;
   }
 }
 

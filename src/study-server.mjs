@@ -1,4 +1,5 @@
 import http from 'node:http';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -354,6 +355,13 @@ async function routeRequest(request, response) {
   const questionMatch = url.pathname.match(/^\/api\/questions\/(\d+)$/);
   if (questionMatch && request.method === 'GET') {
     sendJson(response, 200, await getQuestion(Number(questionMatch[1])));
+    return;
+  }
+
+  if (questionMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const result = await saveQuestionCoreEdit(Number(questionMatch[1]), body);
+    sendJson(response, result?.error ? 400 : 200, result);
     return;
   }
 
@@ -6686,6 +6694,200 @@ function saveCurrentLawAnswerEdit(questionId, body) {
       Boolean(updatedQuestion?.desatualizada)
     )
   };
+}
+
+async function saveQuestionCoreEdit(questionId, body) {
+  const question = db.prepare(`
+    SELECT q.id_question, q.type_question, q.desatualizada, q.anulada,
+      ${historicalAnswerSql('q', 'c')} AS historical_answer
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    WHERE q.id_question = ?
+    LIMIT 1
+  `).get(questionId);
+  if (!question) {
+    return { error: 'Questao nao encontrada.' };
+  }
+
+  const statementText = normalizeEditedStatement(body?.statementText);
+  if (!statementText) {
+    return { error: 'O enunciado nao pode ficar vazio.' };
+  }
+
+  const alternatives = db.prepare(`
+    SELECT letter, text
+    FROM alternatives
+    WHERE question_id = ?
+    ORDER BY position
+  `).all(questionId);
+  const requestedAnswer = String(body?.officialAnswer ?? body?.answer ?? '').trim();
+  const normalizedAnswer = requestedAnswer
+    ? normalizeExpectedAnswerForScoring(question, alternatives, requestedAnswer)
+    : { answer: '', reason: '' };
+  if (requestedAnswer && !normalizedAnswer.answer) {
+    return { error: 'Gabarito invalido para o tipo da questao.' };
+  }
+
+  const hasUnpublishedRow = hasContranPrfUnpublishedTable()
+    && Boolean(db.prepare(`
+      SELECT 1
+      FROM contran_prf_unpublished_questions
+      WHERE question_id = ?
+        AND is_unpublished = 1
+      LIMIT 1
+    `).get(questionId));
+  if (hasUnpublishedRow && !normalizedAnswer.answer) {
+    return { error: 'Questoes ineditas CONTRAN precisam manter um gabarito.' };
+  }
+
+  const statementHash = stableStatementHash(statementText);
+  const statementHtml = plainTextStatementToHtml(statementText);
+  const officialAnswer = normalizedAnswer.answer;
+  const officialAnswerSource = officialAnswer ? 'operator_edit' : '';
+
+  const questionSets = [
+    'statement_text = ?',
+    'statement_html = ?',
+    'official_answer = ?',
+    'official_answer_source = ?'
+  ];
+  const questionParams = [statementText, statementHtml, officialAnswer, officialAnswerSource];
+  if (tableColumnExists('questions', 'statement_hash')) {
+    questionSets.push('statement_hash = ?');
+    questionParams.push(statementHash);
+  }
+  if (tableColumnExists('questions', 'content_hash')) {
+    questionSets.push('content_hash = ?');
+    questionParams.push('');
+  }
+  if (tableColumnExists('questions', 'updated_at')) {
+    questionSets.push('updated_at = CURRENT_TIMESTAMP');
+  }
+  questionParams.push(questionId);
+  db.prepare(`
+    UPDATE questions
+    SET ${questionSets.join(', ')}
+    WHERE id_question = ?
+  `).run(...questionParams);
+
+  if (hasUnpublishedRow) {
+    const contranSets = ['statement = ?', 'correct_answer = ?'];
+    const contranParams = [statementText, officialAnswer];
+    if (tableColumnExists('contran_prf_unpublished_questions', 'statement_hash')) {
+      contranSets.push('statement_hash = ?');
+      contranParams.push(statementHash);
+    }
+    if (tableColumnExists('contran_prf_unpublished_questions', 'updated_at')) {
+      contranSets.push('updated_at = CURRENT_TIMESTAMP');
+    }
+    contranParams.push(questionId);
+    db.prepare(`
+      UPDATE contran_prf_unpublished_questions
+      SET ${contranSets.join(', ')}
+      WHERE question_id = ?
+    `).run(...contranParams);
+  }
+
+  if (hasCurrentLawAnswerTable()) {
+    syncQuestionCurrentLawAnswerFromCoreEdit(question, officialAnswer);
+  }
+
+  return {
+    ok: true,
+    question: await getQuestion(questionId)
+  };
+}
+
+function normalizeEditedStatement(value) {
+  return limitText(value, 120000)
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim();
+}
+
+function plainTextStatementToHtml(value) {
+  return String(value || '')
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${escapeServerHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+}
+
+function stableStatementHash(value) {
+  const normalized = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+  return crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
+}
+
+function escapeServerHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function syncQuestionCurrentLawAnswerFromCoreEdit(question, officialAnswer) {
+  const previous = getCurrentLawAnswer(question.id_question);
+  if (!previous.exists && !dbBoolean(question.desatualizada)) {
+    return;
+  }
+
+  const bindBoolean = (value) => (activeDbClient === 'postgres' ? Boolean(value) : (value ? 1 : 0));
+  const historicalAnswer = String(previous.historicalAnswer || question.historical_answer || '').trim();
+  const answerChanged = Boolean(historicalAnswer && normalizeAnswer(historicalAnswer) !== normalizeAnswer(officialAnswer));
+  const status = officialAnswer ? 'verified' : 'needs_audit';
+  const canAutoScore = Boolean(officialAnswer);
+  const hideUntilVerified = !officialAnswer;
+  db.prepare(`
+    INSERT INTO question_current_law_answers (
+      question_id,
+      historical_answer,
+      current_answer,
+      current_law_status,
+      can_auto_score_current_law,
+      do_not_use_historical_answer_in_current_law_mode,
+      answer_changed,
+      no_valid_alternative,
+      should_discard_from_current_law_study,
+      hide_from_main_study_until_verified,
+      verification_method,
+      source_version,
+      updated_at,
+      imported_at
+    )
+    VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, 'operator_core_question_edit', 'operator-edit-core', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    ON CONFLICT(question_id) DO UPDATE SET
+      current_answer = excluded.current_answer,
+      current_law_status = excluded.current_law_status,
+      can_auto_score_current_law = excluded.can_auto_score_current_law,
+      do_not_use_historical_answer_in_current_law_mode = excluded.do_not_use_historical_answer_in_current_law_mode,
+      answer_changed = excluded.answer_changed,
+      no_valid_alternative = excluded.no_valid_alternative,
+      should_discard_from_current_law_study = excluded.should_discard_from_current_law_study,
+      hide_from_main_study_until_verified = excluded.hide_from_main_study_until_verified,
+      verification_method = excluded.verification_method,
+      source_version = excluded.source_version,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(
+    question.id_question,
+    historicalAnswer,
+    officialAnswer,
+    status,
+    bindBoolean(canAutoScore),
+    bindBoolean(answerChanged),
+    bindBoolean(false),
+    bindBoolean(false),
+    bindBoolean(hideUntilVerified)
+  );
 }
 
 function getQuestionStudyStatus(questionId) {

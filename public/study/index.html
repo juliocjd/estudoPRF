@@ -454,11 +454,25 @@
         <section class="study-layout">
           <article class="question-card">
             <div class="question-card-head">
-              <strong>Enunciado</strong>
-              <span id="questionQuickStatus">Preparando estudo</span>
+              <div class="question-card-title">
+                <strong>Enunciado</strong>
+                <span id="questionEditStatus" hidden></span>
+              </div>
+              <div class="question-card-head-actions">
+                <span id="questionQuickStatus">Preparando estudo</span>
+                <button
+                  id="questionEditToggle"
+                  class="button button-secondary"
+                  type="button"
+                  disabled
+                >
+                  Editar questÃ£o
+                </button>
+              </div>
             </div>
             <div id="normativeAlert" class="normative-alert" hidden></div>
             <div id="contranNormAlert" class="contran-norm-alert" hidden></div>
+            <div id="questionEditPanel" class="question-edit-panel" hidden></div>
             <div class="statement" id="statement">
               <p>Carregando banco local...</p>
             </div>
