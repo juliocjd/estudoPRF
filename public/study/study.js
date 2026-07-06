@@ -9970,7 +9970,7 @@ function escapeAttr(value) {
       return;
     }
     if (!data.available) {
-      clozeOverlay(`<div class="exam-sim-card"><h2>Lei Seca — Flashcards</h2>
+      clozeOverlay(`<div class="exam-sim-card"><h2>Flashcards de memorização</h2>
         <p>${escapeHtml(data.reason || "Nenhum card disponível agora. Tudo revisado — volte quando houver revisões vencidas.")}</p>
         <div class="exam-sim-actions"><button class="button button-primary" data-action="close">Fechar</button></div></div>`)
         .onclick = closeHandler;
@@ -9997,6 +9997,10 @@ function escapeAttr(value) {
             <button class="button button-primary" data-rating="good">Bom</button>
             <button class="button button-secondary" data-rating="easy">Fácil</button>
           </div>
+          <div class="exam-sim-actions" style="justify-content:center;margin-top:8px">
+            <button class="button button-ghost" data-action="theory">📖 Ver regra completa</button>
+          </div>
+          <div id="lawClozeTheory" class="law-cloze-theory" hidden></div>
         </div>
       </div>`);
 
@@ -10007,6 +10011,33 @@ function escapeAttr(value) {
       if (target.dataset.action === "reveal") {
         document.getElementById("lawClozeReveal").hidden = true;
         document.getElementById("lawClozeAnswerBlock").hidden = false;
+        return;
+      }
+      if (target.dataset.action === "theory") {
+        const box = document.getElementById("lawClozeTheory");
+        box.hidden = false;
+        box.innerHTML = "Buscando…";
+        try {
+          const theory = await api(`/api/law-cloze/${card.id}/theory`);
+          if (theory.type === "law") {
+            const siblings = (theory.siblings || [])
+              .map((item) => `<p><strong>${escapeHtml(item.ref || "")}</strong> ${escapeHtml(item.text)}</p>`)
+              .join("");
+            box.innerHTML = `
+              <h4>${escapeHtml(theory.sourceLabel)} ${escapeHtml(theory.ref || "")}</h4>
+              ${theory.articleText ? `<p><strong>${escapeHtml(theory.articleText)}</strong></p>` : ""}
+              ${siblings || `<p>${escapeHtml(theory.sectionText || "")}</p>`}`;
+          } else if (theory.type === "grammar") {
+            box.innerHTML = theory.pdf
+              ? `<p><a href="${escapeAttr(theory.pdf.url)}" target="_blank" rel="noopener">📄 ${escapeHtml(theory.pdf.title)}</a> — abre na página da regra.</p>
+                 ${theory.pdf.excerpt ? `<p><em>${escapeHtml(theory.pdf.excerpt)}</em></p>` : ""}`
+              : `<p>Tópico: <strong>${escapeHtml(theory.topic || "")}</strong>. ${escapeHtml(theory.note || "")}</p>`;
+          } else {
+            box.innerHTML = "Teoria não disponível para este card.";
+          }
+        } catch (error) {
+          box.innerHTML = `Erro: ${escapeHtml(error.message)}`;
+        }
         return;
       }
       if (target.dataset.rating) {
@@ -10326,6 +10357,7 @@ function escapeAttr(value) {
           ${correction.apresentacao ? `<tr><td>Apresentação/estrutura</td><td>${correction.apresentacao.nota} / ${correction.apresentacao.max}</td><td>${escapeHtml(correction.apresentacao.comentario || "")}</td></tr>` : ""}
         </table>
         ${erros ? `<h3>Erros de língua (${(correction.erros_gramaticais || []).length})</h3><ul>${erros}</ul>` : "<p>Nenhum erro gramatical apontado.</p>"}
+        ${result.grammarCardsCreated ? `<p class="essay-warning" style="background: var(--success-soft)">✚ ${result.grammarCardsCreated} erro(s) viraram flashcards personalizados — aparecem em "Flashcards de memorização", agendados por repetição espaçada.</p>` : ""}
         <h3>Comentário geral</h3>
         <p>${escapeHtml(correction.comentario_geral || "")}</p>
         <p><small>Correção por IA (${escapeHtml(result.provider || "")}) segundo rubrica estilo Cebraspe — use como treino, não como nota oficial.</small></p>
@@ -10429,8 +10461,8 @@ function escapeAttr(value) {
       const clozeCount = data.clozeDue > 0 ? data.clozeDue : data.clozeNew;
       chips.push(`
         <button type="button" class="today-chip ${data.clozeDue > 0 ? "chip-due" : ""}" data-today="cloze"
-          title="Flashcards de lei seca: ${data.clozeDue} vencidos, ${data.clozeNew} novos — clique para estudar">
-          <strong>${clozeCount}</strong> lei seca${data.clozeDue > 0 ? "" : " <small>novos</small>"}
+          title="Flashcards (letra de lei + gramática): ${data.clozeDue} vencidos, ${data.clozeNew} novos — clique para estudar">
+          <strong>${clozeCount}</strong> flashcards${data.clozeDue > 0 ? "" : " <small>novos</small>"}
         </button>`);
     }
     chips.push(`

@@ -461,6 +461,12 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const lawClozeTheoryMatch = url.pathname.match(/^\/api\/law-cloze\/(\d+)\/theory$/);
+  if (lawClozeTheoryMatch && request.method === 'GET') {
+    sendJson(response, 200, await getLawClozeTheory(Number(lawClozeTheoryMatch[1])));
+    return;
+  }
+
   const similarMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/similar$/);
   if (similarMatch && request.method === 'GET') {
     sendJson(response, 200, getQuestionSimilar(Number(similarMatch[1]), url.searchParams));
@@ -6011,6 +6017,36 @@ async function submitEssay(body) {
 
   const score = Math.max(0, Math.min(10, Number(parsed.nota_final) || 0));
   const grammarErrors = Array.isArray(parsed.erros_gramaticais) ? parsed.erros_gramaticais.length : 0;
+
+  // Cada erro gramatical vira um flashcard personalizado no deck de gramática
+  // (mesmo motor FSRS da lei seca). Seu deck converge para a SUA gramática fraca.
+  let cardsCreated = 0;
+  if (grammarErrors > 0 && hasLawClozeTables()) {
+    const insertCard = db.prepare(`
+      INSERT OR IGNORE INTO law_cloze_cards (
+        section_id, source_slug, source_label, ref, cloze_text, answer, category, hint, priority, generator_version
+      ) VALUES (?, 'gramatica_meus_erros', 'Seus erros de redação', ?, ?, ?, ?, ?, 40, 'essay-errors-v1')
+    `);
+    const baseId = -(200000 + (Date.now() % 100000));
+    parsed.erros_gramaticais.slice(0, 12).forEach((erro, index) => {
+      const trecho = String(erro?.trecho || '').trim().slice(0, 200);
+      const correcao = String(erro?.correcao || '').trim().slice(0, 200);
+      const tipo = String(erro?.tipo || 'gramática').slice(0, 40);
+      if (!trecho || !correcao) return;
+      try {
+        insertCard.run(
+          baseId - index,
+          theme.title.slice(0, 60),
+          `Na sua redação você escreveu: "${trecho}". A forma correta é _______.`,
+          correcao,
+          `meu_erro_${tipo}`,
+          `Seu erro de ${tipo}`
+        );
+        cardsCreated += 1;
+      } catch {}
+    });
+  }
+
   ensureEssaySchema();
   db.prepare(`
     INSERT INTO essay_submissions (
@@ -6033,6 +6069,7 @@ async function submitEssay(body) {
     passed: score >= 5,
     lineCount: lines,
     correction: parsed,
+    grammarCardsCreated: cardsCreated,
     provider: result.provider
   };
 }
@@ -6211,6 +6248,81 @@ function getLawClozeNext() {
       answer: card.answer,
       reps: Number(card.reps || 0)
     } : null
+  };
+}
+
+/** Mapeamento categoria do card de gramática → assunto de teoria (PDF). */
+const GRAMMAR_THEORY_TOPICS = {
+  crase: 'Crase',
+  concordancia_verbal: 'Concordância Verbal e Nominal',
+  concordancia_nominal: 'Concordância Verbal e Nominal',
+  regencia: 'Regência Nominal e Verbal',
+  pontuacao: 'Pontuação',
+  colocacao: 'Colocação Pronominal',
+  reescritura: 'Reescrita de Frases. Substituição de Palavras'
+};
+
+/** "Ver regra completa" de um flashcard: artigo de lei ou teoria em PDF. */
+async function getLawClozeTheory(cardId) {
+  if (!hasLawClozeTables()) {
+    return { available: false };
+  }
+  const card = db.prepare('SELECT * FROM law_cloze_cards WHERE id = ?').get(cardId);
+  if (!card) {
+    return { error: 'Card não encontrado.' };
+  }
+
+  // Cards de gramática (curados ou nascidos dos seus erros de redação)
+  if (String(card.source_slug || '').startsWith('gramatica')) {
+    let topic = GRAMMAR_THEORY_TOPICS[card.category] || '';
+    if (!topic && String(card.category || '').startsWith('meu_erro_')) {
+      const tipo = card.category.replace('meu_erro_', '');
+      topic = GRAMMAR_THEORY_TOPICS[tipo]
+        || ({ ortografia: 'Ortografia', concordancia: 'Concordância Verbal e Nominal', regencia: 'Regência Nominal e Verbal', pontuacao: 'Pontuação' })[tipo]
+        || 'Gramática';
+    }
+    const pdf = await findTheoryPdf('Língua Portuguesa', topic, { statementText: card.cloze_text || '' })
+      .catch(() => ({ available: false }));
+    return {
+      available: true,
+      type: 'grammar',
+      topic,
+      pdf: pdf?.available ? { title: pdf.title, url: pdf.url, excerpt: pdf.excerpt || '' } : null,
+      note: pdf?.available ? '' : 'PDF de teoria disponível apenas no servidor local.'
+    };
+  }
+
+  // Cards de lei seca: devolve o texto da seção e do artigo-pai
+  const section = db.prepare(`
+    SELECT section_key, parent_section_key, display_ref, text, source_slug
+    FROM law_compendium_sections
+    WHERE id = ?
+  `).get(card.section_id);
+  if (!section) {
+    return { available: false };
+  }
+  const parent = section.parent_section_key
+    ? db.prepare(`
+        SELECT display_ref, text FROM law_compendium_sections
+        WHERE section_key = ? LIMIT 1
+      `).get(section.parent_section_key)
+    : null;
+  const siblings = section.parent_section_key
+    ? db.prepare(`
+        SELECT display_ref, text FROM law_compendium_sections
+        WHERE parent_section_key = ? AND is_current = 1
+        ORDER BY order_index
+        LIMIT 15
+      `).all(section.parent_section_key)
+    : [];
+  return {
+    available: true,
+    type: 'law',
+    sourceLabel: card.source_label || section.source_slug,
+    ref: card.ref || section.display_ref,
+    articleText: parent?.text || '',
+    sectionText: section.text,
+    siblings: siblings.map((row) => ({ ref: row.display_ref, text: row.text }))
   };
 }
 

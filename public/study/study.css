@@ -5038,6 +5038,18 @@ body.is-report-page {
   gap: 8px;
 }
 
+.law-cloze-theory {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  max-height: 32vh;
+  overflow-y: auto;
+}
+
 /* IA pós-erro */
 .ai-error-toast {
   position: fixed;
