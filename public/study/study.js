@@ -9468,3 +9468,914 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replaceAll("`", "&#096;");
 }
+
+/* ============================================================
+   Simulado Cebraspe — módulo autocontido (1ª onda do roadmap)
+   Prova completa sem feedback, com branco, confiança obrigatória,
+   cronômetro e relatório pós-prova (política de chute + fadiga).
+   ============================================================ */
+(function examSimulationModule() {
+  const STORAGE_KEY = "examSim.active";
+  let sim = null; // { id, questionIds, index, endsAt, size }
+  let itemStartedAt = 0;
+  let selectedAnswer = null; // 'CERTO' | 'ERRADO' | letra | 'BRANCO'
+  let selectedConfidence = null;
+  let timerHandle = null;
+
+  const button = document.getElementById("examSimButton");
+  if (button) {
+    button.addEventListener("click", openLauncher);
+  }
+
+  function overlay() {
+    let el = document.getElementById("examSimOverlay");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "examSimOverlay";
+      el.className = "exam-sim-overlay";
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    return el;
+  }
+
+  function closeOverlay() {
+    const el = document.getElementById("examSimOverlay");
+    if (el) el.hidden = true;
+    if (timerHandle) {
+      clearInterval(timerHandle);
+      timerHandle = null;
+    }
+  }
+
+  function saveState() {
+    if (sim) localStorage.setItem(STORAGE_KEY, JSON.stringify(sim));
+    else localStorage.removeItem(STORAGE_KEY);
+  }
+
+  function loadState() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function openLauncher() {
+    const pending = loadState();
+    const resumeHtml = pending
+      ? `<button class="button button-secondary" data-action="resume">Retomar simulado em andamento (item ${pending.index + 1}/${pending.questionIds.length})</button>`
+      : "";
+    overlay().innerHTML = `
+      <div class="exam-sim-card">
+        <h2>Simulado Cebraspe</h2>
+        <p>Prova no formato real: certo/errado, sem feedback durante a prova,
+           opção de deixar em branco (errar desconta 1 ponto) e relatório final
+           com a sua melhor política de marcação.</p>
+        <div class="exam-sim-launch-options">
+          <button class="button button-primary" data-size="120">Prova completa — 120 itens / 4h</button>
+          <button class="button button-secondary" data-size="60">Meia prova — 60 itens / 2h</button>
+          <button class="button button-secondary" data-size="30">Treino rápido — 30 itens / 1h</button>
+          ${resumeHtml}
+        </div>
+        <button class="button button-ghost exam-sim-close" data-action="close">Cancelar</button>
+      </div>`;
+    overlay().onclick = async (event) => {
+      const target = event.target.closest("button");
+      if (!target) return;
+      if (target.dataset.action === "close") return closeOverlay();
+      if (target.dataset.action === "resume") return resumeSimulation(pending);
+      if (target.dataset.size) return startSimulation(Number(target.dataset.size));
+    };
+  }
+
+  async function startSimulation(size) {
+    overlay().innerHTML = `<div class="exam-sim-card"><p>Montando a prova (${size} itens)…</p></div>`;
+    try {
+      const data = await api("/api/exam-simulations/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ size }),
+      });
+      if (data.error) throw new Error(data.error);
+      const durationMs = size * 2 * 60 * 1000; // ritmo Cebraspe: 2 min/item
+      sim = {
+        id: data.id,
+        questionIds: data.questionIds,
+        index: 0,
+        endsAt: Date.now() + durationMs,
+        size: data.totalItems,
+      };
+      saveState();
+      renderItem();
+    } catch (error) {
+      overlay().innerHTML = `<div class="exam-sim-card"><p>Erro ao iniciar: ${escapeHtml(error.message)}</p>
+        <button class="button button-secondary" onclick="document.getElementById('examSimOverlay').hidden=true">Fechar</button></div>`;
+    }
+  }
+
+  async function resumeSimulation(pending) {
+    try {
+      const state = await api(`/api/exam-simulations/${pending.id}`);
+      if (state.error || state.finished) {
+        localStorage.removeItem(STORAGE_KEY);
+        return openLauncher();
+      }
+      sim = pending;
+      const answered = new Set(
+        (state.items || [])
+          .filter((item) => item.answer_letter !== null && item.answer_letter !== undefined)
+          .map((item) => item.question_id)
+      );
+      const nextIndex = sim.questionIds.findIndex((id) => !answered.has(id));
+      sim.index = nextIndex === -1 ? sim.questionIds.length : nextIndex;
+      saveState();
+      if (sim.index >= sim.questionIds.length) return finishSimulation();
+      renderItem();
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+      openLauncher();
+    }
+  }
+
+  function startTimer() {
+    if (timerHandle) clearInterval(timerHandle);
+    timerHandle = setInterval(() => {
+      const el = document.getElementById("examSimTimer");
+      if (!el || !sim) return;
+      const remaining = sim.endsAt - Date.now();
+      if (remaining <= 0) {
+        clearInterval(timerHandle);
+        timerHandle = null;
+        finishSimulation();
+        return;
+      }
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      el.textContent = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      el.classList.toggle("exam-sim-timer-warning", remaining < 15 * 60 * 1000);
+    }, 1000);
+  }
+
+  async function renderItem() {
+    if (!sim) return;
+    if (sim.index >= sim.questionIds.length) return finishSimulation();
+    selectedAnswer = null;
+    selectedConfidence = null;
+    const questionId = sim.questionIds[sim.index];
+    overlay().innerHTML = `<div class="exam-sim-card"><p>Carregando item ${sim.index + 1}…</p></div>`;
+    let question;
+    try {
+      question = await api(`/api/questions/${questionId}`);
+    } catch (error) {
+      overlay().innerHTML = `<div class="exam-sim-card"><p>Erro ao carregar a questão ${questionId}: ${escapeHtml(error.message)}</p>
+        <div class="exam-sim-actions"><button class="button button-secondary" data-action="skip">Pular item</button></div></div>`;
+      overlay().onclick = (event) => {
+        if (event.target.closest("[data-action='skip']")) {
+          sim.index += 1;
+          saveState();
+          renderItem();
+        }
+      };
+      return;
+    }
+
+    const meta = question.metadata || {};
+    const alternatives = question.alternatives || [];
+    const isCertoErrado = alternatives.length === 2
+      && alternatives.some((alt) => /certo/i.test(alt.text || ""))
+      && alternatives.some((alt) => /errado/i.test(alt.text || ""));
+    const answerButtons = isCertoErrado
+      ? `<button class="exam-sim-answer" data-answer="CERTO">CERTO</button>
+         <button class="exam-sim-answer" data-answer="ERRADO">ERRADO</button>`
+      : alternatives
+          .map((alt) => `<button class="exam-sim-answer exam-sim-answer-letter" data-answer="${escapeAttr(alt.letter)}">
+              <strong>${escapeHtml(alt.letter)}</strong> ${escapeHtml((alt.text || "").slice(0, 220))}
+            </button>`)
+          .join("");
+
+    overlay().innerHTML = `
+      <div class="exam-sim-card exam-sim-question">
+        <div class="exam-sim-header">
+          <span class="exam-sim-progress">Item ${sim.index + 1} / ${sim.questionIds.length}</span>
+          <span class="exam-sim-timer" id="examSimTimer">--:--:--</span>
+          <button class="button button-ghost exam-sim-abandon" data-action="abandon" title="Encerra e corrige o que foi feito">Encerrar prova</button>
+        </div>
+        <div class="exam-sim-meta">${escapeHtml(meta.materia || "")}</div>
+        <div class="exam-sim-statement">${question.statementHtml || escapeHtml(question.statementText || "")}</div>
+        <div class="exam-sim-answers">${answerButtons}
+          <button class="exam-sim-answer exam-sim-blank" data-answer="BRANCO">DEIXAR EM BRANCO</button>
+        </div>
+        <div class="exam-sim-confidence" id="examSimConfidence" hidden>
+          <span>Confiança:</span>
+          <button data-confidence="sure">Certeza</button>
+          <button data-confidence="doubt">Dúvida</button>
+          <button data-confidence="guess">Chute</button>
+        </div>
+        <div class="exam-sim-actions">
+          <button class="button button-primary" id="examSimConfirm" disabled>Confirmar e avançar</button>
+        </div>
+      </div>`;
+    itemStartedAt = Date.now();
+    startTimer();
+
+    overlay().onclick = (event) => {
+      const answerButton = event.target.closest(".exam-sim-answer");
+      const confidenceButton = event.target.closest("[data-confidence]");
+      const confirmButton = event.target.closest("#examSimConfirm");
+      const abandonButton = event.target.closest("[data-action='abandon']");
+      if (abandonButton) {
+        if (confirm("Encerrar a prova agora e corrigir o que foi feito?")) finishSimulation();
+        return;
+      }
+      if (answerButton) {
+        selectedAnswer = answerButton.dataset.answer;
+        overlay().querySelectorAll(".exam-sim-answer").forEach((el) => el.classList.toggle("selected", el === answerButton));
+        const confidenceRow = document.getElementById("examSimConfidence");
+        const isBlank = selectedAnswer === "BRANCO";
+        confidenceRow.hidden = isBlank;
+        if (isBlank) selectedConfidence = null;
+        updateConfirmState();
+      }
+      if (confidenceButton) {
+        selectedConfidence = confidenceButton.dataset.confidence;
+        overlay().querySelectorAll("[data-confidence]").forEach((el) => el.classList.toggle("selected", el === confidenceButton));
+        updateConfirmState();
+      }
+      if (confirmButton && !confirmButton.disabled) submitItem(question, isCertoErrado);
+    };
+  }
+
+  function updateConfirmState() {
+    const confirmButton = document.getElementById("examSimConfirm");
+    if (!confirmButton) return;
+    const ready = selectedAnswer === "BRANCO" || (selectedAnswer && selectedConfidence);
+    confirmButton.disabled = !ready;
+  }
+
+  async function submitItem(question, isCertoErrado) {
+    const questionId = sim.questionIds[sim.index];
+    const blank = selectedAnswer === "BRANCO";
+    let answer = selectedAnswer;
+    if (!blank && isCertoErrado) {
+      const target = (question.alternatives || []).find((alt) =>
+        selectedAnswer === "CERTO" ? /certo/i.test(alt.text || "") : /errado/i.test(alt.text || "")
+      );
+      answer = target ? target.letter : selectedAnswer;
+    }
+    try {
+      await api(`/api/exam-simulations/${sim.id}/answer`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          questionId,
+          blank,
+          answer: blank ? "" : answer,
+          confidence: blank ? "" : selectedConfidence,
+          elapsedMs: Date.now() - itemStartedAt,
+        }),
+      });
+    } catch (error) {
+      alert(`Erro ao salvar o item: ${error.message}`);
+      return;
+    }
+    sim.index += 1;
+    saveState();
+    renderItem();
+  }
+
+  async function finishSimulation() {
+    if (!sim) return;
+    if (timerHandle) {
+      clearInterval(timerHandle);
+      timerHandle = null;
+    }
+    overlay().innerHTML = `<div class="exam-sim-card"><p>Corrigindo a prova…</p></div>`;
+    let report;
+    try {
+      report = await api(`/api/exam-simulations/${sim.id}/finish`, { method: "POST" });
+    } catch (error) {
+      overlay().innerHTML = `<div class="exam-sim-card"><p>Erro na correção: ${escapeHtml(error.message)}</p></div>`;
+      return;
+    }
+    localStorage.removeItem(STORAGE_KEY);
+    sim = null;
+    renderReport(report);
+  }
+
+  function renderReport(report) {
+    const cutoffs = report.cutoffs || { block1: 15, block2: 10, block3: 10, total: 50 };
+    const blockRow = (label, score, cutoff) => {
+      const ok = Number(score) >= cutoff;
+      return `<tr class="${ok ? "ok" : "fail"}"><td>${label}</td><td>${score}</td><td>${cutoff}</td><td>${ok ? "✔" : "✘"}</td></tr>`;
+    };
+    const policies = (report.markingPolicies || [])
+      .map((policy, index) => `<li class="${index === 0 ? "best" : ""}">${escapeHtml(policy.label)}: <strong>${policy.score} pts</strong>${index === 0 ? " ← melhor" : ""}</li>`)
+      .join("");
+    const fatigue = (report.fatigue || [])
+      .map((quarter) => {
+        const answered = Number(quarter.answered || 0);
+        const accuracy = answered - Number(quarter.blank || 0) > 0
+          ? Math.round((Number(quarter.correct || 0) / (answered - Number(quarter.blank || 0))) * 100)
+          : null;
+        return `<tr><td>${quarter.quarter}º quarto</td><td>${quarter.score}</td><td>${accuracy === null ? "—" : `${accuracy}%`}</td><td>${Math.round(Number(quarter.avg_elapsed_ms || 0) / 1000)}s</td></tr>`;
+      })
+      .join("");
+    const dangerous = (report.dangerousSubjects || [])
+      .slice(0, 5)
+      .map((subject) => `<li>${escapeHtml(subject.subject_label || subject.subject_key)} (${subject.wrong_count} erros, saldo ${subject.score})</li>`)
+      .join("");
+    const gap = report.reference2021?.gapToLastCall;
+    const projected = report.reference2021?.projectedScale;
+
+    overlay().innerHTML = `
+      <div class="exam-sim-card exam-sim-report">
+        <h2>Resultado do simulado</h2>
+        <p class="exam-sim-score ${report.passedCutoffs ? "ok" : "fail"}">
+          ${report.scoreTotal} pontos — ${report.passedCutoffs ? "passaria nos cortes ✔" : "não passaria nos cortes ✘"}
+        </p>
+        <p>${report.correctCount} certas · ${report.wrongCount} erradas · ${report.blankCount} em branco
+        ${projected !== null && projected !== undefined ? ` · projeção em escala 120 itens: <strong>${projected}</strong> (último aprovado 2021: 73, gap ${gap >= 0 ? "+" : ""}${gap})` : ""}</p>
+        <h3>Blocos</h3>
+        <table class="exam-sim-table">
+          <tr><th>Bloco</th><th>Pontos</th><th>Corte</th><th></th></tr>
+          ${blockRow("Bloco 1", report.scoreBlock1, cutoffs.block1)}
+          ${blockRow("Bloco 2", report.scoreBlock2, cutoffs.block2)}
+          ${blockRow("Bloco 3", report.scoreBlock3, cutoffs.block3)}
+          ${blockRow("Total", report.scoreTotal, cutoffs.total)}
+        </table>
+        <h3>Política de marcação (contrafactual)</h3>
+        <ul class="exam-sim-policies">${policies}</ul>
+        <h3>Fadiga ao longo da prova</h3>
+        <table class="exam-sim-table">
+          <tr><th>Trecho</th><th>Saldo</th><th>Acerto</th><th>Tempo médio</th></tr>
+          ${fatigue}
+        </table>
+        ${dangerous ? `<h3>Assuntos que mais tiraram pontos</h3><ul>${dangerous}</ul>` : ""}
+        <div class="exam-sim-actions">
+          <button class="button button-primary" data-action="close">Fechar</button>
+        </div>
+      </div>`;
+    overlay().onclick = (event) => {
+      if (event.target.closest("[data-action='close']")) closeOverlay();
+    };
+  }
+})();
+
+/* ============================================================
+   Otimizador de pontos + Calibração Cebraspe (1ª onda)
+   Reusa o overlay/estilos do simulado.
+   ============================================================ */
+(function studyInsightsModule() {
+  const optimizerButton = document.getElementById("pointsOptimizerButton");
+  const calibrationButton = document.getElementById("calibrationReportButton");
+  if (optimizerButton) optimizerButton.addEventListener("click", showOptimizer);
+  if (calibrationButton) calibrationButton.addEventListener("click", showCalibration);
+
+  function insightsOverlay(html) {
+    let el = document.getElementById("examSimOverlay");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "examSimOverlay";
+      el.className = "exam-sim-overlay";
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    el.innerHTML = html;
+    el.onclick = (event) => {
+      if (event.target.closest("[data-action='close']")) el.hidden = true;
+    };
+    return el;
+  }
+
+  const closeButtonHtml = `<div class="exam-sim-actions"><button class="button button-primary" data-action="close">Fechar</button></div>`;
+
+  async function showOptimizer() {
+    insightsOverlay(`<div class="exam-sim-card"><p>Calculando onde cada hora vale mais pontos…</p></div>`);
+    let data;
+    try {
+      data = await api("/api/points-optimizer");
+    } catch (error) {
+      insightsOverlay(`<div class="exam-sim-card"><p>Erro: ${escapeHtml(error.message)}</p>${closeButtonHtml}</div>`);
+      return;
+    }
+    const gap = data.reference2021?.gapToLastCall ?? 0;
+    const rows = (data.subjects || [])
+      .map((subject) => `
+        <tr>
+          <td>${escapeHtml(subject.subjectLabel)}${subject.lowData ? ' <span title="Menos de 10 respostas — estimativa incerta">⚠</span>' : ""}</td>
+          <td>${subject.expectedItems}</td>
+          <td>${Math.round(subject.accuracy * 100)}%</td>
+          <td>${subject.expectedPoints}</td>
+          <td><strong>${subject.potentialGain}</strong></td>
+          <td>${subject.markingAdvice === "marcar" ? "marcar" : subject.markingAdvice === "em_branco" ? "em branco" : "neutro"}</td>
+        </tr>`)
+      .join("");
+    insightsOverlay(`
+      <div class="exam-sim-card exam-sim-report">
+        <h2>Onde ganhar pontos</h2>
+        <p class="exam-sim-score ${gap >= 0 ? "ok" : "fail"}">
+          Nota projetada: ${data.projectedScore} pts
+          <small>(último aprovado 2021: 73 · gap ${gap >= 0 ? "+" : ""}${gap})</small>
+        </p>
+        <p>Ordenado por <strong>ganho potencial</strong>: pontos extras disponíveis se o assunto chegar a 95% de acerto.
+           Estude de cima para baixo — é onde cada hora compra mais pontos.</p>
+        <table class="exam-sim-table" style="max-width:100%">
+          <tr><th>Assunto</th><th>Itens na prova</th><th>Acerto</th><th>Pts projetados</th><th>Ganho potencial</th><th>Na prova</th></tr>
+          ${rows}
+        </table>
+        ${closeButtonHtml}
+      </div>`);
+  }
+
+  async function showCalibration() {
+    insightsOverlay(`<div class="exam-sim-card"><p>Analisando sua calibração…</p></div>`);
+    let data;
+    try {
+      data = await api("/api/cebraspe-risk-report");
+    } catch (error) {
+      insightsOverlay(`<div class="exam-sim-card"><p>Erro: ${escapeHtml(error.message)}</p>${closeButtonHtml}</div>`);
+      return;
+    }
+    const labels = { sure: "Certeza", doubt: "Dúvida", guess: "Chute" };
+    const calibrationRows = (data.calibration || [])
+      .map((row) => {
+        const overconfident = row.gap !== null && row.gap < -0.05;
+        return `<tr class="${overconfident ? "fail" : "ok"}">
+          <td>${labels[row.confidence] || row.confidence}</td>
+          <td>${Math.round(row.claimedProbability * 100)}%</td>
+          <td>${row.actualAccuracy === null ? "—" : `${Math.round(row.actualAccuracy * 100)}%`}</td>
+          <td>${row.gap === null ? "—" : `${row.gap > 0 ? "+" : ""}${Math.round(row.gap * 100)} pp`}</td>
+          <td>${row.sampleSize}</td>
+        </tr>`;
+      })
+      .join("");
+    const policySections = Object.entries(data.markingPolicy || {})
+      .map(([materia, rows]) => {
+        const items = rows
+          .map((row) => `<li>${labels[row.confidence] || row.confidence}: ${Math.round(row.accuracy * 100)}% de acerto →
+            <strong>${row.advice === "marcar" ? "marque" : row.advice === "em_branco" ? "deixe em branco" : "zona neutra"}</strong>
+            <small>(n=${row.sampleSize})</small></li>`)
+          .join("");
+        return `<h4>${escapeHtml(materia)}</h4><ul>${items}</ul>`;
+      })
+      .join("");
+    insightsOverlay(`
+      <div class="exam-sim-card exam-sim-report">
+        <h2>Calibração Cebraspe</h2>
+        <p>Numa prova que desconta 1 ponto por erro, saber <em>quando confiar em si</em> vale pontos.
+           Linhas vermelhas = excesso de confiança (acerto real abaixo do declarado).</p>
+        <table class="exam-sim-table">
+          <tr><th>Confiança</th><th>Declarado</th><th>Real</th><th>Gap</th><th>Amostra</th></tr>
+          ${calibrationRows}
+        </table>
+        <h3>Política de marcação por matéria</h3>
+        ${policySections || "<p>Ainda não há amostra suficiente por matéria (mínimo 3 respostas por nível).</p>"}
+        ${closeButtonHtml}
+      </div>`);
+  }
+})();
+
+/* ============================================================
+   Flashcards cloze de lei seca (FSRS) — 2ª onda
+   ============================================================ */
+(function lawClozeModule() {
+  const button = document.getElementById("lawClozeButton");
+  if (!button) return;
+  button.addEventListener("click", showNext);
+
+  function clozeOverlay(html) {
+    let el = document.getElementById("examSimOverlay");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "examSimOverlay";
+      el.className = "exam-sim-overlay";
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    el.innerHTML = html;
+    return el;
+  }
+
+  async function showNext() {
+    clozeOverlay(`<div class="exam-sim-card"><p>Buscando o próximo card…</p></div>`);
+    let data;
+    try {
+      data = await api("/api/law-cloze/next");
+    } catch (error) {
+      clozeOverlay(`<div class="exam-sim-card"><p>Erro: ${escapeHtml(error.message)}</p>
+        <div class="exam-sim-actions"><button class="button button-primary" data-action="close">Fechar</button></div></div>`)
+        .onclick = closeHandler;
+      return;
+    }
+    if (!data.available) {
+      clozeOverlay(`<div class="exam-sim-card"><h2>Lei Seca — Flashcards</h2>
+        <p>${escapeHtml(data.reason || "Nenhum card disponível agora. Tudo revisado — volte quando houver revisões vencidas.")}</p>
+        <div class="exam-sim-actions"><button class="button button-primary" data-action="close">Fechar</button></div></div>`)
+        .onclick = closeHandler;
+      return;
+    }
+
+    const card = data.card;
+    const el = clozeOverlay(`
+      <div class="exam-sim-card law-cloze-card">
+        <div class="exam-sim-header">
+          <span class="exam-sim-progress">${data.dueCount} vencidos · ${data.newCount} novos${data.isNew ? " · CARD NOVO" : ""}</span>
+          <button class="button button-ghost" data-action="close">Sair</button>
+        </div>
+        <div class="exam-sim-meta">${escapeHtml(card.sourceLabel)} ${escapeHtml(card.ref || "")} · ${escapeHtml(card.hint || card.category)}</div>
+        <div class="exam-sim-statement law-cloze-text">${escapeHtml(card.clozeText)}</div>
+        <div class="exam-sim-actions" id="lawClozeReveal">
+          <button class="button button-primary" data-action="reveal">Mostrar resposta</button>
+        </div>
+        <div id="lawClozeAnswerBlock" hidden>
+          <p class="law-cloze-answer">Resposta: <strong>${escapeHtml(card.answer)}</strong></p>
+          <div class="exam-sim-actions law-cloze-ratings">
+            <button class="button button-secondary" data-rating="again">Errei</button>
+            <button class="button button-secondary" data-rating="hard">Difícil</button>
+            <button class="button button-primary" data-rating="good">Bom</button>
+            <button class="button button-secondary" data-rating="easy">Fácil</button>
+          </div>
+        </div>
+      </div>`);
+
+    el.onclick = async (event) => {
+      const target = event.target.closest("button");
+      if (!target) return;
+      if (target.dataset.action === "close") return closeHandler(event);
+      if (target.dataset.action === "reveal") {
+        document.getElementById("lawClozeReveal").hidden = true;
+        document.getElementById("lawClozeAnswerBlock").hidden = false;
+        return;
+      }
+      if (target.dataset.rating) {
+        try {
+          const result = await api(`/api/law-cloze/${card.id}/answer`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ rating: target.dataset.rating }),
+          });
+          if (result.intervalDays) {
+            target.textContent = `+${result.intervalDays}d`;
+            setTimeout(showNext, 350);
+            return;
+          }
+        } catch (error) {
+          alert(`Erro ao salvar: ${error.message}`);
+        }
+        showNext();
+      }
+    };
+  }
+
+  function closeHandler(event) {
+    if (event.target.closest("[data-action='close']")) {
+      const el = document.getElementById("examSimOverlay");
+      if (el) el.hidden = true;
+    }
+  }
+})();
+
+/* ============================================================
+   IA pós-erro: diagnóstico + tutor socrático (3ª onda)
+   Intercepta respostas erradas e oferece ajuda de IA num toast.
+   ============================================================ */
+(function aiPostErrorModule() {
+  let aiOn = false;
+  fetch("/api/ai/status").then((response) => response.json())
+    .then((data) => { aiOn = Boolean(data.available); })
+    .catch(() => {});
+
+  const ANSWER_RE = /^\/api\/questions\/(\d+)\/answer$/;
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const response = await originalFetch(input, init);
+    try {
+      const urlPath = new URL(typeof input === "string" ? input : input.url, location.origin).pathname;
+      const match = urlPath.match(ANSWER_RE);
+      if (aiOn && match && (init?.method || "GET").toUpperCase() === "POST" && response.ok) {
+        const clone = response.clone();
+        clone.json().then((data) => {
+          if (data && data.isCorrect === 0) showErrorToast(Number(match[1]));
+        }).catch(() => {});
+      }
+    } catch {}
+    return response;
+  };
+
+  function showErrorToast(questionId) {
+    dismissToast();
+    const toast = document.createElement("div");
+    toast.id = "aiErrorToast";
+    toast.className = "ai-error-toast";
+    toast.innerHTML = `
+      <span>Errou? A IA pode ajudar:</span>
+      <button type="button" data-ai="diagnose">Diagnóstico</button>
+      <button type="button" data-ai="tutor">Tutor socrático</button>
+      <button type="button" data-ai="dismiss" aria-label="Fechar">×</button>`;
+    document.body.appendChild(toast);
+    toast.onclick = (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      if (button.dataset.ai === "dismiss") return dismissToast();
+      if (button.dataset.ai === "diagnose") { dismissToast(); showDiagnosis(questionId); }
+      if (button.dataset.ai === "tutor") { dismissToast(); openTutor(questionId); }
+    };
+    setTimeout(dismissToast, 20000);
+  }
+
+  function dismissToast() {
+    const el = document.getElementById("aiErrorToast");
+    if (el) el.remove();
+  }
+
+  function aiOverlay(html) {
+    let el = document.getElementById("examSimOverlay");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "examSimOverlay";
+      el.className = "exam-sim-overlay";
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    el.innerHTML = html;
+    return el;
+  }
+
+  const errorTypeLabels = {
+    content: "Conteúdo (não sabia a regra)",
+    interpretation: "Interpretação do enunciado",
+    confusion: "Confusão entre conceitos",
+    memory: "Memória (sabia, mas esqueceu)",
+    outdated: "Lei desatualizada",
+    attention: "Atenção / leitura apressada",
+    other: "Outro",
+  };
+
+  async function showDiagnosis(questionId) {
+    const el = aiOverlay(`<div class="exam-sim-card"><p>Analisando seu erro…</p></div>`);
+    let data;
+    try {
+      data = await api(`/api/questions/${questionId}/diagnose-error`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    } catch (error) {
+      data = { error: error.message };
+    }
+    if (data.error || !data.available) {
+      aiOverlay(`<div class="exam-sim-card"><p>${escapeHtml(data.error || data.reason || "Diagnóstico indisponível.")}</p>
+        <div class="exam-sim-actions"><button class="button button-primary" data-action="close">Fechar</button></div></div>`);
+    } else {
+      aiOverlay(`
+        <div class="exam-sim-card">
+          <h2>Diagnóstico do erro</h2>
+          <p><strong>Tipo:</strong> ${escapeHtml(errorTypeLabels[data.errorType] || data.errorType)}</p>
+          ${data.trapPattern ? `<p><strong>Padrão de pegadinha:</strong> ${escapeHtml(data.trapPattern)}</p>` : ""}
+          <p>${escapeHtml(data.explanation || "")}</p>
+          <p><small>Gerado por IA (${escapeHtml(data.provider || "")}) — confira sempre com o comentário do professor.</small></p>
+          <div class="exam-sim-actions">
+            <button class="button button-secondary" data-ai-tutor="${questionId}">Abrir tutor socrático</button>
+            <button class="button button-primary" data-action="close">Fechar</button>
+          </div>
+        </div>`);
+    }
+    document.getElementById("examSimOverlay").onclick = (event) => {
+      if (event.target.closest("[data-action='close']")) document.getElementById("examSimOverlay").hidden = true;
+      const tutorButton = event.target.closest("[data-ai-tutor]");
+      if (tutorButton) openTutor(Number(tutorButton.dataset.aiTutor));
+    };
+  }
+
+  function openTutor(questionId) {
+    const messages = [];
+    renderTutor(questionId, messages, true);
+  }
+
+  async function renderTutor(questionId, messages, requestReply) {
+    const historyHtml = messages
+      .map((message) => `<div class="tutor-msg tutor-${message.role}">${escapeHtml(message.text)}</div>`)
+      .join("");
+    const el = aiOverlay(`
+      <div class="exam-sim-card tutor-card">
+        <div class="exam-sim-header">
+          <h2>Tutor socrático</h2>
+          <button class="button button-ghost" data-action="close">Sair</button>
+        </div>
+        <div class="tutor-history" id="tutorHistory">${historyHtml}${requestReply ? '<div class="tutor-msg tutor-assistant tutor-typing">pensando…</div>' : ""}</div>
+        <div class="tutor-input-row">
+          <input type="text" id="tutorInput" placeholder="Responda à pergunta do tutor…" ${requestReply ? "disabled" : ""} />
+          <button class="button button-primary" id="tutorSend" ${requestReply ? "disabled" : ""}>Enviar</button>
+        </div>
+      </div>`);
+    el.onclick = (event) => {
+      if (event.target.closest("[data-action='close']")) el.hidden = true;
+      if (event.target.closest("#tutorSend")) sendUserMessage();
+    };
+    const input = document.getElementById("tutorInput");
+    if (input) {
+      input.onkeydown = (event) => { if (event.key === "Enter") sendUserMessage(); };
+      if (!requestReply) input.focus();
+    }
+    const history = document.getElementById("tutorHistory");
+    if (history) history.scrollTop = history.scrollHeight;
+
+    function sendUserMessage() {
+      const value = String(document.getElementById("tutorInput")?.value || "").trim();
+      if (!value) return;
+      messages.push({ role: "user", text: value });
+      renderTutor(questionId, messages, true);
+    }
+
+    if (requestReply) {
+      try {
+        const data = await api(`/api/questions/${questionId}/tutor`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ messages }),
+        });
+        messages.push({ role: "assistant", text: data.reply || data.error || data.reason || "Sem resposta." });
+      } catch (error) {
+        messages.push({ role: "assistant", text: `Erro: ${error.message}` });
+      }
+      renderTutor(questionId, messages, false);
+    }
+  }
+})();
+
+/* ============================================================
+   Discursiva + Modo reta final (4ª onda)
+   ============================================================ */
+(function essayAndStretchModule() {
+  const essayButton = document.getElementById("essayButton");
+  const stretchButton = document.getElementById("finalStretchButton");
+  if (essayButton) essayButton.addEventListener("click", openEssay);
+  if (stretchButton) stretchButton.addEventListener("click", openStretch);
+
+  let essayStartedAt = 0;
+
+  function modalOverlay(html) {
+    let el = document.getElementById("examSimOverlay");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "examSimOverlay";
+      el.className = "exam-sim-overlay";
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    el.innerHTML = html;
+    el.onclick = (event) => {
+      if (event.target.closest("[data-action='close']")) el.hidden = true;
+    };
+    return el;
+  }
+
+  async function openEssay() {
+    let data;
+    try {
+      data = await api("/api/essays/themes");
+    } catch (error) {
+      return modalOverlay(`<div class="exam-sim-card"><p>Erro: ${escapeHtml(error.message)}</p>
+        <div class="exam-sim-actions"><button class="button button-primary" data-action="close">Fechar</button></div></div>`);
+    }
+    let history = { submissions: [] };
+    try { history = await api("/api/essays/history"); } catch {}
+    const options = data.themes
+      .map((theme) => `<option value="${escapeHtml(theme.id)}" ${theme.id === data.suggestionId ? "selected" : ""}>${escapeHtml(theme.title)}</option>`)
+      .join("");
+    const historyHtml = (history.submissions || []).slice(0, 5)
+      .map((item) => `<li>${escapeHtml(String(item.created_at).slice(0, 10))} — ${escapeHtml(item.theme_title.slice(0, 60))}… <strong>${item.score}/10</strong></li>`)
+      .join("");
+    const el = modalOverlay(`
+      <div class="exam-sim-card essay-card">
+        <div class="exam-sim-header">
+          <h2>Discursiva</h2>
+          <button class="button button-ghost" data-action="close">Sair</button>
+        </div>
+        ${data.aiAvailable ? "" : `<p class="essay-warning">IA não configurada — você pode escrever, mas a correção automática exige AI_PROVIDER no .env.</p>`}
+        <label>Tema:
+          <select id="essayTheme">${options}</select>
+        </label>
+        <div class="essay-meta-row">
+          <span id="essayLineCount">0 / 30 linhas</span>
+          <span id="essayTimer">00:00</span>
+        </div>
+        <textarea id="essayText" rows="14" placeholder="Escreva sua dissertação aqui (até 30 linhas). Dica: introdução com contextualização, um parágrafo por quesito, conclusão com proposta."></textarea>
+        <div class="exam-sim-actions">
+          <button class="button button-primary" id="essaySubmit" ${data.aiAvailable ? "" : "disabled"}>Enviar para correção</button>
+        </div>
+        ${historyHtml ? `<h3>Últimas redações</h3><ul class="essay-history">${historyHtml}</ul>` : ""}
+      </div>`);
+
+    essayStartedAt = Date.now();
+    const timerHandle = setInterval(() => {
+      const timer = document.getElementById("essayTimer");
+      if (!timer) { clearInterval(timerHandle); return; }
+      const seconds = Math.floor((Date.now() - essayStartedAt) / 1000);
+      timer.textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+    }, 1000);
+
+    const textarea = document.getElementById("essayText");
+    textarea.addEventListener("input", () => {
+      const lines = textarea.value.split("\n").filter((line) => line.trim()).length;
+      const counter = document.getElementById("essayLineCount");
+      counter.textContent = `${lines} / 30 linhas`;
+      counter.style.color = lines > 30 ? "#c0392b" : "";
+    });
+
+    el.addEventListener("click", async (event) => {
+      if (!event.target.closest("#essaySubmit")) return;
+      const button = document.getElementById("essaySubmit");
+      button.disabled = true;
+      button.textContent = "Corrigindo…";
+      try {
+        const result = await api("/api/essays/submit", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            themeId: document.getElementById("essayTheme").value,
+            text: textarea.value,
+            elapsedMs: Date.now() - essayStartedAt,
+          }),
+        });
+        if (result.error || !result.available) throw new Error(result.error || result.reason);
+        renderEssayReport(result);
+      } catch (error) {
+        alert(`Erro na correção: ${error.message}`);
+        button.disabled = false;
+        button.textContent = "Enviar para correção";
+      }
+    });
+  }
+
+  function renderEssayReport(result) {
+    const correction = result.correction || {};
+    const quesitos = (correction.quesitos || [])
+      .map((quesito) => `<tr><td>${escapeHtml(quesito.nome)}</td><td>${quesito.nota} / ${quesito.max}</td><td>${escapeHtml(quesito.comentario || "")}</td></tr>`)
+      .join("");
+    const erros = (correction.erros_gramaticais || []).slice(0, 15)
+      .map((erro) => `<li><em>"${escapeHtml(erro.trecho)}"</em> → ${escapeHtml(erro.correcao)} <small>(${escapeHtml(erro.tipo || "")})</small></li>`)
+      .join("");
+    modalOverlay(`
+      <div class="exam-sim-card essay-card">
+        <h2>Correção — ${escapeHtml(result.themeTitle.slice(0, 70))}</h2>
+        <p class="exam-sim-score ${result.passed ? "ok" : "fail"}">
+          Nota ${result.score} / 10 — ${result.passed ? "acima" : "ABAIXO"} do corte típico (5,0)
+        </p>
+        <table class="exam-sim-table" style="max-width:100%">
+          <tr><th>Quesito</th><th>Nota</th><th>Comentário</th></tr>
+          ${quesitos}
+          ${correction.apresentacao ? `<tr><td>Apresentação/estrutura</td><td>${correction.apresentacao.nota} / ${correction.apresentacao.max}</td><td>${escapeHtml(correction.apresentacao.comentario || "")}</td></tr>` : ""}
+        </table>
+        ${erros ? `<h3>Erros de língua (${(correction.erros_gramaticais || []).length})</h3><ul>${erros}</ul>` : "<p>Nenhum erro gramatical apontado.</p>"}
+        <h3>Comentário geral</h3>
+        <p>${escapeHtml(correction.comentario_geral || "")}</p>
+        <p><small>Correção por IA (${escapeHtml(result.provider || "")}) segundo rubrica estilo Cebraspe — use como treino, não como nota oficial.</small></p>
+        <div class="exam-sim-actions"><button class="button button-primary" data-action="close">Fechar</button></div>
+      </div>`);
+  }
+
+  async function openStretch() {
+    let status;
+    try {
+      status = await api("/api/final-stretch");
+    } catch (error) {
+      return modalOverlay(`<div class="exam-sim-card"><p>Erro: ${escapeHtml(error.message)}</p>
+        <div class="exam-sim-actions"><button class="button button-primary" data-action="close">Fechar</button></div></div>`);
+    }
+    renderStretch(status);
+  }
+
+  function renderStretch(status) {
+    const checklist = (status.checklist || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+    const el = modalOverlay(`
+      <div class="exam-sim-card">
+        <div class="exam-sim-header">
+          <h2>Modo reta final</h2>
+          <button class="button button-ghost" data-action="close">Sair</button>
+        </div>
+        <p>Defina a data da prova. A 30 dias, o sistema aperta a retenção-alvo das revisões (88% → 92%)
+           e comprime todos os intervalos para caberem antes da prova.</p>
+        <div class="essay-meta-row">
+          <label>Data da prova: <input type="date" id="stretchDate" value="${escapeHtml(status.examDate || "")}"></label>
+          <button class="button button-primary" id="stretchSave">Salvar</button>
+          ${status.enabled ? `<button class="button button-secondary" id="stretchClear">Limpar</button>` : ""}
+        </div>
+        ${status.enabled ? `
+          <p class="exam-sim-score ${status.finalStretchActive ? "fail" : "ok"}">
+            ${status.daysLeft > 0 ? `${status.daysLeft} dias até a prova` : "Data no passado — atualize"}
+            ${status.finalStretchActive ? " · RETA FINAL ATIVA" : ""}
+          </p>
+          <ul>${checklist}</ul>` : ""}
+      </div>`);
+    el.addEventListener("click", async (event) => {
+      if (event.target.closest("#stretchSave")) {
+        const value = document.getElementById("stretchDate").value;
+        const updated = await api("/api/final-stretch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ examDate: value }) });
+        renderStretch(updated);
+      }
+      if (event.target.closest("#stretchClear")) {
+        const updated = await api("/api/final-stretch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ examDate: "" }) });
+        renderStretch(updated);
+      }
+    });
+  }
+})();

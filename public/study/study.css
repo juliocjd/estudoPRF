@@ -1,32 +1,33 @@
 :root {
   color-scheme: light;
-  --bg: #f4f7fb;
+  /* Tema "claro e limpo" — estilo Notion/Linear (2026-07) */
+  --bg: #fafbfc;
   --surface: #ffffff;
-  --surface-muted: #f8fafc;
+  --surface-muted: #f6f8fa;
   --surface-raised: #ffffff;
-  --text: #0f172a;
-  --text-muted: #64748b;
-  --border: #dbe3ef;
-  --border-strong: #c6d1df;
-  --primary: #1e3a5f;
-  --primary-hover: #142a44;
-  --accent: #0f766e;
-  --accent-hover: #115e59;
-  --accent-soft: #e6f5f2;
-  --success: #15803d;
-  --success-soft: #e7f6df;
+  --text: #1a1f2e;
+  --text-muted: #6b7280;
+  --border: #e5e9f0;
+  --border-strong: #d2d9e3;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --accent: #0d9488;
+  --accent-hover: #0f766e;
+  --accent-soft: #ecfaf7;
+  --success: #16a34a;
+  --success-soft: #effaf1;
   --danger: #dc2626;
   --danger-soft: #fef2f2;
   --warning: #d97706;
-  --warning-soft: #fff7ed;
+  --warning-soft: #fff8ec;
   --info: #2563eb;
-  --info-soft: #eff6ff;
+  --info-soft: #eff4ff;
   --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 10px 28px rgba(15, 23, 42, 0.08);
-  --shadow-lg: -16px 0 40px rgba(15, 23, 42, 0.18);
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(20, 24, 34, 0.05);
+  --shadow-md: 0 4px 16px rgba(20, 24, 34, 0.07), 0 1px 3px rgba(20, 24, 34, 0.05);
+  --shadow-lg: -12px 0 32px rgba(20, 24, 34, 0.12);
 }
 
 * {
@@ -46,9 +47,11 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Inter', Roboto, sans-serif;
   font-size: 15px;
+  letter-spacing: 0.01em;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 body.is-support-scroll-locked {
@@ -4831,5 +4834,541 @@ body.is-report-page {
 
   .gran-plan-table {
     min-width: 1040px;
+  }
+}
+
+/* ============================================================
+   Simulado Cebraspe
+   ============================================================ */
+.exam-sim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(10, 14, 22, 0.92);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 24px 12px;
+}
+
+.exam-sim-overlay[hidden] {
+  display: none;
+}
+
+.exam-sim-card {
+  background: var(--surface, #fff);
+  color: var(--text, #1a2333);
+  border-radius: 14px;
+  max-width: 860px;
+  width: 100%;
+  padding: 28px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+}
+
+.exam-sim-launch-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.exam-sim-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.exam-sim-progress {
+  font-weight: 700;
+}
+
+.exam-sim-timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.25rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.exam-sim-timer-warning {
+  background: #c0392b;
+  color: #fff;
+}
+
+.exam-sim-meta {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  margin-bottom: 10px;
+}
+
+.exam-sim-statement {
+  line-height: 1.6;
+  margin-bottom: 20px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.exam-sim-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.exam-sim-answer {
+  padding: 12px 16px;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.exam-sim-answer:hover {
+  border-color: var(--accent, #2563eb);
+}
+
+.exam-sim-answer.selected {
+  border-color: var(--accent, #2563eb);
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.exam-sim-blank {
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+.exam-sim-confidence {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.exam-sim-confidence button {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(0, 0, 0, 0.2);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.exam-sim-confidence button.selected {
+  border-color: var(--accent, #2563eb);
+  background: rgba(37, 99, 235, 0.12);
+  font-weight: 700;
+}
+
+.exam-sim-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.exam-sim-report h3 {
+  margin: 18px 0 8px;
+}
+
+.exam-sim-score {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.exam-sim-score.ok {
+  color: #1e8e4e;
+}
+
+.exam-sim-score.fail {
+  color: #c0392b;
+}
+
+.exam-sim-table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 480px;
+}
+
+.exam-sim-table th,
+.exam-sim-table td {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.exam-sim-table tr.ok td {
+  background: rgba(30, 142, 78, 0.1);
+}
+
+.exam-sim-table tr.fail td {
+  background: rgba(192, 57, 43, 0.1);
+}
+
+.exam-sim-policies li.best {
+  font-weight: 700;
+}
+
+.law-cloze-text {
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.law-cloze-answer {
+  font-size: 1.15rem;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(30, 142, 78, 0.12);
+  margin-bottom: 12px;
+}
+
+.law-cloze-ratings {
+  justify-content: center;
+  gap: 8px;
+}
+
+/* IA pós-erro */
+.ai-error-toast {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #1d2536;
+  color: #eef2fa;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
+  font-size: 0.95rem;
+}
+
+.ai-error-toast button {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ai-error-toast button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.tutor-card .tutor-history {
+  max-height: 48vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tutor-msg {
+  padding: 10px 14px;
+  border-radius: 12px;
+  max-width: 85%;
+  line-height: 1.5;
+}
+
+.tutor-user {
+  align-self: flex-end;
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.tutor-assistant {
+  align-self: flex-start;
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.tutor-typing {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.tutor-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.tutor-input-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(0, 0, 0, 0.2);
+  background: transparent;
+  color: inherit;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tutor-assistant {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .tutor-input-row input {
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+}
+
+/* Discursiva */
+.essay-card select,
+.essay-card textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(0, 0, 0, 0.2);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.essay-card textarea {
+  resize: vertical;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.essay-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.essay-history li {
+  margin-bottom: 4px;
+}
+
+.essay-warning {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(192, 57, 43, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  .essay-card select,
+  .essay-card textarea {
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  .essay-card select option {
+    color: #1a2333;
+  }
+}
+
+/* ============================================================
+   Camada de polimento — tema claro e limpo (2026-07)
+   Sobrepõe estilos antigos por vir no final do arquivo.
+   ============================================================ */
+
+h1, h2, h3, h4 {
+  letter-spacing: -0.015em;
+  font-weight: 650;
+}
+
+button,
+.button {
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, box-shadow 0.15s ease, transform 0.06s ease;
+}
+
+button:active,
+.button:active {
+  transform: translateY(1px);
+}
+
+.button,
+.menu-item {
+  border-radius: var(--radius-sm);
+}
+
+.button-primary {
+  box-shadow: var(--shadow-sm);
+}
+
+.button-secondary,
+.button-ghost {
+  box-shadow: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+input,
+select,
+textarea {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Cards e painéis: borda sutil em vez de sombra pesada */
+.panel,
+.card,
+.exam-sim-card,
+[class$="-panel"],
+[class$="-card"] {
+  border: 1px solid var(--border);
+}
+
+/* Tabelas mais respiráveis */
+table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+table td,
+table th {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+tbody tr:hover {
+  background: var(--surface-muted);
+}
+
+/* Dropdowns e menus */
+.dropdown-menu {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.dropdown-menu .menu-item {
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: background-color 0.12s ease;
+}
+
+.dropdown-menu .menu-item:hover {
+  background: var(--surface-muted);
+}
+
+/* Scrollbar discreta */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Overlays dos módulos novos alinhados ao tema claro */
+.exam-sim-overlay {
+  background: rgba(26, 31, 46, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.exam-sim-card {
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
+}
+
+.exam-sim-answer {
+  border-color: var(--border);
+  border-radius: var(--radius-md);
+}
+
+.exam-sim-answer:hover {
+  border-color: var(--primary);
+  background: var(--info-soft);
+}
+
+.exam-sim-answer.selected {
+  border-color: var(--primary);
+  background: var(--info-soft);
+}
+
+.exam-sim-timer {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+}
+
+.exam-sim-table th,
+.exam-sim-table td {
+  border-color: var(--border);
+}
+
+.ai-error-toast {
+  background: var(--text);
+  border-radius: var(--radius-md);
+}
+
+/* Badges e chips consistentes */
+.page-chip,
+.eyebrow,
+[class*="badge"] {
+  border-radius: 999px;
+}
+
+/* Seleção de texto na cor do tema */
+::selection {
+  background: rgba(37, 99, 235, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  .exam-sim-card {
+    background: var(--surface, #161d2b);
+    color: var(--text, #e7ecf5);
+  }
+
+  .exam-sim-answer,
+  .exam-sim-confidence button {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .exam-sim-table th,
+  .exam-sim-table td {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .exam-sim-timer {
+    background: rgba(255, 255, 255, 0.1);
   }
 }

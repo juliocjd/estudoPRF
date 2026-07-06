@@ -11,8 +11,7 @@ import { getContranPrfResolutionExamStats } from '../scripts/contran-prf-exam-co
 import { gerar_plano_prf } from '../scripts/plano_estudos_prf.mjs';
 // FSRS: agendamento de revisões baseado no modelo DSR (ver src/study/fsrs.mjs)
 import { gradeAnswer as fsrsGradeAnswer, scheduleReview as fsrsScheduleReview, retrievability as fsrsRetrievability, FSRS_VERSION } from './study/fsrs.mjs';
-import { FSRS_CONFIG, DERIVED_CE_ID_START } from './study/study-config.mjs';
-import { generateText as aiGenerateText, aiAvailable, aiProviderName, extractJson as aiExtractJson } from './study/ai-provider.mjs';
+import { FSRS_CONFIG } from './study/study-config.mjs';
 import {
   GRAN_CURSOS_TRANSITO_PRF_LESSONS,
   GRAN_CURSOS_TRANSITO_PRF_META
@@ -86,8 +85,7 @@ const databaseUrl = args['database-url'] || process.env.DATABASE_URL || '';
 const dbClient = args['db-client'] || process.env.DB_CLIENT || '';
 
 const { db, client: activeDbClient } = openStudyDatabase({ dbPath, databaseUrl, client: dbClient });
-const skipStartupSchemaMaintenance = activeDbClient === 'postgres'
-  && (process.env.VERCEL || process.env.SKIP_SCHEMA_MAINTENANCE === '1');
+const skipStartupSchemaMaintenance = activeDbClient === 'postgres' && process.env.VERCEL;
 if (activeDbClient === 'sqlite') {
   initStudySchema(db);
 }
@@ -395,64 +393,6 @@ async function routeRequest(request, response) {
   const legalCardMatch = url.pathname.match(/^\/api\/legal-cards\/(\d+)$/);
   if (legalCardMatch && request.method === 'GET') {
     sendJson(response, 200, getLegalCard(Number(legalCardMatch[1])));
-    return;
-  }
-
-  if (url.pathname === '/api/law-cloze/next' && request.method === 'GET') {
-    sendJson(response, 200, getLawClozeNext());
-    return;
-  }
-
-  if (url.pathname === '/api/ai/status' && request.method === 'GET') {
-    sendJson(response, 200, { available: aiAvailable(), provider: aiProviderName() });
-    return;
-  }
-
-  const diagnoseMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/diagnose-error$/);
-  if (diagnoseMatch && request.method === 'POST') {
-    const body = await readJsonBody(request);
-    sendJson(response, 200, await diagnoseQuestionError(Number(diagnoseMatch[1]), body));
-    return;
-  }
-
-  const tutorMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/tutor$/);
-  if (tutorMatch && request.method === 'POST') {
-    const body = await readJsonBody(request);
-    sendJson(response, 200, await socraticTutorReply(Number(tutorMatch[1]), body));
-    return;
-  }
-
-  if (url.pathname === '/api/essays/themes' && request.method === 'GET') {
-    sendJson(response, 200, getEssayThemes());
-    return;
-  }
-
-  if (url.pathname === '/api/essays/submit' && request.method === 'POST') {
-    const body = await readJsonBody(request);
-    sendJson(response, 200, await submitEssay(body));
-    return;
-  }
-
-  if (url.pathname === '/api/essays/history' && request.method === 'GET') {
-    sendJson(response, 200, getEssayHistory());
-    return;
-  }
-
-  if (url.pathname === '/api/final-stretch' && request.method === 'GET') {
-    sendJson(response, 200, getFinalStretchStatus());
-    return;
-  }
-
-  if (url.pathname === '/api/final-stretch' && request.method === 'POST') {
-    const body = await readJsonBody(request);
-    sendJson(response, 200, setFinalStretch(body));
-    return;
-  }
-
-  const lawClozeAnswerMatch = url.pathname.match(/^\/api\/law-cloze\/(\d+)\/answer$/);
-  if (lawClozeAnswerMatch && request.method === 'POST') {
-    const body = await readJsonBody(request);
-    sendJson(response, 200, saveLawClozeAnswer(Number(lawClozeAnswerMatch[1]), body));
     return;
   }
 
@@ -5462,8 +5402,6 @@ function startExamSimulation(body) {
   const certoErradoOnly = body?.certoErradoOnly === undefined ? true : Boolean(body?.certoErradoOnly);
   const params = new URLSearchParams({ profile: profileId, size: String(size * 2), mode: 'exam' });
   const plan = getSessionPlan(params);
-  // Itens derivados de múltipla escolha nunca entram em simulado (gabarito não validado por banca).
-  plan.questionIds = plan.questionIds.filter((id) => Number(id) < DERIVED_CE_ID_START);
   if (!plan.questionIds.length) {
     return { error: 'Nenhuma questao disponivel para o simulado neste perfil.' };
   }
@@ -5815,440 +5753,6 @@ function getPointsOptimizer(searchParams) {
     subjects,
     method: 'expectedPoints = itens_previstos × max(0, 2×acurácia−1); potentialGain = itens × (0.95−acurácia) × 2; acurácia com suavização bayesiana (prior 0.5, peso 4).'
   };
-}
-
-/* ============================================================
-   Flashcards cloze de lei seca (FSRS)
-   Cards gerados por scripts/generate-law-cloze-cards.mjs.
-   ============================================================ */
-
-/* ============================================================
-   Diagnóstico de erro via IA (camada abstraída em src/study/ai-provider.mjs)
-   ============================================================ */
-
-async function diagnoseQuestionError(questionId, body) {
-  if (!aiAvailable()) {
-    return { available: false, reason: 'IA não configurada. Defina AI_PROVIDER no .env (gemini gratuito, ollama local ou anthropic).' };
-  }
-  const question = db.prepare(`
-    SELECT q.id_question, q.materia, q.assunto, q.statement_text,
-      ${bestAnswerSql('q', 'c')} AS expected_answer,
-      c.text AS comment_text
-    FROM questions q
-    LEFT JOIN comments c ON c.question_id = q.id_question
-    WHERE q.id_question = ?
-  `).get(questionId);
-  if (!question) {
-    return { error: 'Questão não encontrada.' };
-  }
-  const lastWrong = db.prepare(`
-    SELECT answer_letter, answer_text, confidence, elapsed_ms, answered_at
-    FROM study_answers
-    WHERE question_id = ? AND is_correct = 0
-    ORDER BY answered_at DESC
-    LIMIT 1
-  `).get(questionId);
-  const userAnswer = String(body?.answer || lastWrong?.answer_text || lastWrong?.answer_letter || '');
-  if (!userAnswer) {
-    return { error: 'Nenhum erro registrado nesta questão para diagnosticar.' };
-  }
-  const alternatives = db.prepare(
-    'SELECT letter, text FROM alternatives WHERE question_id = ? ORDER BY position'
-  ).all(questionId);
-
-  const prompt = [
-    'Você é um professor especialista em concursos brasileiros (banca Cebraspe).',
-    'Um aluno errou a questão abaixo. Diagnostique o erro e responda APENAS com JSON válido no formato:',
-    '{"error_type": "content|interpretation|confusion|memory|outdated|attention", "trap_pattern": "curto, ex: troca de prazo, generalização indevida, palavra restritiva", "explanation": "2 a 3 frases diretas explicando o que provavelmente causou o erro e como evitar"}',
-    '',
-    `MATÉRIA: ${question.materia} / ${question.assunto}`,
-    `ENUNCIADO: ${String(question.statement_text || '').slice(0, 1500)}`,
-    alternatives.length ? `ALTERNATIVAS: ${alternatives.map((alt) => `${alt.letter}) ${String(alt.text || '').slice(0, 200)}`).join(' | ')}` : '',
-    `GABARITO: ${question.expected_answer || '(não disponível)'}`,
-    `RESPOSTA DO ALUNO (errada): ${userAnswer}`,
-    lastWrong?.confidence ? `CONFIANÇA DECLARADA: ${lastWrong.confidence}` : '',
-    question.comment_text ? `COMENTÁRIO DO PROFESSOR (referência): ${String(question.comment_text).slice(0, 1200)}` : ''
-  ].filter(Boolean).join('\n');
-
-  const result = await aiGenerateText({ prompt, maxTokens: 500, temperature: 0.2 });
-  if (!result.ok) {
-    return { error: `Falha na IA (${result.provider || 'sem provedor'}): ${result.error}` };
-  }
-  const parsed = aiExtractJson(result.text);
-  if (!parsed || !parsed.error_type) {
-    return { error: 'A IA não retornou um diagnóstico válido.', raw: String(result.text || '').slice(0, 400) };
-  }
-
-  const validTypes = ['content', 'interpretation', 'confusion', 'memory', 'outdated', 'attention'];
-  const errorType = validTypes.includes(parsed.error_type) ? parsed.error_type : 'other';
-  if (lastWrong) {
-    db.prepare(`
-      UPDATE study_answers SET error_type = ?
-      WHERE question_id = ? AND is_correct = 0
-        AND answered_at = (SELECT MAX(answered_at) FROM study_answers WHERE question_id = ? AND is_correct = 0)
-    `).run(errorType, questionId, questionId);
-  }
-
-  return {
-    available: true,
-    provider: result.provider,
-    questionId,
-    errorType,
-    trapPattern: String(parsed.trap_pattern || '').slice(0, 160),
-    explanation: String(parsed.explanation || '').slice(0, 800)
-  };
-}
-
-/* ============================================================
-   Discursiva (rubrica estilo Cebraspe) + Modo reta final — 4ª onda
-   ============================================================ */
-
-const ESSAY_THEMES = [
-  { id: 'seguranca_viaria', title: 'Segurança viária no Brasil: causas dos acidentes e papel do Estado na redução da letalidade no trânsito', quesitos: ['Panorama e causas dos acidentes de trânsito no Brasil', 'Papel da PRF e das políticas públicas (PNATRANS)', 'Proposta de intervenção fundamentada'] },
-  { id: 'alcool_direcao', title: 'Álcool e direção: avanços e desafios da Lei Seca após mais de uma década', quesitos: ['Evolução legislativa (art. 165 e 306 do CTB)', 'Efetividade da fiscalização e desafios probatórios', 'Medidas complementares à repressão'] },
-  { id: 'uso_da_forca', title: 'O uso da força pelos órgãos de segurança pública à luz dos direitos humanos', quesitos: ['Princípios do uso da força (legalidade, necessidade, proporcionalidade)', 'Instrumentos normativos (Portaria 4.226/2010, PNDH)', 'Accountability e controle da atividade policial'] },
-  { id: 'tecnologia_fiscalizacao', title: 'Tecnologia na fiscalização de trânsito: eficiência e limites', quesitos: ['Videomonitoramento, radares e integração de dados', 'Equilíbrio entre fiscalização eletrônica e presencial', 'Privacidade e devido processo'] },
-  { id: 'cargas_perigosas', title: 'O transporte rodoviário de produtos perigosos e a atuação estatal na prevenção de desastres', quesitos: ['Regulamentação (Res. ANTT e CONTRAN)', 'Riscos ambientais e à vida', 'Fiscalização e resposta a emergências'] },
-  { id: 'criminalidade_rodovias', title: 'Enfrentamento à criminalidade nas rodovias federais: contrabando, tráfico e roubo de cargas', quesitos: ['Panorama da criminalidade nas rodovias', 'Inteligência e integração entre órgãos', 'Papel da PRF no enfrentamento'] },
-  { id: 'infancia_transito', title: 'Proteção de crianças no trânsito: dispositivos de retenção e educação viária', quesitos: ['Normas de segurança veicular infantil', 'Educação para o trânsito como política preventiva', 'Responsabilidade compartilhada'] },
-  { id: 'meio_ambiente_rodovias', title: 'Rodovias e meio ambiente: conciliação entre infraestrutura de transporte e sustentabilidade', quesitos: ['Impactos ambientais da malha rodoviária', 'Licenciamento e mitigação', 'Papel dos órgãos de fiscalização'] }
-];
-
-function ensureEssaySchema() {
-  if (activeDbClient === 'postgres') {
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS essay_submissions (
-        id integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-        theme_id text,
-        theme_title text NOT NULL,
-        essay_text text NOT NULL,
-        line_count integer,
-        elapsed_ms integer,
-        score real,
-        max_score real DEFAULT 10,
-        breakdown_json text,
-        grammar_errors integer,
-        feedback text,
-        model text,
-        created_at timestamptz DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    return;
-  }
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS essay_submissions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      theme_id TEXT,
-      theme_title TEXT NOT NULL,
-      essay_text TEXT NOT NULL,
-      line_count INTEGER,
-      elapsed_ms INTEGER,
-      score REAL,
-      max_score REAL DEFAULT 10,
-      breakdown_json TEXT,
-      grammar_errors INTEGER,
-      feedback TEXT,
-      model TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-}
-
-function getEssayThemes() {
-  const suggestion = ESSAY_THEMES[Math.floor(Math.random() * ESSAY_THEMES.length)];
-  return { themes: ESSAY_THEMES, suggestionId: suggestion.id, aiAvailable: aiAvailable() };
-}
-
-function getEssayHistory() {
-  ensureEssaySchema();
-  const rows = db.prepare(`
-    SELECT id, theme_id, theme_title, line_count, elapsed_ms, score, max_score, grammar_errors, created_at
-    FROM essay_submissions
-    ORDER BY created_at DESC
-    LIMIT 30
-  `).all();
-  return { submissions: rows };
-}
-
-async function submitEssay(body) {
-  if (!aiAvailable()) {
-    return { available: false, reason: 'IA não configurada. Defina AI_PROVIDER no .env para a correção automática.' };
-  }
-  const text = String(body?.text || '').trim();
-  if (text.length < 200) {
-    return { error: 'Texto muito curto para correção (mínimo ~200 caracteres).' };
-  }
-  const theme = ESSAY_THEMES.find((item) => item.id === body?.themeId)
-    || { id: '', title: String(body?.customTheme || 'Tema livre'), quesitos: ['Domínio do tema', 'Argumentação e coerência', 'Conclusão/proposta'] };
-  const lines = text.split('\n').filter((line) => line.trim()).length;
-
-  const prompt = [
-    'Você é examinador da banca Cebraspe corrigindo uma prova discursiva de concurso (PRF).',
-    'Critérios Cebraspe: apresentação e estrutura textual; desenvolvimento dos quesitos de conteúdo; correção gramatical (cada erro desconta proporcionalmente).',
-    'Corrija a redação abaixo e responda APENAS com JSON válido:',
-    '{"quesitos": [{"nome": "...", "nota": 0.0, "max": 2.5, "comentario": "1-2 frases"}], "apresentacao": {"nota": 0.0, "max": 1.0, "comentario": "..."}, "erros_gramaticais": [{"trecho": "...", "correcao": "...", "tipo": "ortografia|concordancia|regencia|pontuacao|outro"}], "nota_final": 0.0, "comentario_geral": "3-4 frases com o caminho de melhoria mais importante"}',
-    `Os quesitos de conteúdo deste tema (some ${theme.quesitos.length} quesitos, distribua 9 pontos entre eles; apresentação vale 1; nota_final = soma - 0.15 por erro gramatical, mínimo 0, máximo 10):`,
-    ...theme.quesitos.map((quesito, index) => `${index + 1}. ${quesito}`),
-    '',
-    `TEMA: ${theme.title}`,
-    `REDAÇÃO DO CANDIDATO (${lines} linhas):`,
-    text.slice(0, 6000)
-  ].join('\n');
-
-  const result = await aiGenerateText({ prompt, maxTokens: 1600, temperature: 0.2 });
-  if (!result.ok) {
-    return { error: `Falha na IA: ${result.error}` };
-  }
-  const parsed = aiExtractJson(result.text);
-  if (!parsed || parsed.nota_final === undefined) {
-    return { error: 'A correção não retornou um formato válido. Tente de novo.', raw: String(result.text || '').slice(0, 300) };
-  }
-
-  const score = Math.max(0, Math.min(10, Number(parsed.nota_final) || 0));
-  const grammarErrors = Array.isArray(parsed.erros_gramaticais) ? parsed.erros_gramaticais.length : 0;
-  ensureEssaySchema();
-  db.prepare(`
-    INSERT INTO essay_submissions (
-      theme_id, theme_title, essay_text, line_count, elapsed_ms, score, max_score,
-      breakdown_json, grammar_errors, feedback, model
-    ) VALUES (?, ?, ?, ?, ?, ?, 10, ?, ?, ?, ?)
-  `).run(
-    theme.id, theme.title, text, lines,
-    Number.isFinite(Number(body?.elapsedMs)) ? Math.round(Number(body.elapsedMs)) : null,
-    score, JSON.stringify(parsed), grammarErrors,
-    String(parsed.comentario_geral || '').slice(0, 2000), result.model || result.provider
-  );
-
-  return {
-    available: true,
-    themeTitle: theme.title,
-    score,
-    maxScore: 10,
-    passThreshold: 5,
-    passed: score >= 5,
-    lineCount: lines,
-    correction: parsed,
-    provider: result.provider
-  };
-}
-
-/* ---------- Modo reta final ---------- */
-
-function getFinalStretchStatus() {
-  const examDate = getSetting('exam_date', '');
-  if (!examDate) {
-    return { enabled: false, examDate: null };
-  }
-  const target = new Date(`${examDate}T12:00:00`);
-  const daysLeft = Math.ceil((target.getTime() - Date.now()) / 86400000);
-  const active = daysLeft > 0 && daysLeft <= 30;
-  return {
-    enabled: true,
-    examDate,
-    daysLeft,
-    finalStretchActive: active,
-    fsrs: getFsrsRuntimeOptions(),
-    checklist: active ? [
-      'Conteúdo novo congelado: use "Revisar hoje" e "Revisar erros" — nada de assunto inédito.',
-      'Um simulado completo (120 itens) por semana; nos últimos 10 dias, dois.',
-      'Duas discursivas por semana com correção.',
-      'Revise a política de marcação (Calibração Cebraspe) antes de cada simulado.',
-      'Flashcards de lei seca diariamente — os intervalos já estão comprimidos até a prova.'
-    ] : [
-      `Faltam ${daysLeft} dias — o modo reta final ativa automaticamente a 30 dias da prova.`,
-      'Até lá: siga o otimizador "Onde ganhar pontos" e mantenha volume de questões novas.'
-    ]
-  };
-}
-
-function setFinalStretch(body) {
-  const raw = String(body?.examDate || '').trim();
-  if (raw && !/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    return { error: 'examDate deve estar no formato AAAA-MM-DD (vazio para limpar).' };
-  }
-  setSetting('exam_date', raw);
-  return getFinalStretchStatus();
-}
-
-/** Opções FSRS dinâmicas: na reta final, retenção sobe e intervalos não passam da prova. */
-function getFsrsRuntimeOptions() {
-  const options = {
-    requestRetention: FSRS_CONFIG.requestRetention,
-    minIntervalDays: FSRS_CONFIG.minIntervalDays,
-    maxIntervalDays: FSRS_CONFIG.maxIntervalDays
-  };
-  const examDate = getSetting('exam_date', '');
-  if (examDate) {
-    const daysLeft = Math.ceil((new Date(`${examDate}T12:00:00`).getTime() - Date.now()) / 86400000);
-    if (daysLeft > 0) {
-      options.maxIntervalDays = Math.max(1, Math.min(options.maxIntervalDays, daysLeft));
-      if (daysLeft <= 30) options.requestRetention = 0.92;
-    }
-  }
-  return options;
-}
-
-/**
- * Tutor socrático: em vez de entregar a resposta, conduz o aluno por
- * perguntas-guia. Stateless — o histórico vem do frontend a cada chamada.
- */
-async function socraticTutorReply(questionId, body) {
-  if (!aiAvailable()) {
-    return { available: false, reason: 'IA não configurada. Defina AI_PROVIDER no .env.' };
-  }
-  const question = db.prepare(`
-    SELECT q.id_question, q.materia, q.assunto, q.statement_text,
-      ${bestAnswerSql('q', 'c')} AS expected_answer,
-      c.text AS comment_text
-    FROM questions q
-    LEFT JOIN comments c ON c.question_id = q.id_question
-    WHERE q.id_question = ?
-  `).get(questionId);
-  if (!question) {
-    return { error: 'Questão não encontrada.' };
-  }
-  const history = Array.isArray(body?.messages) ? body.messages.slice(-8) : [];
-  if (history.length > 12) {
-    return { error: 'Conversa longa demais — abra o comentário do professor.' };
-  }
-  const alternatives = db.prepare(
-    'SELECT letter, text FROM alternatives WHERE question_id = ? ORDER BY position'
-  ).all(questionId);
-
-  const system = [
-    'Você é um tutor socrático de concursos (banca Cebraspe), em português.',
-    'REGRAS: nunca entregue o gabarito nem a explicação completa de imediato.',
-    'Conduza com UMA pergunta-guia curta por vez, construindo sobre a resposta do aluno.',
-    'Se o aluno acertar o raciocínio, confirme e aprofunde com o próximo passo.',
-    'Se o aluno pedir a resposta diretamente ou após 4 trocas, aí sim explique de forma completa e objetiva.',
-    'Máximo de 3 frases por mensagem (exceto na explicação final).'
-  ].join(' ');
-
-  const contexto = [
-    `QUESTÃO (${question.materia} / ${question.assunto}): ${String(question.statement_text || '').slice(0, 1500)}`,
-    alternatives.length ? `ALTERNATIVAS: ${alternatives.map((alt) => `${alt.letter}) ${String(alt.text || '').slice(0, 180)}`).join(' | ')}` : '',
-    `GABARITO (não revele até o momento certo): ${question.expected_answer}`,
-    question.comment_text ? `EXPLICAÇÃO DO PROFESSOR (base para suas perguntas): ${String(question.comment_text).slice(0, 1200)}` : '',
-    '',
-    'CONVERSA ATÉ AGORA:',
-    ...history.map((message) => `${message.role === 'user' ? 'ALUNO' : 'TUTOR'}: ${String(message.text || '').slice(0, 500)}`),
-    '',
-    history.length === 0
-      ? 'Inicie com uma pergunta-guia que faça o aluno perceber o ponto central que ele errou.'
-      : 'Responda ao aluno seguindo as regras.'
-  ].filter((line) => line !== '').join('\n');
-
-  const result = await aiGenerateText({ system, prompt: contexto, maxTokens: 400, temperature: 0.4 });
-  if (!result.ok) {
-    return { error: `Falha na IA: ${result.error}` };
-  }
-  return {
-    available: true,
-    provider: result.provider,
-    reply: String(result.text || '').trim().slice(0, 1200),
-    turns: history.length + 1
-  };
-}
-
-function hasLawClozeTables() {
-  try {
-    return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'law_cloze_cards'").get());
-  } catch {
-    return false;
-  }
-}
-
-function getLawClozeNext() {
-  if (!hasLawClozeTables()) {
-    return { available: false, reason: 'Cards não gerados. Rode: node scripts/generate-law-cloze-cards.mjs --apply' };
-  }
-  const counts = db.prepare(`
-    SELECT
-      SUM(CASE WHEN m.next_due_at IS NOT NULL AND m.next_due_at <= CURRENT_TIMESTAMP THEN 1 ELSE 0 END) AS due,
-      SUM(CASE WHEN m.card_id IS NULL THEN 1 ELSE 0 END) AS novos
-    FROM law_cloze_cards c
-    LEFT JOIN law_cloze_mastery m ON m.card_id = c.id
-  `).get();
-
-  let card = db.prepare(`
-    SELECT c.*, m.reps, m.lapses, m.next_due_at
-    FROM law_cloze_cards c
-    JOIN law_cloze_mastery m ON m.card_id = c.id
-    WHERE m.next_due_at <= CURRENT_TIMESTAMP
-    ORDER BY m.next_due_at
-    LIMIT 1
-  `).get();
-  let isNew = false;
-  if (!card) {
-    card = db.prepare(`
-      SELECT c.*, NULL AS reps, NULL AS lapses, NULL AS next_due_at
-      FROM law_cloze_cards c
-      LEFT JOIN law_cloze_mastery m ON m.card_id = c.id
-      WHERE m.card_id IS NULL
-      ORDER BY c.priority DESC, c.id
-      LIMIT 1
-    `).get();
-    isNew = Boolean(card);
-  }
-
-  return {
-    available: Boolean(card),
-    dueCount: Number(counts?.due || 0),
-    newCount: Number(counts?.novos || 0),
-    isNew,
-    card: card ? {
-      id: card.id,
-      sourceLabel: card.source_label || card.source_slug,
-      ref: card.ref,
-      category: card.category,
-      hint: card.hint,
-      clozeText: card.cloze_text,
-      answer: card.answer,
-      reps: Number(card.reps || 0)
-    } : null
-  };
-}
-
-const LAW_CLOZE_RATINGS = { again: 1, hard: 2, good: 3, easy: 4 };
-
-function saveLawClozeAnswer(cardId, body) {
-  if (!hasLawClozeTables()) {
-    return { error: 'Tabelas de cloze não existem.' };
-  }
-  const rating = LAW_CLOZE_RATINGS[String(body?.rating || '').toLowerCase()];
-  if (!rating) {
-    return { error: 'rating deve ser again|hard|good|easy' };
-  }
-  const card = db.prepare('SELECT id FROM law_cloze_cards WHERE id = ?').get(cardId);
-  if (!card) {
-    return { error: 'Card não encontrado.' };
-  }
-  const previous = db.prepare('SELECT * FROM law_cloze_mastery WHERE card_id = ?').get(cardId);
-  const now = new Date();
-  const state = previous && Number(previous.stability || 0) > 0 ? {
-    stability: Number(previous.stability),
-    difficulty: Number(previous.difficulty),
-    reps: Number(previous.reps || 0),
-    lapses: Number(previous.lapses || 0),
-    lastReviewAt: previous.last_review || null
-  } : null;
-  const fsrs = fsrsScheduleReview(state, rating, now, getFsrsRuntimeOptions());
-  const nowSql = formatSqlDate(now);
-  const nextDueAt = formatSqlDate(addDays(now, fsrs.intervalDays));
-  db.prepare(`
-    INSERT INTO law_cloze_mastery (card_id, stability, difficulty, reps, lapses, last_review, next_due_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(card_id) DO UPDATE SET
-      stability = excluded.stability,
-      difficulty = excluded.difficulty,
-      reps = excluded.reps,
-      lapses = excluded.lapses,
-      last_review = excluded.last_review,
-      next_due_at = excluded.next_due_at,
-      updated_at = excluded.updated_at
-  `).run(cardId, fsrs.stability, fsrs.difficulty, fsrs.reps, fsrs.lapses, nowSql, nextDueAt, nowSql);
-
-  return { cardId, rating, intervalDays: fsrs.intervalDays, nextDueAt, stability: fsrs.stability };
 }
 
 /** Probabilidade implícita de acerto declarada em cada nível de confiança. */
@@ -8523,7 +8027,11 @@ function updateQuestionMastery(database, question, answerResult, attemptMeta) {
     confidence: attemptMeta.confidence,
     elapsedMs: attemptMeta.elapsedMs
   }, { fastAnswerMs: FSRS_CONFIG.fastAnswerMs });
-  const fsrs = isCorrect === null ? null : fsrsScheduleReview(fsrsState, fsrsRating, now, getFsrsRuntimeOptions());
+  const fsrs = isCorrect === null ? null : fsrsScheduleReview(fsrsState, fsrsRating, now, {
+    requestRetention: FSRS_CONFIG.requestRetention,
+    minIntervalDays: FSRS_CONFIG.minIntervalDays,
+    maxIntervalDays: FSRS_CONFIG.maxIntervalDays
+  });
   const intervalDays = fsrs ? fsrs.intervalDays : 3;
 
   const masteryScore = clamp(Number(previous.mastery_score || 0) + delta, 0, 1);
@@ -10152,7 +9660,7 @@ function isDue(value) {
 function sanitizeStoredHtml(html) {
   return normalizeLocalAssetRefs(String(html || ''))
     .replace(/<script\b[\s\S]*?<\/script>/gi, '')
-    .replace(/<p\b[^>]*>(?:\s|&nbsp;|\u00a0|<br\s*\/?>)*<\/p>/gi, '')
+    .replace(/<p\b[^>]*>(?:\s|&nbsp;| |<br\s*\/?>)*<\/p>/gi, '')
     .replace(/\son[a-z]+\s*=\s*(".*?"|'.*?'|[^\s>]+)/gi, '')
     .replace(/javascript:/gi, '');
 }
