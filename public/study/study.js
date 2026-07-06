@@ -10421,10 +10421,17 @@ function escapeAttr(value) {
           <strong>${data.clozeDue}</strong> lei seca
         </button>`);
     }
+    const minutesToday = Math.round((data.timeTodayMs || 0) / 60000);
     chips.push(`
-      <span class="today-chip chip-passive" title="Respostas de hoje">
-        <strong>${data.answersToday}</strong> hoje${accuracy === null ? "" : ` <small>${accuracy}%</small>`}
+      <span class="today-chip chip-passive" title="Sua sessão de hoje: questões respondidas, acerto e tempo líquido">
+        <strong>${data.answersToday}</strong> hoje${accuracy === null ? "" : ` <small>${accuracy}%</small>`}${minutesToday > 0 ? ` <small>· ${minutesToday}min</small>` : ""}
       </span>`);
+    if (data.streakDays > 1) {
+      chips.push(`
+        <span class="today-chip chip-passive" title="Dias consecutivos de estudo — constância vale mais que intensidade">
+          🔥 <strong>${data.streakDays}</strong> dias
+        </span>`);
+    }
     if (data.daysLeft !== null && data.daysLeft > 0) {
       chips.push(`
         <button type="button" class="today-chip ${data.finalStretchActive ? "chip-warn" : "chip-passive"}" data-today="stretch"

@@ -6279,10 +6279,31 @@ function getTodaySummary() {
 
   const today = db.prepare(`
     SELECT COUNT(*) AS total,
-      SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS correct
+      SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS correct,
+      COALESCE(SUM(CASE WHEN elapsed_ms IS NULL THEN 0
+        WHEN elapsed_ms > 600000 THEN 600000 ELSE elapsed_ms END), 0) AS time_ms
     FROM study_answers
     WHERE answered_at >= CURRENT_DATE
   `).get();
+
+  // Streak: dias consecutivos (terminando hoje ou ontem) com ao menos 1 resposta.
+  const since = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  const activeDays = new Set(
+    db.prepare(`
+      SELECT DISTINCT SUBSTR(CAST(answered_at AS TEXT), 1, 10) AS day
+      FROM study_answers
+      WHERE answered_at >= ?
+    `).all(since).map((row) => row.day)
+  );
+  let streakDays = 0;
+  const cursor = new Date();
+  if (!activeDays.has(cursor.toISOString().slice(0, 10))) {
+    cursor.setUTCDate(cursor.getUTCDate() - 1); // streak preservado se ainda não estudou hoje
+  }
+  while (activeDays.has(cursor.toISOString().slice(0, 10))) {
+    streakDays += 1;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
 
   let projected = null;
   try {
@@ -6304,6 +6325,8 @@ function getTodaySummary() {
     clozeNew: Number(cloze?.novos || 0),
     answersToday: Number(today?.total || 0),
     correctToday: Number(today?.correct || 0),
+    timeTodayMs: Number(today?.time_ms || 0),
+    streakDays,
     projected,
     examDate: stretch.enabled ? stretch.examDate : null,
     daysLeft: stretch.enabled ? stretch.daysLeft : null,

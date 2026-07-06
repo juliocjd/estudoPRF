@@ -5425,6 +5425,21 @@ tbody tr:hover {
   padding-top: 10px;
 }
 
+/* Hierarquia do topo: painel "Hoje" em destaque, inventário do banco compacto */
+.topbar-metrics {
+  align-items: center;
+}
+
+.topbar-metrics .stats {
+  opacity: 0.85;
+  transform: scale(0.92);
+  transform-origin: left center;
+}
+
+.topbar-metrics .today-panel {
+  order: -1;
+}
+
 @media (prefers-color-scheme: dark) {
   .exam-sim-card {
     background: var(--surface, #161d2b);
