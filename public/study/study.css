@@ -5352,6 +5352,79 @@ tbody tr:hover {
   background: rgba(37, 99, 235, 0.18);
 }
 
+/* Painel "Hoje" */
+.today-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.today-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.today-chip strong {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.today-chip small {
+  color: var(--text-muted);
+}
+
+.today-chip:hover:not(.chip-passive) {
+  border-color: var(--primary);
+  background: var(--info-soft);
+}
+
+.today-chip.chip-due {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.today-chip.chip-ok {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+
+.today-chip.chip-warn {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.today-chip.chip-passive {
+  cursor: default;
+  color: var(--text-muted);
+}
+
+/* Seções do menu de modos */
+.menu-section {
+  padding: 8px 12px 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.menu-section:not(:first-child) {
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
 @media (prefers-color-scheme: dark) {
   .exam-sim-card {
     background: var(--surface, #161d2b);

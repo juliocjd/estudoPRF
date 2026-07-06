@@ -15,6 +15,12 @@
         </div>
         <div class="topbar-metrics">
           <section
+            class="today-panel"
+            id="todayPanel"
+            aria-label="Resumo do dia"
+            hidden
+          ></section>
+          <section
             class="stats"
             id="stats"
             aria-label="Resumo do banco"
@@ -313,6 +319,7 @@
                 Mais modos
               </button>
               <div class="dropdown-menu" role="menu" hidden>
+                <div class="menu-section">Questões</div>
                 <button id="smartQueue" class="menu-item" type="button" hidden>
                   Estudar agora
                 </button>
@@ -328,14 +335,16 @@
                 <button id="nextSubject" class="menu-item" type="button">
                   Trocar assunto
                 </button>
+                <div class="menu-section">Prova</div>
                 <button id="examSimButton" class="menu-item" type="button">
                   Simulado Cebraspe
                 </button>
-                <button id="lawClozeButton" class="menu-item" type="button">
-                  Lei Seca — Flashcards
-                </button>
                 <button id="essayButton" class="menu-item" type="button">
                   Discursiva
+                </button>
+                <div class="menu-section">Memorização e plano</div>
+                <button id="lawClozeButton" class="menu-item" type="button">
+                  Lei Seca — Flashcards
                 </button>
                 <button id="finalStretchButton" class="menu-item" type="button">
                   Modo reta final

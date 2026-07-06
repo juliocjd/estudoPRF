@@ -10379,3 +10379,78 @@ function escapeAttr(value) {
     });
   }
 })();
+
+/* ============================================================
+   Painel "Hoje" — resumo acionável no topo (UI 2026-07)
+   ============================================================ */
+(function todayPanelModule() {
+  const panel = document.getElementById("todayPanel");
+  if (!panel) return;
+
+  async function refresh() {
+    let data;
+    try {
+      data = await api("/api/today-summary");
+    } catch {
+      panel.hidden = true;
+      return;
+    }
+    const accuracy = data.answersToday > 0
+      ? Math.round((data.correctToday / data.answersToday) * 100)
+      : null;
+    const chips = [];
+
+    if (data.projected) {
+      const gap = data.projected.gap;
+      chips.push(`
+        <button type="button" class="today-chip ${gap >= 0 ? "chip-ok" : "chip-warn"}" data-today="optimizer"
+          title="Nota projetada na escala da prova de 2021 (corte do último aprovado: 73). Assunto com mais pontos disponíveis: ${escapeAttr(data.projected.topSubject)}">
+          <strong>${data.projected.score}</strong> projetados
+          <small>${gap >= 0 ? "+" : ""}${gap} vs corte</small>
+        </button>`);
+    }
+    chips.push(`
+      <button type="button" class="today-chip ${data.dueQuestions > 0 ? "chip-due" : ""}" data-today="reviews"
+        title="Questões com revisão vencida pelo agendamento FSRS — clique para revisar">
+        <strong>${data.dueQuestions}</strong> revisões
+      </button>`);
+    if (data.clozeDue + data.clozeNew > 0) {
+      chips.push(`
+        <button type="button" class="today-chip ${data.clozeDue > 0 ? "chip-due" : ""}" data-today="cloze"
+          title="Flashcards de lei seca: ${data.clozeDue} vencidos, ${data.clozeNew} novos">
+          <strong>${data.clozeDue}</strong> lei seca
+        </button>`);
+    }
+    chips.push(`
+      <span class="today-chip chip-passive" title="Respostas de hoje">
+        <strong>${data.answersToday}</strong> hoje${accuracy === null ? "" : ` <small>${accuracy}%</small>`}
+      </span>`);
+    if (data.daysLeft !== null && data.daysLeft > 0) {
+      chips.push(`
+        <button type="button" class="today-chip ${data.finalStretchActive ? "chip-warn" : "chip-passive"}" data-today="stretch"
+          title="Dias até a prova${data.finalStretchActive ? " — RETA FINAL ATIVA" : ""}">
+          <strong>${data.daysLeft}</strong> dias
+        </button>`);
+    }
+
+    panel.innerHTML = chips.join("");
+    panel.hidden = false;
+  }
+
+  panel.addEventListener("click", (event) => {
+    const chip = event.target.closest("[data-today]");
+    if (!chip) return;
+    const action = chip.dataset.today;
+    if (action === "reviews") document.getElementById("dueReviews")?.click();
+    if (action === "cloze") document.getElementById("lawClozeButton")?.click();
+    if (action === "optimizer") document.getElementById("pointsOptimizerButton")?.click();
+    if (action === "stretch") document.getElementById("finalStretchButton")?.click();
+  });
+
+  refresh();
+  setInterval(refresh, 5 * 60 * 1000);
+  // atualiza após cada resposta (aproveita o interceptador de fetch do módulo de IA)
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refresh();
+  });
+})();

@@ -336,6 +336,11 @@ async function routeRequest(request, response) {
     return;
   }
 
+  if (url.pathname === '/api/today-summary' && request.method === 'GET') {
+    sendJson(response, 200, getTodaySummary());
+    return;
+  }
+
   if (url.pathname === '/api/mastery/subjects' && request.method === 'GET') {
     sendJson(response, 200, getSubjectMasteryRanking(url.searchParams));
     return;
@@ -6249,6 +6254,61 @@ function saveLawClozeAnswer(cardId, body) {
   `).run(cardId, fsrs.stability, fsrs.difficulty, fsrs.reps, fsrs.lapses, nowSql, nextDueAt, nowSql);
 
   return { cardId, rating, intervalDays: fsrs.intervalDays, nextDueAt, stability: fsrs.stability };
+}
+
+/** Resumo do dia para o painel "Hoje": tudo que orienta a sessão num olhar. */
+function getTodaySummary() {
+  const dueQuestions = db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM question_mastery
+    WHERE next_due_at IS NOT NULL
+      AND CAST(next_due_at AS TEXT) != ''
+      AND next_due_at <= CURRENT_TIMESTAMP
+  `).get();
+
+  let cloze = { due: 0, novos: 0 };
+  if (hasLawClozeTables()) {
+    cloze = db.prepare(`
+      SELECT
+        SUM(CASE WHEN m.next_due_at IS NOT NULL AND m.next_due_at <= CURRENT_TIMESTAMP THEN 1 ELSE 0 END) AS due,
+        SUM(CASE WHEN m.card_id IS NULL THEN 1 ELSE 0 END) AS novos
+      FROM law_cloze_cards c
+      LEFT JOIN law_cloze_mastery m ON m.card_id = c.id
+    `).get() || cloze;
+  }
+
+  const today = db.prepare(`
+    SELECT COUNT(*) AS total,
+      SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS correct
+    FROM study_answers
+    WHERE answered_at >= CURRENT_DATE
+  `).get();
+
+  let projected = null;
+  try {
+    const optimizer = getPointsOptimizer(new URLSearchParams());
+    projected = {
+      score: optimizer.projectedScore,
+      gap: optimizer.reference2021?.gapToLastCall ?? null,
+      topSubject: optimizer.subjects?.[0]?.subjectLabel || ''
+    };
+  } catch {
+    projected = null;
+  }
+
+  const stretch = getFinalStretchStatus();
+
+  return {
+    dueQuestions: Number(dueQuestions?.total || 0),
+    clozeDue: Number(cloze?.due || 0),
+    clozeNew: Number(cloze?.novos || 0),
+    answersToday: Number(today?.total || 0),
+    correctToday: Number(today?.correct || 0),
+    projected,
+    examDate: stretch.enabled ? stretch.examDate : null,
+    daysLeft: stretch.enabled ? stretch.daysLeft : null,
+    finalStretchActive: Boolean(stretch.finalStretchActive)
+  };
 }
 
 /** Probabilidade implícita de acerto declarada em cada nível de confiança. */
