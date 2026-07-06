@@ -10389,8 +10389,12 @@ function escapeAttr(value) {
 
   async function refresh() {
     let data;
+    let bank = {};
     try {
-      data = await api("/api/today-summary");
+      [data, bank] = await Promise.all([
+        api("/api/today-summary"),
+        api("/api/stats").catch(() => ({})),
+      ]);
     } catch {
       panel.hidden = true;
       return;
@@ -10398,22 +10402,29 @@ function escapeAttr(value) {
     const accuracy = data.answersToday > 0
       ? Math.round((data.correctToday / data.answersToday) * 100)
       : null;
+    const minutesToday = Math.round((data.timeTodayMs || 0) / 60000);
     const chips = [];
 
     if (data.projected) {
       const gap = data.projected.gap;
       chips.push(`
         <button type="button" class="today-chip ${gap >= 0 ? "chip-ok" : "chip-warn"}" data-today="optimizer"
-          title="Nota projetada na escala da prova de 2021 (corte do último aprovado: 73). Assunto com mais pontos disponíveis: ${escapeAttr(data.projected.topSubject)}">
-          <strong>${data.projected.score}</strong> projetados
-          <small>${gap >= 0 ? "+" : ""}${gap} vs corte</small>
+          title="Nota projetada na escala da prova de 2021 (corte do último aprovado: 73). Onde ganhar mais: ${escapeAttr(data.projected.topSubject)}">
+          <strong>${data.projected.score}</strong> proj. <small>${gap >= 0 ? "+" : ""}${gap}</small>
         </button>`);
     }
     chips.push(`
       <button type="button" class="today-chip ${data.dueQuestions > 0 ? "chip-due" : ""}" data-today="reviews"
-        title="Questões com revisão vencida pelo agendamento FSRS — clique para revisar">
-        <strong>${data.dueQuestions}</strong> revisões
+        title="Questões com revisão vencida (FSRS) — clique para revisar">
+        <strong>${data.dueQuestions}</strong> revisar
       </button>`);
+    if (Number(bank.repairQuestions || 0) > 0) {
+      chips.push(`
+        <button type="button" class="today-chip" data-today="repair"
+          title="Questões erradas aguardando reparo — clique para atacar">
+          <strong>${bank.repairQuestions}</strong> erros
+        </button>`);
+    }
     if (data.clozeDue + data.clozeNew > 0) {
       chips.push(`
         <button type="button" class="today-chip ${data.clozeDue > 0 ? "chip-due" : ""}" data-today="cloze"
@@ -10421,27 +10432,37 @@ function escapeAttr(value) {
           <strong>${data.clozeDue}</strong> lei seca
         </button>`);
     }
-    const minutesToday = Math.round((data.timeTodayMs || 0) / 60000);
     chips.push(`
-      <span class="today-chip chip-passive" title="Sua sessão de hoje: questões respondidas, acerto e tempo líquido">
-        <strong>${data.answersToday}</strong> hoje${accuracy === null ? "" : ` <small>${accuracy}%</small>`}${minutesToday > 0 ? ` <small>· ${minutesToday}min</small>` : ""}
+      <span class="today-chip chip-passive" title="Sessão de hoje: questões · acerto · tempo líquido">
+        <strong>${data.answersToday}</strong> hoje${accuracy === null ? "" : ` <small>${accuracy}%</small>`}${minutesToday > 0 ? ` <small>${minutesToday}min</small>` : ""}
       </span>`);
     if (data.streakDays > 1) {
       chips.push(`
-        <span class="today-chip chip-passive" title="Dias consecutivos de estudo — constância vale mais que intensidade">
-          🔥 <strong>${data.streakDays}</strong> dias
+        <span class="today-chip chip-passive" title="Dias consecutivos de estudo">
+          🔥 <strong>${data.streakDays}</strong>
         </span>`);
     }
     if (data.daysLeft !== null && data.daysLeft > 0) {
       chips.push(`
         <button type="button" class="today-chip ${data.finalStretchActive ? "chip-warn" : "chip-passive"}" data-today="stretch"
           title="Dias até a prova${data.finalStretchActive ? " — RETA FINAL ATIVA" : ""}">
-          <strong>${data.daysLeft}</strong> dias
+          <strong>${data.daysLeft}</strong> dias p/ prova
         </button>`);
+    }
+    const ready = Number(bank.readyToStudy ?? bank.knownAnswers ?? 0);
+    if (ready > 0) {
+      chips.push(`
+        <span class="today-chip chip-passive chip-bank"
+          title="Banco: ${ready.toLocaleString("pt-BR")} prontas para estudar · ${Number(bank.answered || 0).toLocaleString("pt-BR")} resolvidas${bank.contranPrfUnpublished ? ` · ${bank.contranPrfUnpublished} inéditas` : ""}">
+          ${ready.toLocaleString("pt-BR")} no banco
+        </span>`);
     }
 
     panel.innerHTML = chips.join("");
     panel.hidden = false;
+    // esconde o strip antigo — a informação útil já está nos chips acima
+    const legacyStats = document.getElementById("stats");
+    if (legacyStats) legacyStats.style.display = "none";
   }
 
   panel.addEventListener("click", (event) => {
@@ -10449,6 +10470,7 @@ function escapeAttr(value) {
     if (!chip) return;
     const action = chip.dataset.today;
     if (action === "reviews") document.getElementById("dueReviews")?.click();
+    if (action === "repair") document.getElementById("repairQueue")?.click();
     if (action === "cloze") document.getElementById("lawClozeButton")?.click();
     if (action === "optimizer") document.getElementById("pointsOptimizerButton")?.click();
     if (action === "stretch") document.getElementById("finalStretchButton")?.click();
