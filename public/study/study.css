@@ -5440,11 +5440,19 @@ tbody tr:hover {
   padding-top: 10px;
 }
 
-/* Hierarquia do topo: uma linha só — painel "Hoje" + tempo de estudo */
+/* Hierarquia do topo: uma linha só — painel "Hoje" + tempo de estudo.
+   O layout original era grid de 6 colunas; vira flex para o painel
+   ocupar a largura toda sem cortar chips. */
 .topbar-metrics {
+  display: flex;
   align-items: center;
   flex-wrap: nowrap;
   gap: 10px;
+}
+
+.topbar-metrics .study-time-panel {
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 @media (prefers-color-scheme: dark) {

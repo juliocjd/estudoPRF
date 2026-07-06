@@ -10426,10 +10426,11 @@ function escapeAttr(value) {
         </button>`);
     }
     if (data.clozeDue + data.clozeNew > 0) {
+      const clozeCount = data.clozeDue > 0 ? data.clozeDue : data.clozeNew;
       chips.push(`
         <button type="button" class="today-chip ${data.clozeDue > 0 ? "chip-due" : ""}" data-today="cloze"
-          title="Flashcards de lei seca: ${data.clozeDue} vencidos, ${data.clozeNew} novos">
-          <strong>${data.clozeDue}</strong> lei seca
+          title="Flashcards de lei seca: ${data.clozeDue} vencidos, ${data.clozeNew} novos — clique para estudar">
+          <strong>${clozeCount}</strong> lei seca${data.clozeDue > 0 ? "" : " <small>novos</small>"}
         </button>`);
     }
     chips.push(`
