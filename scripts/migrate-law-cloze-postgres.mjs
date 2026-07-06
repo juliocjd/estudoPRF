@@ -42,11 +42,21 @@ try {
       difficulty real,
       reps integer DEFAULT 0,
       lapses integer DEFAULT 0,
-      last_review text,
-      next_due_at text,
-      updated_at text
+      last_review timestamptz,
+      next_due_at timestamptz,
+      updated_at timestamptz
     )
   `);
+  // Conserta instalações anteriores que criaram as colunas como text
+  // (text não compara com CURRENT_TIMESTAMP no Postgres).
+  for (const column of ['last_review', 'next_due_at', 'updated_at']) {
+    await client.query(`
+      ALTER TABLE law_cloze_mastery
+      ALTER COLUMN ${column} TYPE timestamptz
+      USING NULLIF(${column}::text, '')::timestamptz
+    `);
+    console.log(`Coluna ${column} → timestamptz ok`);
+  }
   await client.query(`CREATE INDEX IF NOT EXISTS idx_law_cloze_due ON law_cloze_mastery(next_due_at)`);
   console.log('Tabelas criadas/confirmadas no Postgres.');
 
