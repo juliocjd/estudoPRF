@@ -368,6 +368,12 @@ const mobileLayoutQuery = window.matchMedia("(max-width: 760px)");
 let lockedBodyScrollY = 0;
 let questionRequestToken = 0;
 
+// /api/stats custa ~26 idas ao Postgres remoto (~8s). Responder uma questão
+// dispara duas chamadas simultâneas: loadStats() e o painel "Hoje". Compartilha
+// a requisição em voo — não é cache: uma chamada nova sempre vai ao servidor.
+// Precisa ficar antes de boot(), que chama api() no carregamento.
+const inflightStats = { promise: null };
+
 boot().catch(handleBootError);
 
 async function boot() {
@@ -9461,6 +9467,20 @@ function inlineMarkdown(value) {
 }
 
 async function api(url, options) {
+  const isStatsGet = url === "/api/stats" && !options;
+  if (isStatsGet && inflightStats.promise) {
+    return inflightStats.promise;
+  }
+  if (isStatsGet) {
+    inflightStats.promise = fetchJson(url, options).finally(() => {
+      inflightStats.promise = null;
+    });
+    return inflightStats.promise;
+  }
+  return fetchJson(url, options);
+}
+
+async function fetchJson(url, options) {
   const response = await fetch(url, options);
   if (!response.ok) {
     let detail = "";
