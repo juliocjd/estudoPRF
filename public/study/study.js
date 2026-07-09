@@ -1320,6 +1320,7 @@ function bindEvents() {
       });
       renderAnswerResult(result);
       loadStats().catch(() => {});
+      document.dispatchEvent(new CustomEvent("study:progress"));
     } catch (error) {
       syncQuestionTimerTracking();
       showAnswerSubmitError(error);
@@ -10047,6 +10048,7 @@ function escapeAttr(value) {
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ rating: target.dataset.rating }),
           });
+          document.dispatchEvent(new CustomEvent("study:progress"));
           if (result.intervalDays) {
             target.textContent = `+${result.intervalDays}d`;
             setTimeout(showNext, 350);
@@ -10419,7 +10421,10 @@ function escapeAttr(value) {
   const panel = document.getElementById("todayPanel");
   if (!panel) return;
 
+  let refreshSeq = 0;
+
   async function refresh() {
+    const seq = ++refreshSeq;
     let data;
     let bank = {};
     try {
@@ -10431,6 +10436,7 @@ function escapeAttr(value) {
       panel.hidden = true;
       return;
     }
+    if (seq !== refreshSeq) return;
     const accuracy = data.answersToday > 0
       ? Math.round((data.correctToday / data.answersToday) * 100)
       : null;
@@ -10511,7 +10517,7 @@ function escapeAttr(value) {
 
   refresh();
   setInterval(refresh, 5 * 60 * 1000);
-  // atualiza após cada resposta (aproveita o interceptador de fetch do módulo de IA)
+  document.addEventListener("study:progress", () => { refresh(); });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) refresh();
   });
