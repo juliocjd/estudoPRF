@@ -596,6 +596,22 @@ async function routeRequest(request, response) {
   await serveFile(response, PUBLIC_DIR, staticPath);
 }
 
+/**
+ * O Postgres devolve timestamptz como "2026-07-09 15:38:48.808648+00":
+ * espaço no lugar do T e fuso sem os minutos, que o Date() do navegador
+ * rejeita. Emite ISO para o cliente não precisar adivinhar o dialeto.
+ */
+function toIsoText(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const text = raw.replace(' ', 'T');
+  const normalized = text.includes('T')
+    ? text.replace(/([+-]\d{2})$/, '$1:00').replace(/([+-]\d{2})(\d{2})$/, '$1:$2')
+    : text;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? raw : date.toISOString();
+}
+
 function getStats() {
   const attempts = db.prepare(`
     SELECT
@@ -8093,7 +8109,7 @@ function saveHistoricalCommentEdit(questionId, body) {
       sourceType: question.comment_source_type || '',
       aiModel: question.comment_ai_model || '',
       aiGeneratedAt: question.comment_ai_generated_at || '',
-      userEditedAt: question.comment_user_edited_at || '',
+      userEditedAt: toIsoText(question.comment_user_edited_at),
       userEditedBy: question.comment_user_edited_by || ''
     }
   };
@@ -8555,7 +8571,7 @@ async function getQuestion(questionId) {
       sourceType: question.comment_source_type || '',
       aiModel: question.comment_ai_model || '',
       aiGeneratedAt: question.comment_ai_generated_at || '',
-      userEditedAt: question.comment_user_edited_at || '',
+      userEditedAt: toIsoText(question.comment_user_edited_at),
       userEditedBy: question.comment_user_edited_by || ''
     },
     theory,
