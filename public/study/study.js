@@ -10548,21 +10548,31 @@ function escapeAttr(value) {
   if (!panel) return;
 
   let refreshSeq = 0;
+  let lastBank = {};
 
+  // /api/stats é lento (segundos). Os contadores do dia dependem só de
+  // /api/today-summary, então pinta assim que ele chega e repinta quando
+  // o banco responder — em vez de esperar o mais lento dos dois.
   async function refresh() {
     const seq = ++refreshSeq;
     let data;
-    let bank = {};
     try {
-      [data, bank] = await Promise.all([
-        api("/api/today-summary"),
-        api("/api/stats").catch(() => ({})),
-      ]);
+      data = await api("/api/today-summary");
     } catch {
       panel.hidden = true;
       return;
     }
     if (seq !== refreshSeq) return;
+    render(data, lastBank);
+
+    api("/api/stats").then((bank) => {
+      if (seq !== refreshSeq) return;
+      lastBank = bank;
+      render(data, bank);
+    }).catch(() => {});
+  }
+
+  function render(data, bank) {
     const accuracy = data.answersToday > 0
       ? Math.round((data.correctToday / data.answersToday) * 100)
       : null;
