@@ -8886,12 +8886,28 @@ function masteryLabel(score) {
   return "Novo";
 }
 
-function isReviewDue(value) {
-  if (!value) {
-    return false;
+/**
+ * O Postgres serializa timestamptz como "2026-06-18 15:55:04.797687+00":
+ * espaço no lugar do T e fuso sem os minutos, que o Date() rejeita.
+ * O SQLite grava "2026-06-18 15:55:04", sem fuso.
+ */
+function parseDbDate(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return null;
   }
-  const date = new Date(String(value).replace(" ", "T"));
-  return !Number.isNaN(date.getTime()) && date.getTime() <= Date.now();
+  const text = raw.replace(" ", "T");
+  // Sem hora não há fuso: "2026-06-18" terminaria em "-18" e viraria fuso.
+  const normalized = text.includes("T")
+    ? text.replace(/([+-]\d{2})$/, "$1:00").replace(/([+-]\d{2})(\d{2})$/, "$1:$2")
+    : text;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isReviewDue(value) {
+  const date = parseDbDate(value);
+  return Boolean(date) && date.getTime() <= Date.now();
 }
 
 function confidenceLabel(value) {
@@ -8938,16 +8954,16 @@ function cssEscape(value) {
 }
 
 function formatDate(value) {
-  const date = new Date(String(value || "").replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) {
+  const date = parseDbDate(value);
+  if (!date) {
     return "sem data";
   }
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
 function formatFullDate(value) {
-  const date = new Date(String(value || "").replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) {
+  const date = parseDbDate(value);
+  if (!date) {
     return "sem data";
   }
   return date.toLocaleString("pt-BR", {
