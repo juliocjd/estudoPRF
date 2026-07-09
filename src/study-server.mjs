@@ -432,6 +432,12 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const essayDossierMatch = url.pathname.match(/^\/api\/essays\/themes\/([a-z0-9_]+)\/dossier$/);
+  if (essayDossierMatch && request.method === 'GET') {
+    sendJson(response, 200, getEssayDossier(essayDossierMatch[1]));
+    return;
+  }
+
   if (url.pathname === '/api/essays/submit' && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, await submitEssay(body));
@@ -5968,6 +5974,86 @@ function ensureEssaySchema() {
 function getEssayThemes() {
   const suggestion = ESSAY_THEMES[Math.floor(Math.random() * ESSAY_THEMES.length)];
   return { themes: ESSAY_THEMES, suggestionId: suggestion.id, aiAvailable: aiAvailable() };
+}
+
+function hasEssayDossierTable() {
+  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'essay_theme_dossiers'").get());
+}
+
+/**
+ * O dossiê guarda apenas a section_key da âncora; o texto da lei é lido do
+ * compêndio a cada exibição. Assim a redação nunca cita lei revogada nem
+ * texto transcrito à mão.
+ */
+function resolveLegalAnchors(anchors) {
+  if (!Array.isArray(anchors) || !anchors.length || !hasLawCompendiumTables()) return [];
+  const selectSection = db.prepare(`
+    SELECT section_key, parent_section_key, source_slug, display_ref, title, text,
+           hierarchy_level, is_current, is_revoked
+    FROM law_compendium_sections
+    WHERE section_key = ?
+  `);
+  const selectChildren = db.prepare(`
+    SELECT display_ref, text
+    FROM law_compendium_sections
+    WHERE parent_section_key = ?
+    ORDER BY order_index
+  `);
+
+  return anchors.map((anchor) => {
+    const sectionKey = String(anchor?.sectionKey || '');
+    const comoUsar = String(anchor?.comoUsar || '');
+    const row = sectionKey ? selectSection.get(sectionKey) : null;
+    if (!row) return { sectionKey, comoUsar, missing: true };
+
+    // "§ 2º" sozinho não diz de qual artigo; compõe o rótulo com o artigo pai.
+    let label = row.display_ref;
+    if (row.hierarchy_level !== 'artigo' && row.parent_section_key) {
+      const parent = selectSection.get(row.parent_section_key);
+      if (parent?.display_ref) label = `${parent.display_ref}, ${row.display_ref}`;
+    }
+
+    return {
+      sectionKey: row.section_key,
+      sourceSlug: row.source_slug,
+      displayRef: row.display_ref,
+      label,
+      title: row.title || '',
+      text: row.text || '',
+      isCurrent: Boolean(row.is_current),
+      isRevoked: Boolean(row.is_revoked),
+      comoUsar,
+      children: selectChildren.all(row.section_key)
+        .map((child) => ({ displayRef: child.display_ref, text: child.text || '' }))
+    };
+  });
+}
+
+function getEssayDossier(themeId) {
+  const theme = ESSAY_THEMES.find((item) => item.id === themeId);
+  if (!theme) return { error: 'Tema não encontrado.' };
+  if (!hasEssayDossierTable()) {
+    return { themeId, available: false, reason: 'Dossiês ainda não importados. Rode: npm run import-essay-dossiers' };
+  }
+  const row = db.prepare('SELECT version, dossier_json FROM essay_theme_dossiers WHERE theme_id = ?').get(themeId);
+  if (!row) {
+    return { themeId, available: false, reason: 'Ainda não há dossiê de repertório para este tema.' };
+  }
+  let dossier;
+  try {
+    dossier = JSON.parse(row.dossier_json);
+  } catch {
+    return { themeId, available: false, reason: 'Dossiê armazenado em formato inválido.' };
+  }
+  return {
+    themeId,
+    available: true,
+    version: row.version,
+    themeTitle: theme.title,
+    quesitos: theme.quesitos,
+    dossier,
+    ancoras: resolveLegalAnchors(dossier.ancorasLegais)
+  };
 }
 
 function getEssayHistory() {

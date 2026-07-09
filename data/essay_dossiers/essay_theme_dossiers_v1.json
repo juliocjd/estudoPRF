@@ -1,0 +1,229 @@
+{
+  "version": "v1",
+  "sourceNote": "Âncoras legais referenciam section_key de law_compendium_sections; o texto da lei é resolvido no banco em tempo de exibição e nunca é copiado para este arquivo. Cada dado traz fonte, ano e nível de verificação: 'primaria' = documento oficial lido diretamente; 'secundaria' = número divulgado por fonte oficial mas cuja página não pôde ser aberta para conferência; 'curadoria' = formulação autoral, sem número.",
+  "dossiers": [
+    {
+      "themeId": "seguranca_viaria",
+      "teseCentral": "A letalidade do trânsito brasileiro não é fatalidade nem mero somatório de imprudências individuais: é resultado de um sistema viário que tolera erro humano com consequência fatal. O CTB já define trânsito seguro como direito subjetivo e dever estatal; o que falta é execução orientada por dados e financiamento vinculado.",
+
+      "ancorasLegais": [
+        {
+          "sectionKey": "lei_9503_1997_ctb_compilado:art_1:2",
+          "comoUsar": "Abertura de parágrafo sobre o dever do Estado. Permite afirmar que segurança viária não é política discricionária, mas direito exigível. Use na introdução ou no 2º quesito."
+        },
+        {
+          "sectionKey": "lei_9503_1997_ctb_compilado:art_1:3",
+          "comoUsar": "Responsabilidade objetiva dos órgãos do SNT por omissão. Argumento forte contra a tese de que a culpa é apenas do condutor — cita-se para imputar dever de agir ao poder público."
+        },
+        {
+          "sectionKey": "lei_9503_1997_ctb_compilado:art_1:5",
+          "comoUsar": "Prioridade à defesa da vida. Sustenta a hierarquia de valores: fluidez do tráfego cede diante da segurança. Útil para justificar a proposta de intervenção."
+        },
+        {
+          "sectionKey": "lei_9503_1997_ctb_compilado:art_326_a",
+          "comoUsar": "Base legal do PNATRANS dentro do próprio CTB. Cite para mostrar que a meta de redução do índice de mortes é obrigação legal anual, não promessa de governo. Núcleo do 2º quesito."
+        },
+        {
+          "sectionKey": "lei_9503_1997_ctb_compilado:art_20",
+          "comoUsar": "Competência da PRF nas rodovias federais. Ancora a atuação do órgão no 2º quesito; combine com o art. 144, §2º, da CF (repertório) para o fundamento constitucional."
+        },
+        {
+          "sectionKey": "lei_9503_1997_ctb_compilado:art_165",
+          "comoUsar": "Infração administrativa por dirigir sob influência de álcool. Use ao tratar do fator humano nas causas (1º quesito)."
+        },
+        {
+          "sectionKey": "lei_9503_1997_ctb_compilado:art_306",
+          "comoUsar": "Tipo penal correspondente. O par art. 165 / art. 306 demonstra a dupla resposta do ordenamento (administrativa e penal) e permite discutir efetividade."
+        }
+      ],
+
+      "dados": [
+        {
+          "afirmacao": "Custo social dos acidentes nas rodovias federais",
+          "valor": "R$ 12.298.320.541 (R$ 12,3 bilhões), gerados por cerca de 170 mil acidentes",
+          "ano": 2014,
+          "fonte": "Ipea/PRF — Acidentes de trânsito nas rodovias federais brasileiras: caracterização, tendências e custos para a sociedade",
+          "url": "https://repositorio.ipea.gov.br/bitstreams/c3b52818-b8bc-4434-962c-27382176ad48/download",
+          "verificacao": "primaria",
+          "comoUsar": "Argumento econômico na introdução ou no 1º quesito. Traduz mortes em custo fiscal, o que sustenta a tese de que prevenção é mais barata que remediação."
+        },
+        {
+          "afirmacao": "Composição do custo dos acidentes em rodovias federais",
+          "valor": "64,7% associados às vítimas (saúde e perda de produção) e 34,7% aos veículos (danos materiais, perda de carga, remoção)",
+          "ano": 2014,
+          "fonte": "Ipea/PRF — mesmo relatório",
+          "url": "https://repositorio.ipea.gov.br/bitstreams/c3b52818-b8bc-4434-962c-27382176ad48/download",
+          "verificacao": "primaria",
+          "comoUsar": "Refina o argumento econômico: a maior parte do custo é humana, não patrimonial. Bom para rebater quem trata acidente como prejuízo material."
+        },
+        {
+          "afirmacao": "Custo total dos acidentes nas rodovias brasileiras (federais, estaduais e municipais)",
+          "valor": "cerca de R$ 40 bilhões por ano",
+          "ano": 2014,
+          "fonte": "Ipea/PRF — mesmo relatório, tabela 10",
+          "url": "https://repositorio.ipea.gov.br/bitstreams/c3b52818-b8bc-4434-962c-27382176ad48/download",
+          "verificacao": "primaria",
+          "comoUsar": "Número de impacto para a introdução. Sempre diga o ano-base (2014) ao citar — é estudo consolidado, não dado corrente."
+        },
+        {
+          "afirmacao": "Meta legal do PNATRANS (texto de lei, não de política de governo)",
+          "valor": "\"O objetivo geral do estabelecimento de metas é, ao final de 2030, reduzir à metade, no mínimo, o índice de mortes por grupo de habitantes, relativamente ao índice apurado em 2020\"",
+          "ano": 2030,
+          "fonte": "CTB, art. 326-A, § 1º — texto literal, conferido no compêndio legal deste banco",
+          "url": "https://www.planalto.gov.br/ccivil_03/leis/l9503compilado.htm",
+          "verificacao": "primaria",
+          "comoUsar": "Espinha dorsal do 2º quesito. Cite entre aspas: a meta está na LEI, não em plano de governo. É o tipo de precisão que separa o candidato que leu o CTB do que leu resumo. A âncora art. 326-A abaixo já traz este parágrafo na íntegra."
+        },
+        {
+          "afirmacao": "Escala do PNATRANS",
+          "valor": "70 ações com potencial de salvar cerca de 86 mil vidas entre 2021 e 2030",
+          "ano": 2030,
+          "fonte": "Ministério dos Transportes — página oficial do PNATRANS",
+          "url": "https://www.gov.br/transportes/pt-br/assuntos/transito/pnatrans",
+          "verificacao": "primaria",
+          "comoUsar": "Mostra que a política é estruturada, não retórica. Útil para a conclusão propositiva."
+        },
+        {
+          "afirmacao": "Mortes em rodovias federais",
+          "valor": "6.043 mortes em 72.529 sinistros",
+          "ano": 2025,
+          "fonte": "Anuário Estatístico da PRF 2025",
+          "url": "https://www.gov.br/prf/pt-br/acesso-a-informacao/dados-abertos/diest-arquivos/anuario-2025_final.html",
+          "verificacao": "secundaria",
+          "comoUsar": "Dado mais atual do recorte federal. CONFIRA antes de usar: a página oficial não abriu para verificação direta."
+        },
+        {
+          "afirmacao": "Letalidade por tipo de pista em rodovias federais",
+          "valor": "4.143 mortes em pista simples contra 1.603 em pista duplicada",
+          "ano": 2025,
+          "fonte": "Anuário Estatístico da PRF 2025",
+          "url": "https://www.gov.br/prf/pt-br/acesso-a-informacao/dados-abertos/diest-arquivos/anuario-2025_final.html",
+          "verificacao": "secundaria",
+          "comoUsar": "O dado mais valioso do dossiê: transforma a discussão de culpa individual em falha de infraestrutura. Fundamenta diretamente a proposta de intervenção (duplicação e engenharia de tráfego). CONFIRA antes de usar."
+        }
+      ],
+
+      "quesitos": [
+        {
+          "quesito": "Panorama e causas dos acidentes de trânsito no Brasil",
+          "argumentos": [
+            {
+              "tese": "As causas são multifatoriais e devem ser lidas pela matriz de Haddon (fator humano, veículo e via, nos momentos pré-sinistro, sinistro e pós-sinistro).",
+              "desenvolvimento": "Evite a redação moralista que atribui tudo à 'imprudência do motorista'. O examinador premia quem decompõe o fenômeno: o erro humano é constante em qualquer sistema; o que varia é se o sistema perdoa esse erro. Pista simples sem barreira física converte um desvio de atenção em colisão frontal fatal.",
+              "ancora": "dado:letalidade_pista"
+            },
+            {
+              "tese": "O fator humano tem resposta dupla no ordenamento: administrativa (art. 165) e penal (art. 306).",
+              "desenvolvimento": "A existência de infração gravíssima e de tipo penal autônomo para a embriaguez ao volante revela a opção do legislador pela dissuasão. Discuta, porém, o gargalo probatório: a recusa ao teste (art. 165-A) é ela própria infração, o que revela a tentativa legislativa de fechar a brecha.",
+              "ancora": "lei_9503_1997_ctb_compilado:art_165"
+            },
+            {
+              "tese": "O custo do problema é fiscal, não apenas humanitário.",
+              "desenvolvimento": "Apresente o número do Ipea com o ano-base. A maior parte do custo recai sobre as vítimas — saúde pública e perda de produção — o que significa que o acidente é despesa do SUS e da Previdência, não do infrator.",
+              "ancora": "dado:custo_federais"
+            }
+          ],
+          "armadilhas": [
+            "Não escreva 'acidente' como se fosse acaso; a literatura e a própria PRF adotam 'sinistro' justamente porque acidente sugere inevitabilidade.",
+            "Não invente estatística. Se não lembrar o número, escreva a ordem de grandeza sem cifra ('dezenas de milhares de mortes anuais') — a banca não desconta por ausência de dado, mas a incoerência factual compromete o domínio do tema.",
+            "Não confunda o art. 165 (infração administrativa) com o art. 306 (crime). Trocar os dois é erro de conteúdo grave em prova da PRF."
+          ]
+        },
+        {
+          "quesito": "Papel da PRF e das políticas públicas (PNATRANS)",
+          "argumentos": [
+            {
+              "tese": "A segurança viária é direito subjetivo e dever estatal, com responsabilidade objetiva por omissão.",
+              "desenvolvimento": "Este é o eixo jurídico do parágrafo. O §2º do art. 1º do CTB cria o direito; o §3º imputa responsabilidade objetiva aos órgãos do SNT por danos decorrentes de omissão ou erro na execução de programas e projetos; o §5º ordena a prioridade à defesa da vida. Poucos candidatos citam o §3º — ele diferencia a redação.",
+              "ancora": "lei_9503_1997_ctb_compilado:art_1:3"
+            },
+            {
+              "tese": "O PNATRANS não é programa de governo, é obrigação legal inscrita no CTB.",
+              "desenvolvimento": "O art. 326-A determina que a atuação dos integrantes do SNT seja direcionada prioritariamente ao cumprimento da meta anual de redução do índice de mortes, apurada por estado. Some a meta oficial (metade até 2030, base 2020) e o alinhamento à Década de Ação da ONU. O efeito retórico é mostrar que descumprir a meta é descumprir a lei.",
+              "ancora": "lei_9503_1997_ctb_compilado:art_326_a"
+            },
+            {
+              "tese": "A PRF opera na ponta desse sistema, com competência legal e constitucional definida.",
+              "desenvolvimento": "O art. 20 do CTB detalha as competências nas rodovias federais; o art. 144, §2º, da Constituição atribui à PRF o patrulhamento ostensivo das rodovias federais. A atuação combina fiscalização, policiamento e educação para o trânsito — tripé que você deve nomear.",
+              "ancora": "lei_9503_1997_ctb_compilado:art_20"
+            }
+          ],
+          "armadilhas": [
+            "Não trate a PRF como órgão exclusivamente repressivo: o CTB a insere no Sistema Nacional de Trânsito com atribuições educativas.",
+            "Não afirme que o PNATRANS foi criado pelo Executivo: ele tem base legal (Lei 13.614/2018, que inseriu o art. 326-A no CTB).",
+            "Cuidado ao citar a Constituição de memória. O art. 144, §2º, é o dispositivo da PRF — se hesitar, prefira citar o art. 20 do CTB, que está verificado no seu banco."
+          ]
+        },
+        {
+          "quesito": "Proposta de intervenção fundamentada",
+          "argumentos": [
+            {
+              "tese": "A proposta deve atacar o fator com maior retorno marginal: a via, não o condutor.",
+              "desenvolvimento": "Se pista simples concentra a maior parte das mortes, a intervenção de maior impacto é de engenharia — duplicação, barreiras físicas de separação de fluxos e tratamento de trechos críticos —, complementada por fiscalização alocada por mapa de calor de letalidade. Isso conversa com a abordagem de Sistema Seguro (Visão Zero), que desloca o ônus do usuário para o projeto do sistema.",
+              "ancora": "dado:letalidade_pista"
+            },
+            {
+              "tese": "O financiamento já existe e é vinculado: o Funset.",
+              "desenvolvimento": "Cinco por cento do valor das multas de trânsito compõem o Fundo Nacional de Segurança e Educação de Trânsito. Propor a efetiva aplicação vinculada desses recursos é proposta concreta, exequível e juridicamente fundamentada — muito superior a 'conscientizar a população'.",
+              "ancora": "curadoria:funset"
+            }
+          ],
+          "armadilhas": [
+            "A Cebraspe exige proposta detalhada. Não basta dizer 'o Estado deve fiscalizar mais'. Nomeie agente, ação, meio, finalidade e detalhamento.",
+            "Evite proposta que dependa de emenda constitucional ou de criação de órgão novo: soa irrealista e consome linhas.",
+            "Não termine com apelo genérico à conscientização. É o final mais previsível e o que menos pontua em 'proposta de intervenção'."
+          ]
+        }
+      ],
+
+      "propostaIntervencao": {
+        "agente": "A Secretaria Nacional de Trânsito (Senatran), em articulação com a PRF e o DNIT",
+        "acao": "deve priorizar a fiscalização e as obras de engenharia nos trechos de maior letalidade",
+        "meio": "por meio do cruzamento dos dados do Registro Nacional de Sinistros (Renaest) com o georreferenciamento das ocorrências da PRF, gerando mapas de calor que orientem a alocação de equipes e a duplicação de trechos de pista simples",
+        "finalidade": "a fim de cumprir a meta anual de redução do índice de mortes prevista no art. 326-A do CTB",
+        "detalhamento": "financiada pela aplicação vinculada dos recursos do Funset, com publicação anual dos indicadores por estado, assegurando o controle social previsto no próprio Plano."
+      },
+
+      "repertorio": [
+        {
+          "tipo": "politica_publica",
+          "nome": "PNATRANS — Plano Nacional de Redução de Mortes e Lesões no Trânsito",
+          "uso": "Instituído pela Lei 13.614/2018, que inseriu o art. 326-A no CTB. Meta: reduzir à metade o índice de mortes por grupo de habitantes até 2030 (base 2020).",
+          "verificacao": "primaria"
+        },
+        {
+          "tipo": "tratado_internacional",
+          "nome": "Década de Ação pela Segurança no Trânsito 2021–2030 (ONU)",
+          "uso": "Marco internacional ao qual o PNATRANS se alinha. Cite para dar dimensão global ao compromisso brasileiro.",
+          "verificacao": "primaria"
+        },
+        {
+          "tipo": "doutrina",
+          "nome": "Matriz de Haddon",
+          "uso": "Modelo epidemiológico que cruza fatores (humano, veículo, via/ambiente) com fases (pré-sinistro, sinistro, pós-sinistro). Estrutura o parágrafo de causas com rigor analítico.",
+          "verificacao": "curadoria"
+        },
+        {
+          "tipo": "doutrina",
+          "nome": "Visão Zero / abordagem de Sistema Seguro",
+          "uso": "Premissa sueca de que nenhuma morte no trânsito é aceitável e de que o sistema deve ser projetado para tolerar o erro humano. Sustenta a proposta focada em engenharia viária.",
+          "verificacao": "curadoria"
+        },
+        {
+          "tipo": "norma_constitucional",
+          "nome": "CF, art. 144, §2º",
+          "uso": "Atribui à PRF o patrulhamento ostensivo das rodovias federais. CONFIRA a redação antes de citar literalmente — este dispositivo não está no seu banco de leis.",
+          "verificacao": "curadoria"
+        },
+        {
+          "tipo": "financiamento",
+          "nome": "Funset — Fundo Nacional de Segurança e Educação de Trânsito",
+          "uso": "Composto por 5% do valor das multas de trânsito. Base da proposta de intervenção financiada. Mencionado no relatório do Ipea.",
+          "verificacao": "secundaria"
+        }
+      ],
+
+      "conclusaoModelo": "Feche retomando a tese com o dispositivo legal, não com apelo emocional. Exemplo de movimento: (1) retomar que o trânsito seguro é direito de todos e dever do Estado (art. 1º, §2º); (2) constatar que a meta do art. 326-A converte esse dever em obrigação mensurável; (3) apresentar a proposta com os cinco elementos; (4) fechar com a consequência jurídica da omissão (responsabilidade objetiva do §3º). Esse encadeamento entrega ao avaliador exatamente os três quesitos costurados."
+    }
+  ]
+}

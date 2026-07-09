@@ -5173,6 +5173,143 @@ body.is-report-page {
   background: rgba(192, 57, 43, 0.12);
 }
 
+/* Repertório do tema (dossiê) */
+.essay-dossier {
+  margin: 10px 0;
+}
+
+.dossie {
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  max-height: 46vh;
+  overflow-y: auto;
+  font-size: 0.94em;
+}
+
+.dossie-titulo {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.dossie-subtitulo {
+  margin: 14px 0 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.78em;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.dossie-tese-central {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-left: 3px solid rgba(41, 128, 185, 0.8);
+  background: rgba(41, 128, 185, 0.08);
+}
+
+.dossie-ancoras,
+.dossie-dados,
+.dossie-repertorio {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dossie-ancora,
+.dossie-dado,
+.dossie-repertorio li {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(127, 127, 127, 0.25);
+}
+
+.dossie-ancora.is-missing {
+  color: #c0392b;
+}
+
+.dossie-ancora summary {
+  cursor: pointer;
+}
+
+.dossie-lei,
+.dossie-lei-filho {
+  margin: 6px 0;
+  padding-left: 10px;
+  border-left: 2px solid rgba(127, 127, 127, 0.35);
+  font-style: italic;
+}
+
+.dossie-lei-filho {
+  font-size: 0.94em;
+  opacity: 0.9;
+}
+
+.dossie-uso {
+  margin: 6px 0 0;
+  font-size: 0.92em;
+  opacity: 0.85;
+}
+
+.dossie-tese {
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.dossie-argumentos li {
+  margin-bottom: 10px;
+}
+
+.dossie-quesito {
+  margin-bottom: 8px;
+}
+
+.dossie-quesito summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.dossie-proposta {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(39, 174, 96, 0.1);
+  line-height: 1.6;
+}
+
+.dossie-fonte {
+  margin: 4px 0;
+  font-size: 0.86em;
+  opacity: 0.8;
+}
+
+.dossie-selo {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.78em;
+  white-space: nowrap;
+}
+
+.selo-ok {
+  background: rgba(39, 174, 96, 0.18);
+  color: #1e8449;
+}
+
+.selo-alerta {
+  background: rgba(211, 84, 0, 0.18);
+  color: #ba4a00;
+}
+
+.selo-neutro {
+  background: rgba(127, 127, 127, 0.18);
+}
+
+.dossie-vazio,
+.dossie-carregando {
+  padding: 8px 12px;
+  opacity: 0.75;
+}
+
 @media (prefers-color-scheme: dark) {
   .essay-card select,
   .essay-card textarea {
@@ -5181,6 +5318,14 @@ body.is-report-page {
 
   .essay-card select option {
     color: #1a2333;
+  }
+
+  .selo-ok {
+    color: #7ee2a8;
+  }
+
+  .selo-alerta {
+    color: #f5b041;
   }
 }
 

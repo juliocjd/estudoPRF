@@ -10287,6 +10287,7 @@ function escapeAttr(value) {
         <label>Tema:
           <select id="essayTheme">${options}</select>
         </label>
+        <div id="essayDossier" class="essay-dossier"></div>
         <div class="essay-meta-row">
           <span id="essayLineCount">0 / 30 linhas</span>
           <span id="essayTimer">00:00</span>
@@ -10314,6 +10315,10 @@ function escapeAttr(value) {
       counter.style.color = lines > 30 ? "#c0392b" : "";
     });
 
+    const themeSelect = document.getElementById("essayTheme");
+    renderDossier(themeSelect.value);
+    themeSelect.addEventListener("change", () => renderDossier(themeSelect.value));
+
     el.addEventListener("click", async (event) => {
       if (!event.target.closest("#essaySubmit")) return;
       const button = document.getElementById("essaySubmit");
@@ -10337,6 +10342,125 @@ function escapeAttr(value) {
         button.textContent = "Enviar para correção";
       }
     });
+  }
+
+  const VERIFICACAO_SELO = {
+    primaria: { rotulo: "fonte primária conferida", classe: "selo-ok" },
+    secundaria: { rotulo: "confira antes de citar", classe: "selo-alerta" },
+    curadoria: { rotulo: "formulação autoral", classe: "selo-neutro" },
+  };
+
+  function seloHtml(verificacao) {
+    const selo = VERIFICACAO_SELO[verificacao];
+    if (!selo) return "";
+    return `<span class="dossie-selo ${selo.classe}">${escapeHtml(selo.rotulo)}</span>`;
+  }
+
+  function ancoraHtml(ancora) {
+    if (ancora.missing) {
+      return `<li class="dossie-ancora is-missing">Âncora ausente no compêndio: ${escapeHtml(ancora.sectionKey)}</li>`;
+    }
+    const filhos = (ancora.children || [])
+      .map((child) => `<p class="dossie-lei-filho">${escapeHtml(child.text)}</p>`)
+      .join("");
+    const vigencia = ancora.isRevoked
+      ? `<span class="dossie-selo selo-alerta">revogado</span>`
+      : `<span class="dossie-selo selo-ok">em vigor</span>`;
+    return `
+      <li class="dossie-ancora">
+        <details>
+          <summary><strong>${escapeHtml(ancora.label || ancora.displayRef)}</strong> ${vigencia}</summary>
+          <p class="dossie-lei">${escapeHtml(ancora.text)}</p>
+          ${filhos}
+        </details>
+        <p class="dossie-uso">${escapeHtml(ancora.comoUsar)}</p>
+      </li>`;
+  }
+
+  function dadoHtml(dado) {
+    return `
+      <li class="dossie-dado">
+        <p class="dossie-dado-valor"><strong>${escapeHtml(dado.afirmacao)}:</strong> ${escapeHtml(dado.valor)}</p>
+        <p class="dossie-fonte">
+          ${escapeHtml(dado.fonte)} (${escapeHtml(String(dado.ano))}) ${seloHtml(dado.verificacao)}
+          ${dado.url ? `<a href="${escapeAttr(dado.url)}" target="_blank" rel="noopener">fonte</a>` : ""}
+        </p>
+        <p class="dossie-uso">${escapeHtml(dado.comoUsar || "")}</p>
+      </li>`;
+  }
+
+  function quesitoHtml(bloco, indice) {
+    const argumentos = (bloco.argumentos || [])
+      .map((argumento) => `
+        <li>
+          <p class="dossie-tese">${escapeHtml(argumento.tese)}</p>
+          <p>${escapeHtml(argumento.desenvolvimento)}</p>
+        </li>`)
+      .join("");
+    const armadilhas = (bloco.armadilhas || [])
+      .map((armadilha) => `<li>${escapeHtml(armadilha)}</li>`)
+      .join("");
+    return `
+      <details class="dossie-quesito">
+        <summary><strong>Quesito ${indice + 1}</strong> — ${escapeHtml(bloco.quesito)}</summary>
+        <ol class="dossie-argumentos">${argumentos}</ol>
+        ${armadilhas ? `<p class="dossie-subtitulo">Armadilhas</p><ul class="dossie-armadilhas">${armadilhas}</ul>` : ""}
+      </details>`;
+  }
+
+  async function renderDossier(themeId) {
+    const container = document.getElementById("essayDossier");
+    if (!container) return;
+    container.innerHTML = `<p class="dossie-carregando">Carregando repertório…</p>`;
+
+    let data;
+    try {
+      data = await api(`/api/essays/themes/${encodeURIComponent(themeId)}/dossier`);
+    } catch (error) {
+      container.innerHTML = `<p class="dossie-vazio">Não foi possível carregar o repertório: ${escapeHtml(error.message)}</p>`;
+      return;
+    }
+    if (!data.available) {
+      container.innerHTML = `<p class="dossie-vazio">${escapeHtml(data.reason || data.error || "Sem repertório para este tema.")}</p>`;
+      return;
+    }
+
+    const dossie = data.dossier;
+    const proposta = dossie.propostaIntervencao || {};
+    const repertorio = (dossie.repertorio || [])
+      .map((item) => `<li><strong>${escapeHtml(item.nome)}</strong> ${seloHtml(item.verificacao)}<br>${escapeHtml(item.uso)}</li>`)
+      .join("");
+
+    container.innerHTML = `
+      <details class="dossie" open>
+        <summary class="dossie-titulo">Repertório do tema <small>(${escapeHtml(data.version)})</small></summary>
+
+        <p class="dossie-tese-central">${escapeHtml(dossie.teseCentral)}</p>
+
+        <p class="dossie-subtitulo">Fundamento legal <small>texto lido do compêndio, sempre vigente</small></p>
+        <ul class="dossie-ancoras">${data.ancoras.map(ancoraHtml).join("")}</ul>
+
+        <p class="dossie-subtitulo">Dados citáveis</p>
+        <ul class="dossie-dados">${(dossie.dados || []).map(dadoHtml).join("")}</ul>
+
+        <p class="dossie-subtitulo">Como atacar cada quesito</p>
+        ${(dossie.quesitos || []).map(quesitoHtml).join("")}
+
+        <p class="dossie-subtitulo">Proposta de intervenção</p>
+        <p class="dossie-proposta">
+          <strong>Agente:</strong> ${escapeHtml(proposta.agente || "")}<br>
+          <strong>Ação:</strong> ${escapeHtml(proposta.acao || "")}<br>
+          <strong>Meio:</strong> ${escapeHtml(proposta.meio || "")}<br>
+          <strong>Finalidade:</strong> ${escapeHtml(proposta.finalidade || "")}<br>
+          <strong>Detalhamento:</strong> ${escapeHtml(proposta.detalhamento || "")}
+        </p>
+
+        <p class="dossie-subtitulo">Repertório citável</p>
+        <ul class="dossie-repertorio">${repertorio}</ul>
+
+        <p class="dossie-subtitulo">Conclusão</p>
+        <p>${escapeHtml(dossie.conclusaoModelo || "")}</p>
+      </details>`;
   }
 
   function renderEssayReport(result) {
