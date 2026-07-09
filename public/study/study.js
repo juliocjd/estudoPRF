@@ -1318,9 +1318,11 @@ function bindEvents() {
           openedTheory: state.openedTheory,
         }),
       });
+      // A resposta já está gravada aqui; avisa o painel antes de renderizar,
+      // para que um erro de renderização não impeça a atualização dos contadores.
+      document.dispatchEvent(new CustomEvent("study:progress"));
       renderAnswerResult(result);
       loadStats().catch(() => {});
-      document.dispatchEvent(new CustomEvent("study:progress"));
     } catch (error) {
       syncQuestionTimerTracking();
       showAnswerSubmitError(error);
