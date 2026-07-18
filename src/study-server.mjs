@@ -10575,6 +10575,32 @@ function findTheoryPdfByIndexedContent(materia, assunto, context = {}) {
   };
 }
 
+let theoryMateriasByNormalizedCache = null;
+
+/**
+ * Mapa forma-normalizada -> matérias reais de theory_pages. Resolve a
+ * divergência de rótulo entre questões e teoria (acentos, "/" vs "-").
+ * Cacheado: o conjunto de matérias da teoria é pequeno e quase estático.
+ */
+function getTheoryMateriasByNormalized() {
+  if (theoryMateriasByNormalizedCache) {
+    return theoryMateriasByNormalizedCache;
+  }
+  const map = new Map();
+  const rows = db.prepare(
+    "SELECT DISTINCT materia FROM theory_pages WHERE COALESCE(materia, '') != ''"
+  ).all();
+  for (const row of rows) {
+    const key = normalizeTheoryTitle(row.materia);
+    if (!key) continue;
+    const list = map.get(key) || [];
+    list.push(row.materia);
+    map.set(key, list);
+  }
+  theoryMateriasByNormalizedCache = map;
+  return map;
+}
+
 function findBestTheoryPageByContent(context = {}) {
   if (!hasTheoryPagesTable()) {
     return null;
@@ -10585,19 +10611,35 @@ function findBestTheoryPageByContent(context = {}) {
     return null;
   }
 
-  const exactRows = context.materia
-    ? db.prepare(`
-      SELECT pdf_path, page_number, page_count, materia, assunto, title, text, normalized_text
-      FROM theory_pages
-      WHERE materia = ?
-      ORDER BY pdf_path, page_number
-    `).all(context.materia)
-    : [];
-  const rows = exactRows.length ? exactRows : db.prepare(`
+  // Sem matéria não dá para restringir com segurança; buscar em todas traria
+  // teoria de qualquer disciplina — nunca é o que o aluno quer.
+  if (!context.materia) {
+    return null;
+  }
+
+  const selectByMateria = `
     SELECT pdf_path, page_number, page_count, materia, assunto, title, text, normalized_text
     FROM theory_pages
+    WHERE materia = ?
     ORDER BY pdf_path, page_number
-  `).all();
+  `;
+  let rows = db.prepare(selectByMateria).all(context.materia);
+
+  // As matérias divergem entre as tabelas (ex.: "CF/1988" nas questões vs
+  // "CF-1988" na teoria). Casa por forma normalizada em vez de cair na busca
+  // global entre matérias, que puxava teoria de outra disciplina.
+  if (!rows.length) {
+    const target = normalizeTheoryTitle(context.materia);
+    const matched = getTheoryMateriasByNormalized().get(target) || [];
+    for (const materia of matched) {
+      rows = rows.concat(db.prepare(selectByMateria).all(materia));
+    }
+  }
+
+  // Sem página na mesma matéria: honestamente não há teoria para a questão.
+  if (!rows.length) {
+    return null;
+  }
 
   let best = null;
   for (const row of rows) {
