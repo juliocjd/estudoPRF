@@ -8504,6 +8504,12 @@ async function getQuestion(questionId) {
     questionId,
     statementText: question.statement_text || ''
   });
+  // Em produção (Vercel) os PDFs não sobem no deploy, então os links /pdfs/...
+  // dão 404. Só sinaliza o PDF como abrível quando o arquivo existe no disco;
+  // o trecho de teoria continua útil de qualquer forma.
+  theory.pdfAvailable = Boolean(
+    theory.available && theory.pdfPath && await pdfFileExists(theory.pdfPath)
+  );
   const normativeUpdate = getNormativeUpdate(questionId);
   const currentLawAnswer = getCurrentLawAnswer(questionId);
   const correction = resolveCurrentLawCorrection(question, currentLawAnswer, alternatives);
@@ -10599,6 +10605,15 @@ function getTheoryMateriasByNormalized() {
   }
   theoryMateriasByNormalizedCache = map;
   return map;
+}
+
+async function pdfFileExists(relativePath) {
+  try {
+    await fs.access(path.join(pdfsDir, relativePath));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function findBestTheoryPageByContent(context = {}) {

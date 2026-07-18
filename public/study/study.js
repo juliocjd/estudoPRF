@@ -3390,6 +3390,7 @@ function renderQuestion(question, options = {}) {
   }
 
   state.theoryUrl = question.theory?.available ? question.theory.url : "";
+  state.theoryPdfAvailable = Boolean(question.theory?.pdfAvailable);
   const hasQuickTheory = hasQuickTheorySupport(question);
   if (els.openQuickTheory) {
     els.openQuickTheory.disabled =
@@ -5442,7 +5443,7 @@ function renderQuickTheoryPanel(question) {
       ${quickTheorySection("Como memorizar", card.memoryHook)}
       ${quickTheoryOfficialText(articles)}
       ${
-        state.theoryUrl
+        state.theoryUrl && state.theoryPdfAvailable
           ? `
         <p class="quick-theory-secondary">
           <a class="button button-secondary" href="${escapeAttr(state.theoryUrl)}" target="_blank" rel="noopener">Abrir PDF completo</a>
@@ -5550,10 +5551,16 @@ function renderTheoryPanel(question) {
           }</p>
         `
         }
+        ${
+          question.theory.pdfAvailable
+            ? `
         <div class="theory-card-actions">
           <a class="button button-primary" href="${escapeAttr(question.theory.url)}" target="_blank" rel="noopener">${escapeHtml(openLabel)}</a>
           ${question.theory.pageStart ? `<a class="button button-secondary" href="${escapeAttr(baseUrl)}" target="_blank" rel="noopener">Abrir do início</a>` : ""}
         </div>
+        `
+            : `<p class="theory-index-note">O PDF completo não está disponível online; use o trecho acima como referência.</p>`
+        }
       </div>
     `;
     return;
