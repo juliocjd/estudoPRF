@@ -3284,13 +3284,22 @@ async function selectQuestion(questionId, options = {}) {
 function scrollToStatementStart() {
   const target = els.statement?.closest(".question-card") || els.statement;
   if (!target) return;
-  window.requestAnimationFrame(() => {
-    target.scrollIntoView({
-      block: "start",
-      inline: "nearest",
-      behavior: "auto",
-    });
-  });
+  const jumpToStatement = () => {
+    // A topbar é sticky no desktop (altura 0 no mobile); desconta para o
+    // enunciado não ficar escondido atrás dela.
+    const topbar = document.querySelector(".topbar");
+    const offset = topbar ? topbar.getBoundingClientRect().height : 0;
+    const top = target.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+  };
+  // No iOS, um scroll programático durante a inércia de um toque (o usuário
+  // deu um flick para ver o comentário e tocou em "próxima") é ignorado, e o
+  // layout pode assentar só depois do primeiro frame. Repetir em janelas
+  // curtas garante que ao menos uma chamada "pegue".
+  jumpToStatement();
+  window.requestAnimationFrame(jumpToStatement);
+  window.setTimeout(jumpToStatement, 80);
+  window.setTimeout(jumpToStatement, 250);
 }
 
 async function openQuestionDirect(questionId, options = {}) {
