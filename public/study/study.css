@@ -3506,7 +3506,9 @@ body.is-report-page {
   margin: 0;
 }
 
-.support-body a {
+/* Não pinta os <a class="button"> de azul: um botão primary ficaria com
+   texto azul sobre fundo azul (invisível até passar o mouse). */
+.support-body a:not(.button) {
   color: var(--info);
   font-weight: 700;
 }
