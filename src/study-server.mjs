@@ -80,7 +80,11 @@ const args = parseArgs(process.argv.slice(2));
 const config = await loadConfig(args.config);
 const dbPath = path.resolve(ROOT_DIR, args.db || config.prf?.questionsDb || 'questoes-prf.sqlite');
 const assetsDir = path.resolve(ROOT_DIR, args.assets || config.prf?.assetsDir || 'assets');
-const pdfsDir = path.resolve(ROOT_DIR, args.pdfs || config.outputDir || 'pdfs');
+// PDFs ficam em public/pdfs para a Vercel servir estaticamente (public/ é a
+// raiz estática). Localmente o servidor também lê daqui. Não usa
+// config.outputDir de propósito: aquele é o destino de GERAÇÃO (tec-to-pdf),
+// não o de serving.
+const pdfsDir = path.resolve(ROOT_DIR, args.pdfs || 'public/pdfs');
 const port = Number(args.port || 4173);
 const databaseUrl = args['database-url'] || process.env.DATABASE_URL || '';
 const dbClient = args['db-client'] || process.env.DB_CLIENT || '';
@@ -8520,11 +8524,12 @@ async function getQuestion(questionId) {
     questionId,
     statementText: question.statement_text || ''
   });
-  // Em produção (Vercel) os PDFs não sobem no deploy, então os links /pdfs/...
-  // dão 404. Só sinaliza o PDF como abrível quando o arquivo existe no disco;
-  // o trecho de teoria continua útil de qualquer forma.
+  // Os PDFs vivem em public/pdfs. Na Vercel eles são servidos estaticamente
+  // pelo CDN e a função não os enxerga por fs — então assume disponível quando
+  // há caminho. Localmente confere no disco.
   theory.pdfAvailable = Boolean(
-    theory.available && theory.pdfPath && await pdfFileExists(theory.pdfPath)
+    theory.available && theory.pdfPath
+      && (process.env.VERCEL || await pdfFileExists(theory.pdfPath))
   );
   const normativeUpdate = getNormativeUpdate(questionId);
   const currentLawAnswer = getCurrentLawAnswer(questionId);

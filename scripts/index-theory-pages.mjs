@@ -12,7 +12,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     dbPath: path.resolve(ROOT_DIR, args.db || 'questoes-prf.sqlite'),
     databaseUrl: args['database-url'] || process.env.DATABASE_URL || '',
     dbClient: args['db-client'] || process.env.DB_CLIENT || '',
-    pdfsDir: path.resolve(ROOT_DIR, args.pdfs || 'pdfs'),
+    pdfsDir: path.resolve(ROOT_DIR, args.pdfs || 'public/pdfs'),
     limit: args.limit ? Math.max(1, Number(args.limit)) : 0,
     force: Boolean(args.force),
     dryRun: Boolean(args['dry-run']),
