@@ -5789,6 +5789,12 @@ function renderAnswerResult(result) {
   renderSelectedAlternative();
   updateAnswerActions();
   renderSupportVisibility();
+  // Estes painéis foram renderizados antes da resposta (mostrando "Responda
+  // para liberar"). Rerenderiza para revelar o conteúdo agora liberado, senão
+  // o card inline copia a versão travada.
+  renderAppliedTheoryPanel(state.currentQuestion);
+  renderQuickTheoryPanel(state.currentQuestion);
+  renderTheoryPanel(state.currentQuestion);
   renderInlineSupportCard();
 }
 
