@@ -19,6 +19,8 @@ data/*
 !data/contran_prf_2021/**
 !data/essay_dossiers/
 !data/essay_dossiers/**
+!data/applied_theory_ai/
+!data/applied_theory_ai/**
 !data/plano_estudos_prf/
 !data/plano_estudos_prf/**
 !data/traffic_legal_sources_seed_v1.json

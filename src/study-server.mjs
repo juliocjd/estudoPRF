@@ -1482,6 +1482,20 @@ function getQuestionAppliedTheoryCard(questionId) {
 function isExactAppliedTheoryRow(row = {}) {
   const status = row.publish_status || row.card_status || '';
   if (status !== 'published') return false;
+
+  // Card de IA revisada: publicado, com selo de conferência visível e a
+  // explicação pedagógica presente. Não exige dispositivo legal exato — cobre
+  // matérias sem lei (ex.: português) e trânsito baseado em resolução/Anexo,
+  // onde não há artigo numerado do CTB para ancorar.
+  if (String(row.generated_by || '').includes('ai_reviewed')) {
+    return Boolean(
+      dbBoolean(row.should_show_as_applied_theory)
+        && String(row.applied_explanation || '').trim()
+        && String(row.show_warning || '').trim()
+    );
+  }
+
+  // Caminho ancorado (rigoroso): dispositivo específico + trecho exato do banco.
   if (!dbBoolean(row.should_show_as_applied_theory) && !dbBoolean(row.exact_anchor_verified)) return false;
   if (!hasSpecificAppliedTheoryLocator(row.primary_legal_locator || row.legal_basis)) return false;
   if (!String(row.primary_exact_excerpt || row.article_excerpt || '').trim()) return false;
@@ -1493,7 +1507,9 @@ function hasSpecificAppliedTheoryLocator(locator) {
   if (!value) return false;
   if (/^(Resolução|Resolucao)\s+CONTRAN\s+n[ºo.]?\s*\d+\/\d{4}\.?$/i.test(value)) return false;
   if (/^(CTB|Código de Trânsito Brasileiro)$/i.test(value)) return false;
-  return /\b(art\.|artigo|anexo|inciso|al[ií]nea|item|ficha|§)\b/i.test(value);
+  // "art." é seguido de espaço, não de fronteira de palavra: \bart\.\b nunca
+  // casava "art. 46". Exige um artigo/§/inciso com número, ou anexo/alínea/item.
+  return /(\bart(?:\.|igo)?\s*\d+|§\s*\d+|\banexo\b|\binciso\b|\bal[ií]nea\b|\bitem\b|\bficha\b)/i.test(value);
 }
 
 function getQuestionLegalStudy(questionId) {

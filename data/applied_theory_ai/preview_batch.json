@@ -1,0 +1,247 @@
+{
+  "generatedWith": "claude-opus (Claude Code, offline seed)",
+  "note": "Amostra para validação de formato. Teoria escrita pelo Claude; trechos de lei nos cards 'ai_anchored' são verbatim de law_compendium_sections (CTB), verificados. Cards 'ai_reviewed' carregam selo de conferência.",
+  "anchored": 3,
+  "reviewed": 7,
+  "cards": [
+    {
+      "questionId": 27873,
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Sinalização de veículo imobilizado (Res. CONTRAN 36/1998)",
+      "sourceMode": "ai_anchored",
+      "title": "Sinalização de advertência do veículo imobilizado no leito viário",
+      "questionFocus": "Como e onde sinalizar um veículo parado em emergência na via — o CTB manda sinalizar de imediato e delega ao CONTRAN a forma de fazê-lo.",
+      "appliedExplanation": "O art. 46 do CTB exige sinalização de advertência imediata e remete a forma ao CONTRAN, cuja Res. 36/1998 determina que o triângulo (ou equipamento similar) seja instalado perpendicularmente ao eixo da via e em boa visibilidade — exatamente o que diz a alternativa C. A alternativa A inventa um limite de 'uma hora' que não existe; a B erra ao dizer que o triângulo fica preso ao para-choque (ele vai à distância, na via); a D admite galhos como substituto formal, o que a norma não aceita; e a E generaliza 'dois triângulos' para ônibus/caminhões, o que também não consta.",
+      "ruleSummaryBullets": [
+        "Imobilização em emergência → sinalizar de imediato (art. 46, CTB).",
+        "A forma é a da Res. CONTRAN 36/1998: triângulo perpendicular ao eixo da via, em boa visibilidade.",
+        "Acionar as luzes de advertência (pisca-alerta) junto com o triângulo."
+      ],
+      "professorTip": "A banca adora criar prazos e distâncias falsos ('uma hora', 'preso ao para-choque'). O CTB não fixa tempo: a obrigação é sinalizar imediatamente.",
+      "commonTraps": [
+        "Achar que o triângulo fica fixado no veículo — ele é colocado na via, à distância.",
+        "Aceitar improviso (galhos) como substituto válido do triângulo."
+      ],
+      "studyConclusion": "Emergência na via: pisca-alerta + triângulo perpendicular ao eixo, imediatamente. Base no art. 46 do CTB, forma na Res. 36/1998.",
+      "legalLocator": "Art. 46 do CTB",
+      "legalExcerpt": "Art. 46. Sempre que for necessária a imobilização temporária de um veículo no leito viário, em situação de emergência, deverá ser providenciada a imediata sinalização de advertência, na forma estabelecida pelo CONTRAN.",
+      "legalSectionKey": "lei_9503_1997_ctb_compilado:art_46",
+      "showWarning": ""
+    },
+    {
+      "questionId": 27876,
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Licenciamento anual e calendário do CONTRAN (Res. 110/2000)",
+      "sourceMode": "ai_anchored",
+      "title": "Licenciamento anual: competência estadual e o calendário do CONTRAN",
+      "questionFocus": "Quem define o calendário de licenciamento e qual prazo vale quando o veículo está em UF diferente da de registro.",
+      "appliedExplanation": "O art. 130 do CTB fixa que o licenciamento é anual e feito pelo órgão executivo do Estado/DF onde o veículo está registrado. O calendário de prazos é do CONTRAN; por isso, quando o veículo se encontra em UF diferente da de registro, adotam-se os prazos da resolução do CONTRAN — é o que afirma corretamente a alternativa C. As alternativas A e B atribuem indevidamente a definição do calendário a municípios ou a um limite de 1º de julho; D e E trazem prazos por final de placa que não conferem (final 0 e 1 não vencem em janeiro; final 6 não vence em junho).",
+      "ruleSummaryBullets": [
+        "Licenciamento é anual, pelo órgão do Estado/DF de registro (art. 130, CTB).",
+        "O calendário de prazos é do CONTRAN, não dos municípios.",
+        "Veículo em UF diferente da de registro → valem os prazos da resolução do CONTRAN."
+      ],
+      "professorTip": "Cuidado com prazos por final de placa 'de cabeça': a banca embaralha os meses. O ponto seguro é a competência (Estado/DF + calendário CONTRAN), não decorar cada final de placa.",
+      "commonTraps": [
+        "Atribuir o calendário a órgão municipal.",
+        "Fixar prazos por final de placa trocados."
+      ],
+      "studyConclusion": "Licenciamento anual = competência do Estado/DF de registro; prazos pelo calendário do CONTRAN, inclusive quando o veículo está em outra UF. Base no art. 130 do CTB.",
+      "legalLocator": "Art. 130 do CTB",
+      "legalExcerpt": "Art. 130. Todo veículo automotor, articulado, reboque ou semirreboque, para transitar na via, deverá ser licenciado anualmente pelo órgão executivo de trânsito do Estado, ou do Distrito Federal, onde estiver registrado o veículo.",
+      "legalSectionKey": "lei_9503_1997_ctb_compilado:art_130",
+      "showWarning": ""
+    },
+    {
+      "questionId": 27877,
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Equipamentos obrigatórios e dispositivos de visibilidade em veículos de carga (Res. 128/2001)",
+      "sourceMode": "ai_anchored",
+      "title": "Dispositivos de visibilidade em veículos de carga: obrigatoriedade e vedação",
+      "questionFocus": "A obrigatoriedade dos dispositivos de segurança/visibilidade em veículos de carga e as consequências de não os ter.",
+      "appliedExplanation": "O art. 105 do CTB estabelece que são equipamentos obrigatórios os que o próprio CTB e o CONTRAN definirem; a Res. 128/2001 detalha os dispositivos de visibilidade para veículos de carga. A alternativa A reproduz a regra: veículos de carga com PBT superior a 4.536 kg fabricados a partir de 30/4/2001 só podem ser comercializados com o dispositivo afixado. As demais contrariam a lógica de obrigatoriedade: B admite registro/licenciamento sem o dispositivo mediante 'compromisso'; C trata os requisitos como opcionais na inspeção; D estende a exigência a veículos militares; E cria uma limitação de circulação 'matutina' inexistente.",
+      "ruleSummaryBullets": [
+        "Equipamento obrigatório é o previsto no CTB e nas resoluções do CONTRAN (art. 105).",
+        "Item obrigatório não é opcional na inspeção veicular.",
+        "Sem o dispositivo exigido, ficam vedados registro e licenciamento."
+      ],
+      "professorTip": "Sempre que a alternativa transformar item obrigatório em 'opcional' ou permitir contornar a exigência com 'compromisso futuro', desconfie: obrigatório é obrigatório.",
+      "commonTraps": [
+        "Tratar requisito de segurança como item de verificação opcional.",
+        "Admitir registro/licenciamento condicionado a promessa de instalação depois."
+      ],
+      "studyConclusion": "Dispositivo obrigatório de visibilidade é condição para comercializar/registrar o veículo de carga; sua falta veda registro e licenciamento. Base no art. 105 do CTB, detalhe na Res. 128/2001.",
+      "legalLocator": "Art. 105 do CTB",
+      "legalExcerpt": "Art. 105. São equipamentos obrigatórios dos veículos, entre outros a serem estabelecidos pelo CONTRAN:",
+      "legalSectionKey": "lei_9503_1997_ctb_compilado:art_105",
+      "showWarning": ""
+    },
+    {
+      "questionId": 1198,
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Sinais sonoros de apito do agente de trânsito (Anexo II do CTB)",
+      "sourceMode": "ai_reviewed",
+      "title": "Sinais sonoros de apito: silvo breve, dois breves e silvo longo",
+      "questionFocus": "Associar cada sinal sonoro de apito ao seu significado, conforme o Anexo II do CTB.",
+      "appliedExplanation": "Pelo Anexo II do CTB, um silvo breve significa 'siga' (libera o trânsito no sentido indicado pelo agente); dois silvos breves significam 'pare' (parada obrigatória); e um silvo longo significa 'diminuir a marcha'. Aplicando à correlação da questão: I (um silvo breve) → 3 (liberar), II (dois silvos breves) → 1 (parada obrigatória) e III (um silvo longo) → 2 (diminuir a marcha), ou seja, I-3, II-1, III-2, que é a alternativa D.",
+      "ruleSummaryBullets": [
+        "Um silvo breve = SIGA (libera o trânsito).",
+        "Dois silvos breves = PARE (parada obrigatória).",
+        "Um silvo longo = DIMINUIR a marcha."
+      ],
+      "professorTip": "A pegadinha clássica é trocar 'um silvo breve' (siga) com 'dois silvos breves' (pare). Fixe: quanto mais silvos, mais 'freio' (dois breves = pare).",
+      "commonTraps": [
+        "Inverter 'um silvo breve' (siga) e 'dois silvos breves' (pare)."
+      ],
+      "studyConclusion": "Breve = siga; dois breves = pare; longo = diminua. Correlação I-3, II-1, III-2 (alternativa D).",
+      "legalLocator": "Anexo II do CTB",
+      "legalExcerpt": "",
+      "legalSectionKey": "",
+      "showWarning": "Gerado por IA — confira o conteúdo com a fonte oficial (Anexo II do CTB)."
+    },
+    {
+      "questionId": 1199,
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Dispositivos auxiliares de proteção contínua (sinalização viária)",
+      "sourceMode": "ai_reviewed",
+      "title": "Dispositivos de proteção contínua: o caso do anti-ofuscamento",
+      "questionFocus": "Reconhecer, entre os dispositivos auxiliares, quais são de 'proteção contínua' — permanentes e colocados de forma contínua ao longo da via.",
+      "appliedExplanation": "Dispositivos de proteção contínua têm duas marcas: são permanentes e se estendem continuamente pela via, para impedir a transposição ou a interferência entre fluxos opostos. Exemplos típicos são gradis, defensas metálicas, barreiras de concreto e os dispositivos anti-ofuscamento (alternativa A), que vedam a luz dos faróis do sentido contrário no canteiro central. As demais pertencem a outras categorias: tapumes são de uso temporário; cilindros delimitadores e marcadores de alinhamento são de delimitação/canalização; e dispositivos luminosos formam categoria própria.",
+      "ruleSummaryBullets": [
+        "Proteção contínua = permanente + contínua ao longo da via.",
+        "Exemplos: defensas, barreiras de concreto, gradis, anti-ofuscamento.",
+        "Tapume = temporário; delimitadores/marcadores = canalização, não proteção contínua."
+      ],
+      "professorTip": "Ligue 'proteção contínua' à ideia de barreira física ininterrupta. Se o dispositivo é pontual (um cilindro, um marcador) ou temporário (tapume), não é proteção contínua.",
+      "commonTraps": [
+        "Confundir dispositivo de delimitação (pontual) com proteção contínua.",
+        "Classificar tapume (temporário) como proteção contínua (permanente)."
+      ],
+      "studyConclusion": "Proteção contínua é a barreira permanente e ininterrupta; entre as opções, o anti-ofuscamento (A) é o exemplo.",
+      "legalLocator": "Anexo II do CTB / Res. CONTRAN de sinalização",
+      "legalExcerpt": "",
+      "legalSectionKey": "",
+      "showWarning": "Gerado por IA — confira o conteúdo com a fonte oficial (Anexo II do CTB e resolução de sinalização)."
+    },
+    {
+      "questionId": 27878,
+      "materia": "Legislação de Trânsito e Transportes",
+      "assunto": "Sinalização vertical e horizontal (Anexo II do CTB)",
+      "sourceMode": "ai_reviewed",
+      "title": "Sinalização vertical: conceito e classificação por função",
+      "questionFocus": "Conceito de sinalização vertical e a classificação correta dos tipos de sinalização.",
+      "appliedExplanation": "A alternativa correta (B) define sinalização vertical como o subsistema cujo meio de comunicação fica na posição vertical, normalmente em placa fixada ao lado ou suspensa sobre a pista, com mensagens permanentes e, eventualmente, variáveis. Os erros: (A) troca 'advertência' por 'perigo' — a classificação por função é regulamentação, advertência e indicação; (C) diz que o sinal de regulamentação é amarelo e preto, quando é circular, de fundo branco e borda vermelha; (D) descreve errado a forma dos sinais de perigo/advertência; (E) nega poder de regulamentação à sinalização horizontal, que o possui.",
+      "ruleSummaryBullets": [
+        "Vertical por função: regulamentação, advertência e indicação (não 'perigo').",
+        "Regulamentação: forma circular, fundo branco, borda vermelha.",
+        "Horizontal também regulamenta (ex.: linha de retenção)."
+      ],
+      "professorTip": "O termo é 'advertência', nunca 'perigo'. Trocar essa palavra é o erro mais cobrado nesse tema.",
+      "commonTraps": [
+        "Dizer 'sinalização de perigo' em vez de 'advertência'.",
+        "Afirmar que a sinalização horizontal não regulamenta."
+      ],
+      "studyConclusion": "Vertical = placa na posição vertical; funções: regulamentação, advertência e indicação. A alternativa B é a definição correta.",
+      "legalLocator": "Anexo II do CTB",
+      "legalExcerpt": "",
+      "legalSectionKey": "",
+      "showWarning": "Gerado por IA — confira o conteúdo com a fonte oficial (Anexo II do CTB)."
+    },
+    {
+      "questionId": 4115,
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Pronomes interrogativos",
+      "sourceMode": "ai_reviewed",
+      "title": "'O que' e 'que' como pronome interrogativo",
+      "questionFocus": "Se o artigo 'o' em 'o que' pode ser dispensado, mantendo 'que' como pronome interrogativo.",
+      "appliedExplanation": "Em 'o que estarão fazendo os Senhores de Davos?', o pronome interrogativo é 'que', equivalente a 'que coisa'. O 'o' que o antecede é um artigo dispensável: 'Que estarão fazendo...?' é gramaticalmente correto, apenas soa mais formal/arcaico. Por isso o item está CERTO. Não confunda esse 'que' interrogativo com a partícula expletiva 'é que' (como em 'o que é que...'), que tem outra função.",
+      "ruleSummaryBullets": [
+        "'o que' interrogativo = 'que' (= 'que coisa'); o 'o' é artigo dispensável.",
+        "'Que estarão fazendo?' é correto, embora mais formal.",
+        "Não confundir com a expletiva 'é que'."
+      ],
+      "professorTip": "Se dá para substituir por 'que coisa' sem perder o sentido, é o 'que' interrogativo — e o 'o' pode cair.",
+      "commonTraps": [
+        "Achar que retirar o 'o' torna a frase incorreta.",
+        "Confundir o 'que' interrogativo com a partícula expletiva."
+      ],
+      "studyConclusion": "'O que' interrogativo equivale a 'que'; o artigo 'o' é dispensável. Item CERTO.",
+      "legalLocator": "",
+      "legalExcerpt": "",
+      "legalSectionKey": "",
+      "showWarning": "Gerado por IA — confira o conteúdo (teoria gramatical)."
+    },
+    {
+      "questionId": 18800,
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Regência verbal — verbo 'afetar'",
+      "sourceMode": "ai_reviewed",
+      "title": "Regência de 'afetar': verbo transitivo direto",
+      "questionFocus": "Se o verbo 'afetar', no sentido do texto, admite dupla regência.",
+      "appliedExplanation": "No trecho 'a violência criminal afetam [...] toda a população', 'afetar' é transitivo direto: quem afeta, afeta algo/alguém, sem preposição. Ele não tem, nesse sentido, dupla regência. Como o item afirmou que haveria dupla regência, está ERRADO. (Observação à parte: há também a questão de concordância — 'afetam' com sujeito 'A delinquência e a violência criminal' —, mas o ponto cobrado aqui é a regência.)",
+      "ruleSummaryBullets": [
+        "'afetar' (= atingir) é transitivo direto: afetar algo/alguém, sem preposição.",
+        "Não há dupla regência nesse sentido.",
+        "Objeto direto responde 'afeta o quê / quem?'."
+      ],
+      "professorTip": "Teste da preposição: se 'afetar' pede complemento sem 'a/de/em', é VTD. Dupla regência exige comprovar dois padrões válidos — aqui não há.",
+      "commonTraps": [
+        "Supor dupla regência só porque o verbo é comum.",
+        "Misturar a discussão de regência com a de concordância do texto."
+      ],
+      "studyConclusion": "'afetar' é VTD, sem dupla regência no sentido do texto. Item ERRADO.",
+      "legalLocator": "",
+      "legalExcerpt": "",
+      "legalSectionKey": "",
+      "showWarning": "Gerado por IA — confira o conteúdo (teoria gramatical)."
+    },
+    {
+      "questionId": 18802,
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Regência verbal — verbo 'dispor'",
+      "sourceMode": "ai_reviewed",
+      "title": "Regência de 'dispor de' e o pronome relativo 'de que'",
+      "questionFocus": "A regência do verbo 'dispor' em 'instrumentos legais de que dispõe o Estado'.",
+      "appliedExplanation": "No sentido de 'ter à disposição', 'dispor' é transitivo indireto e rege a preposição 'de': quem dispõe, dispõe de algo. Em 'instrumentos legais de que dispõe o Estado', o 'de que' equivale a 'dos quais', retomando 'instrumentos legais' — a preposição 'de' é exigida justamente pela regência de 'dispor'. Por isso o item está CERTO. Atenção: 'dispor' muda de regência conforme o sentido (ex.: 'dispor-se a' algo).",
+      "ruleSummaryBullets": [
+        "'dispor de' (= ter à disposição) é transitivo indireto.",
+        "'de que dispõe' = 'dos quais dispõe' (relativo com preposição exigida pelo verbo).",
+        "Outros sentidos mudam a regência (ex.: 'dispor-se a')."
+      ],
+      "professorTip": "Quando o relativo vier com preposição ('de que', 'a que', 'em que'), verifique se é o verbo que exige aquela preposição — aqui, 'dispor' exige 'de'.",
+      "commonTraps": [
+        "Ignorar que a preposição do 'de que' vem da regência do verbo.",
+        "Aplicar a 'dispor' uma regência de outro sentido do verbo."
+      ],
+      "studyConclusion": "'dispor de' = VTI; 'de que dispõe o Estado' está correto. Item CERTO.",
+      "legalLocator": "",
+      "legalExcerpt": "",
+      "legalSectionKey": "",
+      "showWarning": "Gerado por IA — confira o conteúdo (teoria gramatical)."
+    },
+    {
+      "questionId": 18803,
+      "materia": "Língua Portuguesa (Português)",
+      "assunto": "Concordância nominal — adjetivo após substantivos",
+      "sourceMode": "ai_reviewed",
+      "title": "Concordância do adjetivo com o substantivo mais próximo",
+      "questionFocus": "A concordância de 'estratégicas' em 'dados e informações estratégicas'.",
+      "appliedExplanation": "Quando um adjetivo vem depois de dois ou mais substantivos de gêneros diferentes, ele pode concordar com todos (indo ao masculino plural) ou apenas com o substantivo mais próximo. Em 'dados e informações estratégicas', 'estratégicas' concorda com o mais próximo, 'informações' (feminino plural) — é a chamada concordância atrativa, aceita pela norma. Por isso o item está CERTO.",
+      "ruleSummaryBullets": [
+        "Adjetivo posposto a vários substantivos: concorda com todos (masc. plural) ou com o mais próximo.",
+        "'dados e informações estratégicas' = concordância com o mais próximo ('informações').",
+        "As duas formas são corretas; aqui usou-se a atrativa."
+      ],
+      "professorTip": "Adjetivo ANTES dos substantivos costuma concordar com o mais próximo; DEPOIS, admite as duas formas. A questão explora a forma 'com o mais próximo'.",
+      "commonTraps": [
+        "Achar que o adjetivo posposto obriga o masculino plural.",
+        "Considerar 'estratégicas' erro por não abranger 'dados'."
+      ],
+      "studyConclusion": "Adjetivo posposto pode concordar com o substantivo mais próximo (concordância atrativa). Item CERTO.",
+      "legalLocator": "",
+      "legalExcerpt": "",
+      "legalSectionKey": "",
+      "showWarning": "Gerado por IA — confira o conteúdo (teoria gramatical)."
+    }
+  ]
+}
