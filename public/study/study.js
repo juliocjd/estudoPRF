@@ -10820,65 +10820,132 @@ function escapeAttr(value) {
         ? "hoje"
         : `há ${n} dia${n === 1 ? "" : "s"}`;
 
-  api("/api/contran-resolutions/currency")
-    .then((data) => {
-      if (!data || !data.available) return;
-      const ac = data.autoCheck || {};
-      const flagged = Array.isArray(ac.flagged) ? ac.flagged : [];
-      const checkFailed = ac.ran && !ac.ok;
-      const checkStale = !ac.ran || ac.stale;
-      // Alerta se: há candidatos a revisão, ou a verificação automática
-      // falhou/atrasou, ou o mapa curado está velho.
-      const alert = flagged.length > 0 || checkFailed || checkStale || Boolean(data.stale);
-      if (!alert && !(data.supersededCount > 0)) return;
+  function render(data) {
+    if (!data || !data.available) {
+      panel.hidden = true;
+      return;
+    }
+    const ac = data.autoCheck || {};
+    const flagged = Array.isArray(ac.flagged) ? ac.flagged : [];
+    const checkFailed = ac.ran && !ac.ok;
+    const checkStale = !ac.ran || ac.stale;
+    const alert = flagged.length > 0 || checkFailed || checkStale || Boolean(data.stale);
+    if (!alert && !(data.supersededCount > 0)) {
+      panel.hidden = true;
+      return;
+    }
 
-      const statusIcon = flagged.length > 0 || checkFailed ? "⚠️" : checkStale ? "🟡" : "🟢";
-      const statusLine = !ac.ran
-        ? "verificação automática ainda não rodou"
-        : checkFailed
-          ? `verificação automática falhou (${dias(ac.ageDays)})`
-          : `verificado automaticamente ${dias(ac.ageDays)}`;
+    const statusIcon = flagged.length > 0 || checkFailed ? "⚠️" : checkStale ? "🟡" : "🟢";
+    const statusLine = !ac.ran
+      ? "verificação automática ainda não rodou"
+      : checkFailed
+        ? `verificação automática falhou (${dias(ac.ageDays)})`
+        : `verificado automaticamente ${dias(ac.ageDays)}`;
 
-      const flaggedHtml = flagged.length
-        ? `<div class="ccm-flagged">
-             <strong>${flagged.length} resoluç${flagged.length === 1 ? "ão" : "ões"} a revisar</strong>
-             — sumiram da lista oficial (possível revogação/substituição ou dado do mapa a corrigir):
-             <ul class="ccm-list">${flagged
-               .map(
-                 (f) =>
-                   `<li><strong>Res. ${escapeHtml(f.resolution)}</strong>${f.title ? ` <small>${escapeHtml(f.title)}</small>` : ""}</li>`,
-               )
-               .join("")}</ul>
-           </div>`
-        : "";
+    // Cada candidato ganha ações: aplicar substituição (um clique) ou ignorar.
+    const flaggedHtml = flagged.length
+      ? `<div class="ccm-flagged">
+           <strong>${flagged.length} resoluç${flagged.length === 1 ? "ão a revisar" : "ões a revisar"}</strong>
+           — sumiram da lista oficial (revogação/substituição ou dado do mapa a corrigir):
+           <ul class="ccm-list">${flagged
+             .map(
+               (f) => `
+             <li class="ccm-flag-item" data-flag="${escapeAttr(f.resolution)}">
+               <div><strong>Res. ${escapeHtml(f.resolution)}</strong>${f.title ? ` <small>${escapeHtml(f.title)}</small>` : ""}</div>
+               <form class="ccm-apply" data-target="${escapeAttr(f.resolution)}">
+                 <span>Substituir por Res.</span>
+                 <input type="text" inputmode="numeric" placeholder="nº" class="ccm-num" aria-label="Número da nova resolução" size="5" />
+                 <span>/</span>
+                 <input type="text" inputmode="numeric" placeholder="ano" class="ccm-year" aria-label="Ano" size="4" />
+                 <button type="submit" class="button button-primary ccm-btn">Aplicar</button>
+                 <button type="button" class="button button-ghost ccm-btn" data-dismiss="${escapeAttr(f.resolution)}">Ignorar</button>
+                 <a href="${escapeAttr(data.officialIndexUrl)}" target="_blank" rel="noopener">índice oficial</a>
+                 <span class="ccm-apply-msg"></span>
+               </form>
+             </li>`,
+             )
+             .join("")}</ul>
+         </div>`
+      : "";
 
-      const supersededHtml = (data.superseded || [])
-        .map(
-          (r) => `
-        <li>
-          <span><strong>Res. ${escapeHtml(r.source)}</strong> → Res. ${escapeHtml(r.target)}</span>
-          ${r.titleHint || r.targetTitle ? `<small>${escapeHtml(r.titleHint || r.targetTitle)}</small>` : ""}
-          ${r.officialUrl ? `<a href="${escapeAttr(r.officialUrl)}" target="_blank" rel="noopener">norma atual</a>` : ""}
-        </li>`,
-        )
-        .join("");
+    const supersededHtml = (data.superseded || [])
+      .map(
+        (r) => `
+      <li>
+        <span><strong>Res. ${escapeHtml(r.source)}</strong> → Res. ${escapeHtml(r.target)}</span>
+        ${r.titleHint || r.targetTitle ? `<small>${escapeHtml(r.titleHint || r.targetTitle)}</small>` : ""}
+        ${r.officialUrl ? `<a href="${escapeAttr(r.officialUrl)}" target="_blank" rel="noopener">norma atual</a>` : ""}
+      </li>`,
+      )
+      .join("");
 
-      panel.innerHTML = `
-        <details class="ccm"${flagged.length || checkFailed ? " open" : ""}>
-          <summary class="ccm-summary ${flagged.length || checkFailed ? "is-stale" : "is-ok"}">
-            ${statusIcon} Resoluções CONTRAN — ${escapeHtml(statusLine)}
-            ${flagged.length ? `<span class="ccm-count">${flagged.length} a revisar</span>` : `<span class="ccm-count">${ac.officialCount || 0} conferidas</span>`}
-          </summary>
-          ${flaggedHtml}
-          ${
-            checkStale && ac.ran
-              ? `<p class="ccm-warn">A verificação automática não roda há um tempo. Se persistir, confira o agendamento (Vercel Cron) ou o <a href="${escapeAttr(data.officialIndexUrl)}" target="_blank" rel="noopener">índice oficial</a>.</p>`
-              : ""
-          }
-          <p class="ccm-note">Verificação automática contra a lista oficial do SENATRAN. As ${data.supersededCount} substituições já mapeadas (norma antiga → atual):</p>
-          <ul class="ccm-list">${supersededHtml}</ul>
-        </details>`;
-      panel.hidden = false;
-    })
-    .catch(() => {});
+    panel.innerHTML = `
+      <details class="ccm"${flagged.length || checkFailed ? " open" : ""}>
+        <summary class="ccm-summary ${flagged.length || checkFailed ? "is-stale" : "is-ok"}">
+          ${statusIcon} Resoluções CONTRAN — ${escapeHtml(statusLine)}
+          ${flagged.length ? `<span class="ccm-count">${flagged.length} a revisar</span>` : `<span class="ccm-count">${ac.officialCount || 0} conferidas</span>`}
+          ${ac.dismissedCount ? `<span class="ccm-count">${ac.dismissedCount} ignoradas</span>` : ""}
+        </summary>
+        ${flaggedHtml}
+        ${
+          checkStale && ac.ran
+            ? `<p class="ccm-warn">A verificação automática não roda há um tempo. Confira o agendamento (Vercel Cron) ou o <a href="${escapeAttr(data.officialIndexUrl)}" target="_blank" rel="noopener">índice oficial</a>.</p>`
+            : ""
+        }
+        <p class="ccm-note">Verificação automática contra a lista oficial do SENATRAN. As ${data.supersededCount} substituições já mapeadas (norma antiga → atual):</p>
+        <ul class="ccm-list">${supersededHtml}</ul>
+      </details>`;
+    panel.hidden = false;
+  }
+
+  // Aplicar substituição
+  panel.addEventListener("submit", async (event) => {
+    const form = event.target.closest(".ccm-apply");
+    if (!form) return;
+    event.preventDefault();
+    const target = form.dataset.target;
+    const newNumber = form.querySelector(".ccm-num")?.value?.trim();
+    const newYear = form.querySelector(".ccm-year")?.value?.trim();
+    const msg = form.querySelector(".ccm-apply-msg");
+    const btn = form.querySelector("button[type=submit]");
+    if (msg) msg.textContent = "aplicando…";
+    if (btn) btn.disabled = true;
+    try {
+      const res = await api("/api/contran-resolutions/apply-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target, newNumber, newYear }),
+      });
+      if (!res.ok) {
+        if (msg) msg.textContent = res.error || "falhou";
+        if (btn) btn.disabled = false;
+        return;
+      }
+      render(res.summary);
+    } catch (error) {
+      if (msg) msg.textContent = `erro: ${error.message}`;
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  // Ignorar (falso positivo)
+  panel.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-dismiss]");
+    if (!btn) return;
+    event.preventDefault();
+    btn.disabled = true;
+    try {
+      const res = await api("/api/contran-resolutions/dismiss-flag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target: btn.dataset.dismiss }),
+      });
+      if (res.ok) render(res.summary);
+      else btn.disabled = false;
+    } catch {
+      btn.disabled = false;
+    }
+  });
+
+  api("/api/contran-resolutions/currency").then(render).catch(() => {});
 })();

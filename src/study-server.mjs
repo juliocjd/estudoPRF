@@ -251,6 +251,18 @@ async function routeRequest(request, response) {
     return;
   }
 
+  if (url.pathname === '/api/contran-resolutions/apply-update' && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, await applyContranTargetUpdate(body || {}));
+    return;
+  }
+
+  if (url.pathname === '/api/contran-resolutions/dismiss-flag' && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, dismissContranFlag(body?.target, Boolean(body?.undo)));
+    return;
+  }
+
   // Verificação automática (Vercel Cron). Protegida por CRON_SECRET quando definido.
   if (url.pathname === '/api/cron/contran-currency-check' && request.method === 'GET') {
     const secret = process.env.CRON_SECRET || '';
@@ -1929,6 +1941,77 @@ async function runContranCurrencyCheck({ force = false } = {}) {
   return result;
 }
 
+const CONTRAN_DISMISSED_SETTING_KEY = 'contran_dismissed_flags';
+
+function getContranDismissedFlags() {
+  try {
+    const raw = getSetting(CONTRAN_DISMISSED_SETTING_KEY, '');
+    const arr = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : [];
+    return Array.isArray(arr) ? arr.map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Chave normalizada do alvo de uma linha do mapa (URL oficial é mais confiável). */
+function deriveContranTargetKey(row) {
+  const urlMatch = String(row.url || row.target_official_url || '').match(/Resolucao(\d{6,8})[^/]*\.pdf/i);
+  if (urlMatch) {
+    const d = urlMatch[1];
+    return `${Number(d.slice(0, -4))}/${d.slice(-4)}`;
+  }
+  const tn = row.tn ?? row.target_number;
+  const ty = row.ty ?? row.target_year;
+  return `${Number(String(tn).replace(/\./g, ''))}/${ty}`;
+}
+
+function findContranMapRowIdsByTargetKey(key) {
+  const rows = db.prepare(`
+    SELECT id, target_number::text AS tn, target_year::text AS ty, target_official_url AS url
+    FROM contran_prf_2021_current_map
+  `).all();
+  return rows.filter((r) => deriveContranTargetKey(r) === key).map((r) => r.id);
+}
+
+/** Aplica a substituição de um alvo do mapa (decisão do operador, um clique). */
+async function applyContranTargetUpdate({ target, newNumber, newYear } = {}) {
+  if (!hasContranPrf2021MapTable()) return { ok: false, error: 'Mapa CONTRAN não importado.' };
+  const num = String(newNumber || '').replace(/\D/g, '');
+  const year = String(newYear || '').replace(/\D/g, '');
+  if (!num || !/^(19|20)\d{2}$/.test(year)) {
+    return { ok: false, error: 'Informe um número e um ano válidos (ex.: 1020 / 2025).' };
+  }
+  const ids = findContranMapRowIdsByTargetKey(String(target || ''));
+  if (!ids.length) return { ok: false, error: 'Nenhum mapeamento encontrado para esse alvo.' };
+
+  const url = `https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-contran/resolucoes/Resolucao${num}${year}.pdf`;
+  const upd = db.prepare(`
+    UPDATE contran_prf_2021_current_map
+    SET target_number = ?, target_year = ?, target_official_url = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `);
+  for (const id of ids) upd.run(num, year, url, id);
+
+  // tira o alvo antigo e o novo da lista de "ignorados", se estavam
+  const dismissed = new Set(getContranDismissedFlags());
+  dismissed.delete(String(target || ''));
+  dismissed.delete(`${Number(num)}/${year}`);
+  setSetting(CONTRAN_DISMISSED_SETTING_KEY, JSON.stringify([...dismissed]));
+
+  await runContranCurrencyCheck({ force: true });
+  return { ok: true, updated: ids.length, summary: getContranResolutionCurrencySummary() };
+}
+
+/** Marca um alvo sinalizado como conferido/OK (para falsos positivos). */
+function dismissContranFlag(target, undo = false) {
+  const set = new Set(getContranDismissedFlags());
+  const key = String(target || '').trim();
+  if (!key) return { ok: false, error: 'Alvo vazio.' };
+  if (undo) set.delete(key); else set.add(key);
+  setSetting(CONTRAN_DISMISSED_SETTING_KEY, JSON.stringify([...set]));
+  return { ok: true, summary: getContranResolutionCurrencySummary() };
+}
+
 /**
  * Monitor de vigência: sinaliza as resoluções CONTRAN já substituídas (do mapa
  * curado) e quão velho está o mapa — o gatilho para reconferir contra o índice
@@ -1973,13 +2056,16 @@ function getContranResolutionCurrencySummary() {
   const checkAgeDays = checkAt
     ? Math.floor((Date.now() - new Date(checkAt).getTime()) / 86400000)
     : null;
+  const dismissed = new Set(getContranDismissedFlags());
+  const rawFlagged = Array.isArray(check?.flagged) ? check.flagged : [];
   const autoCheck = {
     ran: Boolean(checkAt),
     checkedAt: checkAt,
     ageDays: checkAgeDays,
     ok: Boolean(check?.ok),
     officialCount: check?.officialCount || 0,
-    flagged: Array.isArray(check?.flagged) ? check.flagged : [],
+    flagged: rawFlagged.filter((f) => !dismissed.has(String(f.resolution))),
+    dismissedCount: rawFlagged.filter((f) => dismissed.has(String(f.resolution))).length,
     stale: checkAgeDays === null || checkAgeDays > CONTRAN_CHECK_STALE_DAYS,
     note: check?.note || check?.error || ''
   };

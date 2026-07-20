@@ -5755,3 +5755,31 @@ tbody tr:hover {
 .ccm-flagged ul {
   margin: 4px 0 0;
 }
+
+.ccm-flag-item {
+  display: block;
+  padding: 8px 0;
+}
+.ccm-apply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  font-size: 0.9em;
+}
+.ccm-apply input {
+  padding: 4px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  font-size: 0.95em;
+}
+.ccm-apply .ccm-btn {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.ccm-apply-msg {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
