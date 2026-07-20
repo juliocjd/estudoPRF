@@ -272,6 +272,7 @@ const els = {
   supportTitle: document.querySelector("#supportTitle"),
   supportSubtitle: document.querySelector("#supportSubtitle"),
   closeSupport: document.querySelector("#closeSupport"),
+  supportNextQuestion: document.querySelector("#supportNextQuestion"),
   supportTabs: document.querySelectorAll("[data-support-tab]"),
   inlineSupportCard: document.querySelector("#inlineSupportCard"),
   inlineSupportTitle: document.querySelector("#inlineSupportTitle"),
@@ -1119,6 +1120,11 @@ function bindEvents() {
 
   els.closeSupport.addEventListener("click", () => closeSupportPanel());
   els.supportOverlay.addEventListener("click", () => closeSupportPanel());
+  // Avança para a próxima questão sem precisar fechar o painel antes (mobile).
+  els.supportNextQuestion?.addEventListener("click", () => {
+    closeSupportPanel();
+    goNext();
+  });
   els.supportTabs.forEach((button) => {
     button.addEventListener("click", () => {
       const tab = button.dataset.supportTab || "comment";
@@ -6573,8 +6579,7 @@ function preferredSupportTab(question = state.currentQuestion) {
     question?.contranPrfUnpublished?.teacherComment,
   );
   if (question?.comment?.userEditedAt && hasHistoricalComment) return "comment";
-  if (hasAppliedTheorySupport(question) && canRevealAppliedTheory(question))
-    return "appliedTheory";
+  // Questões desatualizadas mantêm prioridade da "Resposta atual" (segurança).
   if (
     canRevealCurrentLaw &&
     (question?.currentLawAnswer?.exists || question?.metadata?.desatualizada)
@@ -6582,7 +6587,11 @@ function preferredSupportTab(question = state.currentQuestion) {
     return "teaching";
   if (canRevealCurrentLaw && question?.normativeTeachingComment?.exists)
     return "teaching";
+  // "Ver explicação" abre a explicação histórica quando ela existe — inclusive
+  // nas questões que têm Teoria aplicada (a aba de teoria fica a um clique).
   if (hasHistoricalComment) return "comment";
+  if (hasAppliedTheorySupport(question) && canRevealAppliedTheory(question))
+    return "appliedTheory";
   if (question?.normativeUpdate?.exists) return "normative";
   if (hasQuickTheorySupport(question)) return "quickTheory";
   return "comment";

@@ -994,6 +994,17 @@ body.is-report-page {
   gap: 12px;
 }
 
+.support-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.support-next-question {
+  white-space: nowrap;
+}
+
 .answer-head > div {
   display: grid;
   gap: 3px;
