@@ -4531,20 +4531,23 @@ body.is-report-page {
     grid-column: 1 / -1;
   }
 
-  .reports-dropdown {
+  .reports-dropdown,
+  .material-dropdown {
     display: block !important;
     grid-column: 1 / -1;
     order: -1;
   }
 
-  .reports-dropdown > .button {
+  .reports-dropdown > .button,
+  .material-dropdown > .button {
     width: 100%;
     border-color: rgba(37, 99, 235, 0.24);
     background: var(--info-soft);
     color: var(--primary);
   }
 
-  .reports-dropdown .dropdown-menu {
+  .reports-dropdown .dropdown-menu,
+  .material-dropdown .dropdown-menu {
     max-height: min(58vh, 420px);
   }
 

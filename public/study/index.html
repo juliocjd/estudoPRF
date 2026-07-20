@@ -332,7 +332,7 @@
                 aria-expanded="false"
                 title="Escolher outro modo de estudo"
               >
-                Mais modos
+                Estudar
               </button>
               <div class="dropdown-menu" role="menu" hidden>
                 <div class="menu-section">Questões</div>
@@ -365,6 +365,10 @@
                 <button id="finalStretchButton" class="menu-item" type="button">
                   Modo reta final
                 </button>
+                <div class="menu-section">Revisão</div>
+                <button id="toggleNormative" class="menu-item" type="button">
+                  Revisão normativa
+                </button>
               </div>
             </div>
 
@@ -375,7 +379,7 @@
                 type="button"
                 aria-expanded="false"
               >
-                Relatórios
+                Desempenho
               </button>
               <div class="dropdown-menu" role="menu" hidden>
                 <button id="pointsOptimizerButton" class="menu-item" type="button">
@@ -386,6 +390,39 @@
                 </button>
                 <button id="toggleCoverage" class="menu-item" type="button">
                   Base x Prova
+                </button>
+                <button id="toggleSubjects" class="menu-item" type="button">
+                  Ranking de assuntos
+                </button>
+                <button
+                  id="toggleTheoryCoverage"
+                  class="menu-item"
+                  type="button"
+                >
+                  Cobertura de teoria
+                </button>
+              </div>
+            </div>
+
+            <div class="dropdown material-dropdown" data-dropdown>
+              <button
+                id="materialMenuButton"
+                class="button button-ghost"
+                type="button"
+                aria-expanded="false"
+              >
+                Material
+              </button>
+              <div class="dropdown-menu" role="menu" hidden>
+                <button
+                  id="toggleLawCompendium"
+                  class="menu-item"
+                  type="button"
+                >
+                  Legislação PRF
+                </button>
+                <button id="toggleContranMap" class="menu-item" type="button">
+                  Mapa CONTRAN PRF 2021
                 </button>
                 <button
                   id="togglePrincipaisPrf"
@@ -401,95 +438,22 @@
                 >
                   Plano de Aulas Gran Cursos - Trânsito PRF
                 </button>
-                <button
-                  id="toggleTheoryCoverage"
-                  class="menu-item"
-                  type="button"
-                >
-                  Cobertura de teoria
-                </button>
-                <button id="toggleSubjects" class="menu-item" type="button">
-                  Ranking de assuntos
-                </button>
-                <button id="toggleNormative" class="menu-item" type="button">
-                  Revisão normativa
-                </button>
-                <button id="toggleContranMap" class="menu-item" type="button">
-                  Mapa CONTRAN PRF 2021
-                </button>
-                <button
-                  id="toggleLawCompendium"
-                  class="menu-item"
-                  type="button"
-                >
-                  Legislação PRF
-                </button>
               </div>
             </div>
 
-            <div class="dropdown support-dropdown" data-dropdown>
-              <button
-                id="supportMenuButton"
-                class="button button-ghost"
-                type="button"
-                aria-expanded="false"
-              >
-                Apoio
-              </button>
-              <div class="dropdown-menu" role="menu" hidden>
-                <button
-                  id="openTeaching"
-                  class="menu-item"
-                  type="button"
-                  disabled
-                >
-                  Resposta pela legislação atual
-                </button>
-                <button
-                  id="openQuickTheory"
-                  class="menu-item"
-                  type="button"
-                  disabled
-                >
-                  Teoria rápida
-                </button>
-                <button
-                  id="toggleNormativeSupport"
-                  class="menu-item"
-                  type="button"
-                  disabled
-                  hidden
-                >
-                  Atualização normativa
-                </button>
-                <button
-                  id="toggleComment"
-                  class="menu-item"
-                  type="button"
-                  disabled
-                >
-                  Explicação histórica
-                </button>
-                <button
-                  id="openTheory"
-                  class="menu-item"
-                  type="button"
-                  disabled
-                >
-                  PDF de teoria
-                </button>
-                <button id="openHistory" class="menu-item" type="button">
-                  Histórico da questão
-                </button>
-                <button
-                  id="showSimilar"
-                  class="menu-item"
-                  type="button"
-                  disabled
-                >
-                  Semelhantes
-                </button>
-              </div>
+            <!--
+              Apoio da questão: o menu do topo foi removido (o apoio já vive na
+              própria questão — card inline e "Ver explicação"). Os botões ficam
+              aqui, ocultos, apenas para o JS que os referencia continuar válido.
+            -->
+            <div id="legacySupportButtons" hidden>
+              <button id="openTeaching" type="button" disabled>Resposta pela legislação atual</button>
+              <button id="openQuickTheory" type="button" disabled>Teoria rápida</button>
+              <button id="toggleNormativeSupport" type="button" disabled hidden>Atualização normativa</button>
+              <button id="toggleComment" type="button" disabled>Explicação histórica</button>
+              <button id="openTheory" type="button" disabled>PDF de teoria</button>
+              <button id="openHistory" type="button">Histórico da questão</button>
+              <button id="showSimilar" type="button" disabled>Semelhantes</button>
             </div>
           </div>
         </section>
