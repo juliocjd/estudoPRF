@@ -4803,8 +4803,37 @@ body.is-report-page {
     max-width: 100vw;
   }
 
+  /* No mobile o cabeçalho vira duas faixas limpas: título (com o X fixo no
+     canto superior direito) e, embaixo, "Próxima questão" ocupando a largura
+     toda. O X é posicionado absoluto para nunca brigar com o botão. */
   .support-head {
+    position: relative;
     padding: 12px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 10px;
+  }
+  .support-head > div:not(.support-head-actions) {
+    flex: 1 1 100%;
+    min-width: 0;
+    /* espaço para o X no canto não encostar no título; o botão abaixo fica
+       com largura simétrica porque a reserva é só aqui, não no header. */
+    padding-right: 38px;
+  }
+  .support-head-actions {
+    display: block;
+    flex: 1 1 100%;
+    width: 100%;
+  }
+  .support-head .support-next-question {
+    width: 100%;
+    justify-content: center;
+  }
+  .support-head #closeSupport {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    margin: 0;
   }
 
   .support-tabs {
