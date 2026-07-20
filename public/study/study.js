@@ -38,6 +38,7 @@ const state = {
     assunto: "",
     examKey: "",
     excludedMaterias: [],
+    includedMaterias: [],
     commented: false,
     unanswered: false,
     lastWrong: false,
@@ -176,6 +177,7 @@ const els = {
   examInput: document.querySelector("#examInput"),
   examOptions: document.querySelector("#examOptions"),
   excludedMatterList: document.querySelector("#excludedMatterList"),
+  includedMatterList: document.querySelector("#includedMatterList"),
   profileSelect: document.querySelector("#profileSelect"),
   commentedOnly: document.querySelector("#commentedOnly"),
   unansweredOnly: document.querySelector("#unansweredOnly"),
@@ -364,6 +366,7 @@ const els = {
 
 let searchTimer = null;
 let excludedMatterTimer = null;
+let includedMatterTimer = null;
 let examSearchTimer = null;
 const mobileLayoutQuery = window.matchMedia("(max-width: 760px)");
 let lockedBodyScrollY = 0;
@@ -483,6 +486,11 @@ function bindEvents() {
     activateManualQuestionListMode();
     state.filters.materia = els.matterSelect.value;
     state.filters.assunto = "";
+    // Matéria única e seleção múltipla são mutuamente exclusivas.
+    if (els.matterSelect.value && state.filters.includedMaterias?.length) {
+      state.filters.includedMaterias = [];
+      renderIncludedMatterOptions();
+    }
     state.page = 1;
     renderSubjectOptions();
     updateAdvancedFiltersSummary();
@@ -536,6 +544,23 @@ function bindEvents() {
     updateAdvancedFiltersSummary();
     clearTimeout(excludedMatterTimer);
     excludedMatterTimer = setTimeout(async () => {
+      await loadCurrentModeTarget();
+      if (state.subjectsVisible) await loadSubjectsRanking();
+      if (state.normativeVisible) await loadNormativeReview();
+    }, 350);
+  });
+
+  els.includedMatterList?.addEventListener("change", () => {
+    state.filters.includedMaterias = selectedIncludedMatterValues();
+    // Seleção múltipla tem precedência: zera o seletor único de matéria.
+    if (state.filters.includedMaterias.length) {
+      state.filters.materia = "";
+      if (els.matterSelect) els.matterSelect.value = "";
+    }
+    state.page = 1;
+    updateAdvancedFiltersSummary();
+    clearTimeout(includedMatterTimer);
+    includedMatterTimer = setTimeout(async () => {
       await loadCurrentModeTarget();
       if (state.subjectsVisible) await loadSubjectsRanking();
       if (state.normativeVisible) await loadNormativeReview();
@@ -1395,6 +1420,7 @@ function activateContranUnpublishedMode() {
   state.filters.assunto = "";
   state.filters.examKey = "";
   state.filters.excludedMaterias = [];
+  state.filters.includedMaterias = [];
   state.filters.normative = "";
   if (els.matterSelect) els.matterSelect.value = "";
   renderSubjectOptions();
@@ -1428,6 +1454,7 @@ function clearFilters() {
     assunto: "",
     examKey: "",
     excludedMaterias: [],
+    includedMaterias: [],
     commented: false,
     unanswered: false,
     lastWrong: false,
@@ -1658,6 +1685,7 @@ async function loadFilters() {
       )
       .join("");
   renderExcludedMatterOptions(filters.matters || []);
+  renderIncludedMatterOptions(filters.matters || []);
 
   renderSubjectOptions();
   renderContranUnpublishedFilterOptions(filters.contranUnpublished || {});
@@ -1751,6 +1779,41 @@ function selectedExcludedMatterValues() {
   return [
     ...els.excludedMatterList.querySelectorAll(
       'input[name="excludeMateria"]:checked',
+    ),
+  ]
+    .map((input) => input.value)
+    .filter(Boolean);
+}
+
+function renderIncludedMatterOptions(matters) {
+  if (!els.includedMatterList) return;
+  const selected = new Set(state.filters.includedMaterias || []);
+  if (!Array.isArray(matters)) {
+    els.includedMatterList
+      .querySelectorAll('input[name="includeMateria"]')
+      .forEach((input) => {
+        input.checked = selected.has(input.value);
+      });
+    return;
+  }
+  els.includedMatterList.innerHTML = matters
+    .map((matter) => {
+      const value = matter.name || "";
+      return `
+      <label class="matter-exclusion-option">
+        <input type="checkbox" name="includeMateria" value="${escapeAttr(value)}" ${selected.has(value) ? "checked" : ""}>
+        <span>${escapeHtml(value)} (${Number(matter.count || 0).toLocaleString("pt-BR")})</span>
+      </label>
+    `;
+    })
+    .join("");
+}
+
+function selectedIncludedMatterValues() {
+  if (!els.includedMatterList) return [];
+  return [
+    ...els.includedMatterList.querySelectorAll(
+      'input[name="includeMateria"]:checked',
     ),
   ]
     .map((input) => input.value)
@@ -1999,6 +2062,8 @@ function buildQuestionParams() {
   });
   if (state.filters.q) params.set("q", state.filters.q);
   if (state.filters.materia) params.set("materia", state.filters.materia);
+  for (const materia of state.filters.includedMaterias || [])
+    params.append("includeMateria", materia);
   for (const materia of state.filters.excludedMaterias)
     params.append("excludeMateria", materia);
   if (state.filters.assunto) params.set("assunto", state.filters.assunto);
@@ -2239,6 +2304,8 @@ async function loadSubjectsRanking() {
   const params = new URLSearchParams({ limit: "80" });
   if (state.filters.q) params.set("q", state.filters.q);
   if (state.filters.materia) params.set("materia", state.filters.materia);
+  for (const materia of state.filters.includedMaterias || [])
+    params.append("includeMateria", materia);
   for (const materia of state.filters.excludedMaterias)
     params.append("excludeMateria", materia);
   if (state.filters.examKey) params.set("examKey", state.filters.examKey);
@@ -3224,6 +3291,8 @@ function buildNormativeReviewParams() {
   if (els.normativeTeachingStatusFilter.value)
     params.set("teachingStatus", els.normativeTeachingStatusFilter.value);
   if (state.filters.materia) params.set("materia", state.filters.materia);
+  for (const materia of state.filters.includedMaterias || [])
+    params.append("includeMateria", materia);
   for (const materia of state.filters.excludedMaterias)
     params.append("excludeMateria", materia);
   if (state.filters.assunto) params.set("assunto", state.filters.assunto);

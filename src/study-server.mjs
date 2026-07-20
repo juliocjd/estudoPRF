@@ -3263,7 +3263,10 @@ function getNormativeUpdates(searchParams) {
     )`);
     values.push(...Array(6).fill(`%${q}%`));
   }
-  if (materia) {
+  const includedMaterias = getIncludedMaterias(searchParams);
+  if (includedMaterias.length) {
+    applyIncludedMateriasFilter(where, values, includedMaterias);
+  } else if (materia) {
     where.push('q.materia = ?');
     values.push(materia);
   }
@@ -3726,6 +3729,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
   const excludedMaterias = getExcludedMaterias(searchParams, extra);
+  const includedMaterias = getIncludedMaterias(searchParams, extra);
   const assunto = String(searchParams.get('assunto') || '').trim();
   const examKey = String(searchParams.get('examKey') || extra.examKey || '').trim();
   const commented = searchParams.get('commented') === '1';
@@ -3765,6 +3769,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
     values.push(materia);
   }
   applyExcludedMateriasFilter(where, values, excludedMaterias);
+  applyIncludedMateriasFilter(where, values, includedMaterias);
   if (assunto && !combinedResolutionKey) {
     where.push('q.assunto = ?');
     values.push(assunto);
@@ -3873,6 +3878,24 @@ function getExcludedMaterias(searchParams, extra = {}) {
 function applyExcludedMateriasFilter(where, values, materias, alias = 'q') {
   if (!materias.length) return;
   where.push(`COALESCE(${alias}.materia, '') NOT IN (${materias.map(() => '?').join(', ')})`);
+  values.push(...materias);
+}
+
+// Seleção positiva: estudar apenas as matérias marcadas (subconjunto).
+function getIncludedMaterias(searchParams, extra = {}) {
+  const repeated = typeof searchParams.getAll === 'function'
+    ? searchParams.getAll('includeMateria')
+    : [];
+  const csv = String(searchParams.get('includeMaterias') || '').split(',');
+  const extraValues = Array.isArray(extra.includeMaterias) ? extra.includeMaterias : [];
+  return [...new Set([...repeated, ...csv, ...extraValues]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean))];
+}
+
+function applyIncludedMateriasFilter(where, values, materias, alias = 'q') {
+  if (!materias.length) return;
+  where.push(`COALESCE(${alias}.materia, '') IN (${materias.map(() => '?').join(', ')})`);
   values.push(...materias);
 }
 
@@ -6839,6 +6862,7 @@ function getSubjectsRanking(searchParams) {
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
   const excludedMaterias = getExcludedMaterias(searchParams);
+  const includedMaterias = getIncludedMaterias(searchParams);
   const examKey = String(searchParams.get('examKey') || '').trim();
   const hideOutdated = searchParams.get('hideOutdated') === '1';
   const hideStudyExcluded = searchParams.get('hideStudyExcluded') === '1';
@@ -6849,7 +6873,9 @@ function getSubjectsRanking(searchParams) {
     where.push('(q.statement_text LIKE ? OR q.materia LIKE ? OR q.assunto LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
     values.push(...Array(4).fill(`%${q}%`));
   }
-  if (materia) {
+  if (includedMaterias.length) {
+    applyIncludedMateriasFilter(where, values, includedMaterias);
+  } else if (materia) {
     where.push('q.materia = ?');
     values.push(materia);
   }
@@ -6970,6 +6996,7 @@ function getSubjectMasteryRanking(searchParams) {
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
   const excludedMaterias = getExcludedMaterias(searchParams);
+  const includedMaterias = getIncludedMaterias(searchParams);
   const where = ["COALESCE(q.assunto, '') != ''"];
   const values = [];
 
@@ -6977,7 +7004,9 @@ function getSubjectMasteryRanking(searchParams) {
     where.push('(q.statement_text LIKE ? OR q.materia LIKE ? OR q.assunto LIKE ?)');
     values.push(...Array(3).fill(`%${q}%`));
   }
-  if (materia) {
+  if (includedMaterias.length) {
+    applyIncludedMateriasFilter(where, values, includedMaterias);
+  } else if (materia) {
     where.push('q.materia = ?');
     values.push(materia);
   }
