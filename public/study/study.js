@@ -10813,18 +10813,46 @@ function escapeAttr(value) {
   const panel = document.getElementById("contranCurrencyMonitor");
   if (!panel) return;
 
+  const dias = (n) =>
+    n === null || n === undefined
+      ? "em data desconhecida"
+      : n === 0
+        ? "hoje"
+        : `há ${n} dia${n === 1 ? "" : "s"}`;
+
   api("/api/contran-resolutions/currency")
     .then((data) => {
       if (!data || !data.available) return;
-      const stale = Boolean(data.stale);
-      if (!stale && !(data.supersededCount > 0)) return; // nada a avisar
+      const ac = data.autoCheck || {};
+      const flagged = Array.isArray(ac.flagged) ? ac.flagged : [];
+      const checkFailed = ac.ran && !ac.ok;
+      const checkStale = !ac.ran || ac.stale;
+      // Alerta se: há candidatos a revisão, ou a verificação automática
+      // falhou/atrasou, ou o mapa curado está velho.
+      const alert = flagged.length > 0 || checkFailed || checkStale || Boolean(data.stale);
+      if (!alert && !(data.supersededCount > 0)) return;
 
-      const ageTxt =
-        data.staleDays === null
-          ? "em data desconhecida"
-          : `há ${data.staleDays} dia${data.staleDays === 1 ? "" : "s"}`;
+      const statusIcon = flagged.length > 0 || checkFailed ? "⚠️" : checkStale ? "🟡" : "🟢";
+      const statusLine = !ac.ran
+        ? "verificação automática ainda não rodou"
+        : checkFailed
+          ? `verificação automática falhou (${dias(ac.ageDays)})`
+          : `verificado automaticamente ${dias(ac.ageDays)}`;
 
-      const rows = (data.superseded || [])
+      const flaggedHtml = flagged.length
+        ? `<div class="ccm-flagged">
+             <strong>${flagged.length} resoluç${flagged.length === 1 ? "ão" : "ões"} a revisar</strong>
+             — sumiram da lista oficial (possível revogação/substituição ou dado do mapa a corrigir):
+             <ul class="ccm-list">${flagged
+               .map(
+                 (f) =>
+                   `<li><strong>Res. ${escapeHtml(f.resolution)}</strong>${f.title ? ` <small>${escapeHtml(f.title)}</small>` : ""}</li>`,
+               )
+               .join("")}</ul>
+           </div>`
+        : "";
+
+      const supersededHtml = (data.superseded || [])
         .map(
           (r) => `
         <li>
@@ -10836,18 +10864,19 @@ function escapeAttr(value) {
         .join("");
 
       panel.innerHTML = `
-        <details class="ccm"${stale ? " open" : ""}>
-          <summary class="ccm-summary ${stale ? "is-stale" : "is-ok"}">
-            ${stale ? "⚠️" : "🟢"} Resoluções CONTRAN — mapa revisado ${escapeHtml(ageTxt)}
-            <span class="ccm-count">${data.supersededCount} substituídas</span>
+        <details class="ccm"${flagged.length || checkFailed ? " open" : ""}>
+          <summary class="ccm-summary ${flagged.length || checkFailed ? "is-stale" : "is-ok"}">
+            ${statusIcon} Resoluções CONTRAN — ${escapeHtml(statusLine)}
+            ${flagged.length ? `<span class="ccm-count">${flagged.length} a revisar</span>` : `<span class="ccm-count">${ac.officialCount || 0} conferidas</span>`}
           </summary>
+          ${flaggedHtml}
           ${
-            stale
-              ? `<p class="ccm-warn">O mapa pode estar desatualizado (mais de ${data.staleThresholdDays} dias). Reveja contra o <a href="${escapeAttr(data.officialIndexUrl)}" target="_blank" rel="noopener">índice oficial do SENATRAN</a> e reimporte o mapa.</p>`
+            checkStale && ac.ran
+              ? `<p class="ccm-warn">A verificação automática não roda há um tempo. Se persistir, confira o agendamento (Vercel Cron) ou o <a href="${escapeAttr(data.officialIndexUrl)}" target="_blank" rel="noopener">índice oficial</a>.</p>`
               : ""
           }
-          <p class="ccm-note">Questões que citam estas resoluções devem estudar a norma atual (o alerta por questão já aponta o alvo):</p>
-          <ul class="ccm-list">${rows}</ul>
+          <p class="ccm-note">Verificação automática contra a lista oficial do SENATRAN. As ${data.supersededCount} substituições já mapeadas (norma antiga → atual):</p>
+          <ul class="ccm-list">${supersededHtml}</ul>
         </details>`;
       panel.hidden = false;
     })

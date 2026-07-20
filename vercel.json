@@ -22,5 +22,11 @@
       "maxDuration": 60,
       "includeFiles": "src/db/postgres-sync-worker.mjs"
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/contran-currency-check",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }

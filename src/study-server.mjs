@@ -251,6 +251,19 @@ async function routeRequest(request, response) {
     return;
   }
 
+  // Verificação automática (Vercel Cron). Protegida por CRON_SECRET quando definido.
+  if (url.pathname === '/api/cron/contran-currency-check' && request.method === 'GET') {
+    const secret = process.env.CRON_SECRET || '';
+    const auth = request.headers['authorization'] || '';
+    if (secret && auth !== `Bearer ${secret}`) {
+      sendJson(response, 401, { ok: false, error: 'não autorizado' });
+      return;
+    }
+    const force = url.searchParams.get('force') === '1';
+    sendJson(response, 200, await runContranCurrencyCheck({ force }));
+    return;
+  }
+
   if (url.pathname === '/api/contran-prf-2021/resolve-batch' && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, getContranPrf2021ResolutionBatch(body));
@@ -1809,6 +1822,112 @@ function getContranPrf2021Map() {
 const CONTRAN_MAP_STALE_DAYS = 120;
 const CONTRAN_OFFICIAL_INDEX_URL =
   'https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-Senatran/resolucoes-contran';
+const CONTRAN_CHECK_SETTING_KEY = 'contran_currency_autocheck';
+const CONTRAN_CHECK_MIN_INTERVAL_DAYS = 6;
+const CONTRAN_CHECK_STALE_DAYS = 21;
+
+/** Extrai o conjunto de resoluções da página oficial, normalizando número
+ *  (ponto de milhar, zeros à esquerda) e ano. Chave: "993/2023". */
+function parseOfficialContranSet(html) {
+  const set = new Set();
+  const add = (num, year) => {
+    const n = Number(String(num).replace(/\./g, ''));
+    const y = String(year);
+    if (n && /^(19|20)\d{2}$/.test(y)) set.add(`${n}/${y}`);
+  };
+  const text = String(html || '');
+  // links ResolucaoNNNNYYYY.pdf (número + ano concatenados; ano = 4 últimos dígitos)
+  for (const m of text.matchAll(/Resolucao(\d{6,8})[^"'\s>]*\.pdf/gi)) {
+    const d = m[1];
+    add(d.slice(0, -4), d.slice(-4));
+  }
+  // menções textuais "Resolução nº 1.004/2023"
+  for (const m of text.matchAll(/Resolu[cç][aã]o\s*n?[ºo.]?\s*([\d.]{2,6})\s*[\/.]\s*((?:19|20)\d{2})/gi)) {
+    add(m[1], m[2]);
+  }
+  return set;
+}
+
+function readContranCheckResult() {
+  const raw = getSetting(CONTRAN_CHECK_SETTING_KEY, '');
+  if (!raw) return null;
+  try {
+    return typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verificação automática de vigência: busca a lista oficial do SENATRAN,
+ * compara com os alvos "atuais" do mapa e sinaliza os que sumiram da lista
+ * (candidatos a revogação/substituição). Roda via cron; auto-limita para não
+ * refazer o fetch com frequência. NÃO reescreve o mapa — só sinaliza.
+ */
+async function runContranCurrencyCheck({ force = false } = {}) {
+  if (!hasContranPrf2021MapTable()) {
+    return { ok: false, reason: 'Mapa CONTRAN não importado.' };
+  }
+  const prev = readContranCheckResult();
+  if (!force && prev?.checkedAt) {
+    const ageDays = (Date.now() - new Date(prev.checkedAt).getTime()) / 86400000;
+    if (Number.isFinite(ageDays) && ageDays < CONTRAN_CHECK_MIN_INTERVAL_DAYS) {
+      return { ...prev, skipped: true };
+    }
+  }
+  let result;
+  try {
+    const resp = await fetch(CONTRAN_OFFICIAL_INDEX_URL, {
+      headers: { 'User-Agent': 'estudoPRF-monitor/1.0' },
+      redirect: 'follow'
+    });
+    const html = await resp.text();
+    const official = parseOfficialContranSet(html);
+    // Só as substituições reais (alvo != origem): se um substituto "atual"
+    // sumir da lista oficial, é sinal de que ele próprio foi substituído.
+    // Alvos iguais à origem (norma antiga mantida) não são candidatos.
+    const targets = db.prepare(`
+      SELECT DISTINCT target_number::text AS tn, target_year::text AS ty, target_title AS tt,
+             target_official_url AS url
+      FROM contran_prf_2021_current_map
+      WHERE COALESCE(target_number::text, '') <> ''
+        AND (target_number::text <> source_number::text OR target_year::text <> source_year::text)
+    `).all();
+    const flagged = [];
+    for (const t of targets) {
+      // A URL oficial (ResolucaoNNNNYYYY.pdf) é mais confiável que target_number,
+      // que às vezes tem ponto de milhar inconsistente. Deriva a chave da URL.
+      let key = '';
+      const urlMatch = String(t.url || '').match(/Resolucao(\d{6,8})[^/]*\.pdf/i);
+      if (urlMatch) {
+        const d = urlMatch[1];
+        key = `${Number(d.slice(0, -4))}/${d.slice(-4)}`;
+      } else {
+        key = `${Number(String(t.tn).replace(/\./g, ''))}/${t.ty}`;
+      }
+      if (!official.has(key)) flagged.push({ resolution: key, title: t.tt || '' });
+    }
+    // sanidade: se parseou pouca coisa, o fetch provavelmente falhou/mudou — não confia.
+    const parsedOk = resp.ok && official.size > 100;
+    result = {
+      ok: parsedOk,
+      checkedAt: new Date().toISOString(),
+      httpStatus: resp.status,
+      officialCount: official.size,
+      targetsChecked: targets.length,
+      flagged: parsedOk ? flagged : [],
+      note: parsedOk ? '' : 'Lista oficial não pôde ser lida de forma confiável nesta execução.'
+    };
+  } catch (error) {
+    result = {
+      ok: false,
+      checkedAt: new Date().toISOString(),
+      error: String(error?.message || error)
+    };
+  }
+  try { setSetting(CONTRAN_CHECK_SETTING_KEY, JSON.stringify(result)); } catch {}
+  return result;
+}
 
 /**
  * Monitor de vigência: sinaliza as resoluções CONTRAN já substituídas (do mapa
@@ -1847,6 +1966,24 @@ function getContranResolutionCurrencySummary() {
     : null;
 
   superseded.sort((a, b) => a.source.localeCompare(b.source));
+
+  // Resultado da verificação automática (cron) contra a lista oficial.
+  const check = readContranCheckResult();
+  const checkAt = check?.checkedAt || '';
+  const checkAgeDays = checkAt
+    ? Math.floor((Date.now() - new Date(checkAt).getTime()) / 86400000)
+    : null;
+  const autoCheck = {
+    ran: Boolean(checkAt),
+    checkedAt: checkAt,
+    ageDays: checkAgeDays,
+    ok: Boolean(check?.ok),
+    officialCount: check?.officialCount || 0,
+    flagged: Array.isArray(check?.flagged) ? check.flagged : [],
+    stale: checkAgeDays === null || checkAgeDays > CONTRAN_CHECK_STALE_DAYS,
+    note: check?.note || check?.error || ''
+  };
+
   return {
     available: true,
     reviewedAt,
@@ -1856,6 +1993,7 @@ function getContranResolutionCurrencySummary() {
     totalMapped: rows.length,
     supersededCount: superseded.length,
     superseded,
+    autoCheck,
     officialIndexUrl: CONTRAN_OFFICIAL_INDEX_URL
   };
 }

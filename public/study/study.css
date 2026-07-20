@@ -5744,3 +5744,14 @@ tbody tr:hover {
 .ccm-list small {
   opacity: 0.7;
 }
+
+.ccm-flagged {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(211, 84, 0, 0.12);
+  border-left: 3px solid #ba4a00;
+}
+.ccm-flagged ul {
+  margin: 4px 0 0;
+}
