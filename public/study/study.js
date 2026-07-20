@@ -178,6 +178,7 @@ const els = {
   examOptions: document.querySelector("#examOptions"),
   excludedMatterList: document.querySelector("#excludedMatterList"),
   includedMatterList: document.querySelector("#includedMatterList"),
+  multiMateriaCount: document.querySelector("#multiMateriaCount"),
   profileSelect: document.querySelector("#profileSelect"),
   commentedOnly: document.querySelector("#commentedOnly"),
   unansweredOnly: document.querySelector("#unansweredOnly"),
@@ -557,6 +558,7 @@ function bindEvents() {
       state.filters.materia = "";
       if (els.matterSelect) els.matterSelect.value = "";
     }
+    updateMultiMateriaCount();
     state.page = 1;
     updateAdvancedFiltersSummary();
     clearTimeout(includedMatterTimer);
@@ -1807,6 +1809,7 @@ function renderIncludedMatterOptions(matters) {
     `;
     })
     .join("");
+  updateMultiMateriaCount();
 }
 
 function selectedIncludedMatterValues() {
@@ -1818,6 +1821,12 @@ function selectedIncludedMatterValues() {
   ]
     .map((input) => input.value)
     .filter(Boolean);
+}
+
+function updateMultiMateriaCount() {
+  if (!els.multiMateriaCount) return;
+  const n = (state.filters.includedMaterias || []).length;
+  els.multiMateriaCount.textContent = n ? `(${n})` : "";
 }
 
 async function loadExamProfiles() {

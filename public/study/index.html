@@ -108,6 +108,16 @@
             <option value="">Todas</option>
           </select>
         </label>
+        <details class="field field-multi-materia" id="multiMateriaField">
+          <summary>Estudar várias matérias <span id="multiMateriaCount"></span></summary>
+          <div
+            id="includedMatterList"
+            class="matter-exclusion-list"
+            role="group"
+            aria-label="Matérias que quero estudar"
+          ></div>
+          <small class="matter-inclusion-hint">Marque uma ou mais para estudar só elas. Nenhuma marcada = usa a Matéria acima (ou todas).</small>
+        </details>
         <label class="field">
           <span>Assunto</span>
           <select id="subjectSelect">
@@ -200,16 +210,6 @@
               <option value="hide-discarded">Ocultar descartadas</option>
               <option value="changed">Somente gabarito alterado</option>
             </select>
-          </label>
-          <label class="field advanced-field-wide">
-            <span>Estudar apenas estas matérias</span>
-            <div
-              id="includedMatterList"
-              class="matter-exclusion-list"
-              role="group"
-              aria-label="Matérias que quero estudar"
-            ></div>
-            <small class="matter-inclusion-hint">Marque uma ou mais para estudar só elas. Nenhuma marcada = todas.</small>
           </label>
           <label class="field advanced-field-wide">
             <span>Excluir matérias</span>
