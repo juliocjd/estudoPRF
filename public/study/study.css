@@ -4547,11 +4547,10 @@ body.is-report-page {
 
   .context-bar {
     gap: 8px;
-    position: sticky;
-    top: 8px;
-    z-index: 35;
-    background: rgba(248, 250, 252, 0.96);
-    backdrop-filter: blur(6px);
+    /* No mobile a barra (Estudar/Desempenho/Material + navegação) rola junto
+       com o conteúdo. Fixá-la roubava espaço da tela e cobria o topo do
+       enunciado depois de trocar de questão. */
+    position: static;
   }
 
   .context-main {
