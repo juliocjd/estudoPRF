@@ -551,6 +551,14 @@ function bindEvents() {
     }, 350);
   });
 
+  // Fecha o dropdown de várias matérias ao clicar fora dele.
+  document.addEventListener("click", (event) => {
+    const field = document.getElementById("multiMateriaField");
+    if (field?.open && !event.target.closest("#multiMateriaField")) {
+      field.open = false;
+    }
+  });
+
   els.includedMatterList?.addEventListener("change", () => {
     state.filters.includedMaterias = selectedIncludedMatterValues();
     // Seleção múltipla tem precedência: zera o seletor único de matéria.

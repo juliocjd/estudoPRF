@@ -109,14 +109,16 @@
           </select>
         </label>
         <details class="field field-multi-materia" id="multiMateriaField">
-          <summary>Estudar várias matérias <span id="multiMateriaCount"></span></summary>
-          <div
-            id="includedMatterList"
-            class="matter-exclusion-list"
-            role="group"
-            aria-label="Matérias que quero estudar"
-          ></div>
-          <small class="matter-inclusion-hint">Marque uma ou mais para estudar só elas. Nenhuma marcada = usa a Matéria acima (ou todas).</small>
+          <summary>Várias matérias <span id="multiMateriaCount"></span></summary>
+          <div class="multi-materia-panel">
+            <div
+              id="includedMatterList"
+              class="matter-exclusion-list"
+              role="group"
+              aria-label="Matérias que quero estudar"
+            ></div>
+            <small class="matter-inclusion-hint">Marque uma ou mais para estudar só elas. Nenhuma marcada = usa a Matéria ao lado (ou todas).</small>
+          </div>
         </details>
         <label class="field">
           <span>Assunto</span>

@@ -325,37 +325,69 @@ button:disabled {
   font-weight: 500;
 }
 
-/* Seleção de várias matérias, ao lado do combobox de Matéria */
+/* Seleção de várias matérias — botão + dropdown popover, ao lado da Matéria */
 .field-multi-materia {
-  min-width: 190px;
+  position: relative;
   align-self: end;
 }
 .field-multi-materia > summary {
   cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px;
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
   color: var(--primary);
-  padding: 8px 10px;
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  list-style: none;
-  user-select: none;
 }
 .field-multi-materia > summary::-webkit-details-marker {
   display: none;
 }
-.field-multi-materia > summary::before {
-  content: "▸ ";
-}
-.field-multi-materia[open] > summary::before {
-  content: "▾ ";
+.field-multi-materia > summary::after {
+  content: "▾";
+  font-size: 0.8em;
+  opacity: 0.6;
 }
 .field-multi-materia[open] > summary {
-  margin-bottom: 6px;
+  border-color: var(--primary);
+  background: var(--info-soft);
+}
+.field-multi-materia[open] > summary::after {
+  content: "▴";
+}
+.multi-materia-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  width: max(300px, 100%);
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+}
+.multi-materia-panel .matter-exclusion-list {
+  border: none;
+  padding: 0;
+  max-height: 264px;
+}
+.matter-inclusion-hint {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
 }
 #multiMateriaCount:not(:empty) {
   display: inline-block;
-  margin-left: 4px;
   padding: 0 7px;
   border-radius: 999px;
   background: var(--primary);
@@ -5782,4 +5814,20 @@ tbody tr:hover {
 .ccm-apply-msg {
   color: var(--text-muted);
   font-size: 0.9em;
+}
+
+@media (max-width: 760px) {
+  .field-multi-materia {
+    width: 100%;
+  }
+  .field-multi-materia > summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .multi-materia-panel {
+    width: auto;
+    left: 0;
+    right: 0;
+    max-width: calc(100vw - 20px);
+  }
 }
