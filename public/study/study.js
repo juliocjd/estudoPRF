@@ -10725,3 +10725,53 @@ function escapeAttr(value) {
     if (!document.hidden) refresh();
   });
 })();
+
+/* ============================================================
+   Monitor de vigência das resoluções CONTRAN (2026-07)
+   Avisa quando o mapa de resoluções envelhece e lista as
+   resoluções já substituídas (norma antiga -> norma atual).
+   ============================================================ */
+(function contranCurrencyMonitorModule() {
+  const panel = document.getElementById("contranCurrencyMonitor");
+  if (!panel) return;
+
+  api("/api/contran-resolutions/currency")
+    .then((data) => {
+      if (!data || !data.available) return;
+      const stale = Boolean(data.stale);
+      if (!stale && !(data.supersededCount > 0)) return; // nada a avisar
+
+      const ageTxt =
+        data.staleDays === null
+          ? "em data desconhecida"
+          : `há ${data.staleDays} dia${data.staleDays === 1 ? "" : "s"}`;
+
+      const rows = (data.superseded || [])
+        .map(
+          (r) => `
+        <li>
+          <span><strong>Res. ${escapeHtml(r.source)}</strong> → Res. ${escapeHtml(r.target)}</span>
+          ${r.titleHint || r.targetTitle ? `<small>${escapeHtml(r.titleHint || r.targetTitle)}</small>` : ""}
+          ${r.officialUrl ? `<a href="${escapeAttr(r.officialUrl)}" target="_blank" rel="noopener">norma atual</a>` : ""}
+        </li>`,
+        )
+        .join("");
+
+      panel.innerHTML = `
+        <details class="ccm"${stale ? " open" : ""}>
+          <summary class="ccm-summary ${stale ? "is-stale" : "is-ok"}">
+            ${stale ? "⚠️" : "🟢"} Resoluções CONTRAN — mapa revisado ${escapeHtml(ageTxt)}
+            <span class="ccm-count">${data.supersededCount} substituídas</span>
+          </summary>
+          ${
+            stale
+              ? `<p class="ccm-warn">O mapa pode estar desatualizado (mais de ${data.staleThresholdDays} dias). Reveja contra o <a href="${escapeAttr(data.officialIndexUrl)}" target="_blank" rel="noopener">índice oficial do SENATRAN</a> e reimporte o mapa.</p>`
+              : ""
+          }
+          <p class="ccm-note">Questões que citam estas resoluções devem estudar a norma atual (o alerta por questão já aponta o alvo):</p>
+          <ul class="ccm-list">${rows}</ul>
+        </details>`;
+      panel.hidden = false;
+    })
+    .catch(() => {});
+})();

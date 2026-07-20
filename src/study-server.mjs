@@ -246,6 +246,11 @@ async function routeRequest(request, response) {
     return;
   }
 
+  if (url.pathname === '/api/contran-resolutions/currency' && request.method === 'GET') {
+    sendJson(response, 200, getContranResolutionCurrencySummary());
+    return;
+  }
+
   if (url.pathname === '/api/contran-prf-2021/resolve-batch' && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, getContranPrf2021ResolutionBatch(body));
@@ -1798,6 +1803,60 @@ function getContranPrf2021Map() {
     available: true,
     total: rows.length,
     rows: rows.map((row) => normalizeContranPrf2021Row(row, aliasMap, questionCounts))
+  };
+}
+
+const CONTRAN_MAP_STALE_DAYS = 120;
+const CONTRAN_OFFICIAL_INDEX_URL =
+  'https://www.gov.br/transportes/pt-br/assuntos/transito/conteudo-Senatran/resolucoes-contran';
+
+/**
+ * Monitor de vigência: sinaliza as resoluções CONTRAN já substituídas (do mapa
+ * curado) e quão velho está o mapa — o gatilho para reconferir contra o índice
+ * oficial. Consulta única e leve (sem a contagem pesada de questões).
+ */
+function getContranResolutionCurrencySummary() {
+  if (!hasContranPrf2021MapTable()) {
+    return { available: false, reason: 'Mapa CONTRAN PRF 2021 ainda não importado.' };
+  }
+  const rows = db.prepare(`
+    SELECT source_number::text AS sn, source_year::text AS sy, source_title_hint AS sh,
+           target_number::text AS tn, target_year::text AS ty, target_title AS tt,
+           target_official_url AS url, CAST(updated_at AS TEXT) AS updated_at
+    FROM contran_prf_2021_current_map
+  `).all();
+
+  let reviewedRaw = '';
+  const superseded = [];
+  for (const r of rows) {
+    if (r.updated_at && (!reviewedRaw || r.updated_at > reviewedRaw)) reviewedRaw = r.updated_at;
+    if (`${r.sn}/${r.sy}` !== `${r.tn}/${r.ty}`) {
+      superseded.push({
+        source: `${r.sn}/${r.sy}`,
+        target: `${r.tn}/${r.ty}`,
+        titleHint: r.sh || '',
+        targetTitle: r.tt || '',
+        officialUrl: r.url || ''
+      });
+    }
+  }
+  const reviewedAt = reviewedRaw ? toIsoText(reviewedRaw) : '';
+  const parsed = reviewedAt ? new Date(reviewedAt) : null;
+  const staleDays = parsed && !Number.isNaN(parsed.getTime())
+    ? Math.floor((Date.now() - parsed.getTime()) / 86400000)
+    : null;
+
+  superseded.sort((a, b) => a.source.localeCompare(b.source));
+  return {
+    available: true,
+    reviewedAt,
+    staleDays,
+    stale: staleDays !== null && staleDays > CONTRAN_MAP_STALE_DAYS,
+    staleThresholdDays: CONTRAN_MAP_STALE_DAYS,
+    totalMapped: rows.length,
+    supersededCount: superseded.length,
+    superseded,
+    officialIndexUrl: CONTRAN_OFFICIAL_INDEX_URL
   };
 }
 
