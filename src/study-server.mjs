@@ -1426,37 +1426,52 @@ function getTheoryPage(searchParams) {
   };
 }
 
+// Existência de tabela, memoizada. Cada checagem "SELECT 1 FROM sqlite_master"
+// é um round-trip (no Postgres, ao catálogo) e getQuestion dispara várias por
+// request. O conjunto de tabelas não muda em runtime (migrações no startup),
+// então cacheia-se o "existe = true". Só cacheia positivos: se a tabela ainda
+// não foi criada, refaz a checagem até passar a existir.
+const tableExistsCache = new Set();
+function tableExists(name) {
+  if (tableExistsCache.has(name)) return true;
+  const exists = Boolean(
+    db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name)
+  );
+  if (exists) tableExistsCache.add(name);
+  return exists;
+}
+
 function hasNormativeUpdateTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_normative_updates'").get());
+  return Boolean(tableExists('question_normative_updates'));
 }
 
 function hasNormativeTeachingTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_normative_teaching_comments'").get());
+  return Boolean(tableExists('question_normative_teaching_comments'));
 }
 
 function hasCurrentLawAnswerTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_current_law_answers'").get());
+  return Boolean(tableExists('question_current_law_answers'));
 }
 
 function hasQuestionStudyStatusTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_study_status'").get());
+  return Boolean(tableExists('question_study_status'));
 }
 
 function hasNormativeTeachingStudentEditsTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_normative_teaching_student_edits'").get());
+  return Boolean(tableExists('question_normative_teaching_student_edits'));
 }
 
 function hasTheoryPagesTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'theory_pages'").get());
+  return Boolean(tableExists('theory_pages'));
 }
 
 function hasLegalKnowledgeTables() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'legal_topic_cards'").get())
-    && Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_legal_links'").get());
+  return Boolean(tableExists('legal_topic_cards'))
+    && Boolean(tableExists('question_legal_links'));
 }
 
 function hasQuestionAppliedTheoryTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'question_applied_theory_cards'").get());
+  return Boolean(tableExists('question_applied_theory_cards'));
 }
 
 function getQuestionAppliedTheoryCard(questionId) {
@@ -1741,12 +1756,12 @@ function getLegalSearch(searchParams) {
 }
 
 function hasLawCompendiumTables() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'law_compendium_sources'").get())
-    && Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'law_compendium_sections'").get());
+  return Boolean(tableExists('law_compendium_sources'))
+    && Boolean(tableExists('law_compendium_sections'));
 }
 
 function hasLawSectionMaterialsTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'law_section_materials'").get());
+  return Boolean(tableExists('law_section_materials'));
 }
 
 function hasContranPrf2021MapTable() {
@@ -1754,7 +1769,7 @@ function hasContranPrf2021MapTable() {
 }
 
 function hasContranPrfUnpublishedTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contran_prf_unpublished_questions'").get());
+  return Boolean(tableExists('contran_prf_unpublished_questions'));
 }
 
 function getContranPrf2021Resolution(searchParams = new URLSearchParams()) {
@@ -3028,9 +3043,23 @@ function buildOfficialArticles(rows = []) {
   return articles;
 }
 
+// Cache do schema por tabela. Sem isso, cada checagem de coluna disparava um
+// PRAGMA table_info — que no Postgres é um round-trip ao information_schema.
+// Como getQuestion chama qntcColumn ~40x por request, eram ~40 round-trips
+// (~11s) só para montar UMA query. O schema não muda em runtime (migrações
+// rodam no startup), então memoizar é seguro e derruba isso para 1 round-trip.
+const columnInfoCache = new Map();
 function columnExists(tableName, columnName) {
-  return db.prepare(`PRAGMA table_info(${tableName})`).all()
-    .some((column) => column.name === columnName);
+  let columns = columnInfoCache.get(tableName);
+  if (!columns) {
+    columns = new Set(
+      db.prepare(`PRAGMA table_info(${tableName})`).all().map((column) => column.name)
+    );
+    // Só memoiza quando a tabela existe (tem colunas), para não fixar "vazio"
+    // caso a checagem ocorra antes de uma migração criar a tabela.
+    if (columns.size) columnInfoCache.set(tableName, columns);
+  }
+  return columns.has(columnName);
 }
 
 function tableColumnExists(tableName, columnName) {
@@ -6418,7 +6447,7 @@ function getEssayThemes() {
 }
 
 function hasEssayDossierTable() {
-  return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'essay_theme_dossiers'").get());
+  return Boolean(tableExists('essay_theme_dossiers'));
 }
 
 /**
@@ -6721,7 +6750,7 @@ async function socraticTutorReply(questionId, body) {
 
 function hasLawClozeTables() {
   try {
-    return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'law_cloze_cards'").get());
+    return Boolean(tableExists('law_cloze_cards'));
   } catch {
     return false;
   }
@@ -8661,8 +8690,8 @@ function getContranPrfUnpublishedQuestion(questionId) {
 
 function hasContranNormativeReferenceTables() {
   try {
-    return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contran_question_normative_references'").get())
-      && Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'contran_normative_articles'").get());
+    return Boolean(tableExists('contran_question_normative_references'))
+      && Boolean(tableExists('contran_normative_articles'));
   } catch {
     return false;
   }
@@ -8670,7 +8699,7 @@ function hasContranNormativeReferenceTables() {
 
 function hasMissingNormativeArticlesQueue() {
   try {
-    return Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'missing_normative_articles_queue'").get());
+    return Boolean(tableExists('missing_normative_articles_queue'));
   } catch {
     return false;
   }
