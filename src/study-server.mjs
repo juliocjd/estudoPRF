@@ -3789,21 +3789,35 @@ function buildExamCoverageAlerts(rows) {
   return alerts;
 }
 
+// Prioridade adaptativa (enxuta) usada dentro de cada matéria no rodízio:
+// 1) revisão vencida primeiro, 2) mais fraca (mastery baixa; nunca respondida
+// conta como 0 e sobe), 3) erro recente. Reaproveita question_mastery (qm),
+// que precisa estar no JOIN de quem usa este ORDER BY.
+const ADAPTIVE_PRIORITY_ORDER_SQL = `
+      CASE WHEN qm.next_due_at IS NOT NULL
+             AND CAST(qm.next_due_at AS TEXT) != ''
+             AND qm.next_due_at <= CURRENT_TIMESTAMP THEN 0 ELSE 1 END,
+      COALESCE(qm.mastery_score, 0) ASC,
+      CASE WHEN qm.last_result = 0 THEN 0 ELSE 1 END,
+      COALESCE(q.assunto, ''),
+      q.id_question`;
+
 // Ordenação da lista de questões. Com 2+ matérias selecionadas, faz rodízio
 // (round-robin): 1 questão de cada matéria por vez, em vez de percorrer uma
 // matéria inteira antes da próxima. ROW_NUMBER por matéria dá a "rodada"
-// (1ª de cada, depois 2ª de cada...), e o desempate mantém ordem estável para
-// a paginação/índice funcionarem igual entre getQuestions e getQuestionIds.
+// (1ª de cada, depois 2ª de cada...) e, dentro de cada matéria, a rodada segue
+// a prioridade adaptativa (vencida/mais fraca primeiro). O desempate externo
+// mantém ordem estável para paginação/índice baterem entre getQuestions e
+// getQuestionIds.
 function questionOrderBySql(searchParams, extra = {}) {
   const includedMaterias = getIncludedMaterias(searchParams, extra);
   if (includedMaterias.length >= 2) {
     return `ORDER BY
       ROW_NUMBER() OVER (
         PARTITION BY COALESCE(q.materia, '')
-        ORDER BY COALESCE(q.assunto, ''), q.id_question
+        ORDER BY ${ADAPTIVE_PRIORITY_ORDER_SQL}
       ),
       COALESCE(q.materia, ''),
-      COALESCE(q.assunto, ''),
       q.id_question`;
   }
   return `ORDER BY COALESCE(q.materia, ''), COALESCE(q.assunto, ''), q.id_question`;
@@ -3852,6 +3866,7 @@ function getQuestions(searchParams) {
       CASE WHEN a.question_id IS NULL THEN 0 ELSE 1 END AS answered
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
+    LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
     LEFT JOIN (
       SELECT question_id, MAX(answered_at) AS answered_at
       FROM study_answers
@@ -4524,6 +4539,7 @@ function getQuestionIds(searchParams, extra = {}) {
     SELECT q.id_question AS id
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
+    LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
     ${whereSql}
     ${questionOrderBySql(searchParams, extra)}
   `).all(...values).map((row) => row.id);
