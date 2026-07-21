@@ -39,8 +39,16 @@ export async function generateText({ system = '', prompt, maxTokens = 800, tempe
 }
 
 async function geminiGenerate({ system, prompt, maxTokens, temperature }) {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+  // gemini-flash-latest é o alias que tem cota no tier gratuito: os nomes fixos
+  // (gemini-2.0-flash, -lite) voltavam HTTP 429 com "limit: 0" nas chaves novas
+  // ("AQ."), então parecia que o limite diário estava sempre esgotado.
+  const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  // Os modelos 2.5 "pensam" por padrão, e esses tokens de raciocínio consomem o
+  // maxOutputTokens — truncando a resposta. thinkingBudget:0 desliga isso.
+  const supportsThinking = /latest|2\.5/.test(model);
+  const generationConfig = { maxOutputTokens: maxTokens, temperature };
+  if (supportsThinking) generationConfig.thinkingConfig = { thinkingBudget: 0 };
   const response = await fetch(url, {
     method: 'POST',
     // Header oficial — compatível com chaves novas (AQ.) e antigas (AIza).
@@ -48,12 +56,17 @@ async function geminiGenerate({ system, prompt, maxTokens, temperature }) {
     body: JSON.stringify({
       systemInstruction: system ? { parts: [{ text: system }] } : undefined,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: maxTokens, temperature }
+      generationConfig
     })
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
-    throw new Error(`Gemini HTTP ${response.status}: ${detail.slice(0, 200)}`);
+    const retry = detail.match(/retry in ([\d.]+)s/i);
+    const friendly =
+      response.status === 429
+        ? `Gemini sem cota no momento (HTTP 429)${retry ? `, tente de novo em ~${Math.ceil(Number(retry[1]))}s` : ''}. Se persistir, a chave/modelo pode não ter tier gratuito (veja ai.dev/rate-limit).`
+        : `Gemini HTTP ${response.status}: ${detail.slice(0, 200)}`;
+    throw new Error(friendly);
   }
   const data = await response.json();
   const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || '';
