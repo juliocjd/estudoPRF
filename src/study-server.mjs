@@ -4811,13 +4811,12 @@ function getAdaptiveStudyNext(searchParams) {
   const profileId = resolveProfileId(searchParams.get('profile'));
   const flow = getStudyFlowState();
   const lastAnsweredId = Number(flow?.last_answered_question_id || 0);
-  const rows = getAdaptiveQueueRows(searchParams, {
+  const target = getAdaptiveTargetRow(searchParams, {
     plan,
     profileId,
     limit: 80,
     excludeQuestionId: lastAnsweredId || null
   });
-  const target = rows[0];
   if (!target) {
     return {
       error: 'Nenhuma questao disponivel para este plano.',
@@ -4930,13 +4929,12 @@ function getStudyResumeTarget(searchParams) {
     };
   }
 
-  const rows = getAdaptiveQueueRows(searchParams, {
+  const target = getAdaptiveTargetRow(searchParams, {
     plan,
     profileId,
     limit: 80,
     excludeQuestionId: lastAnsweredId || null
   });
-  const target = rows[0];
   if (target) {
     const skippedLastAnswered = lastAnsweredId > 0 && lastAnsweredId !== target.id;
     const due = target.reasons.includes('revisao_vencida');
@@ -5173,6 +5171,71 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
     }))
     .sort((left, right) => right.score - left.score || left.materia.localeCompare(right.materia) || left.assunto.localeCompare(right.assunto) || left.id - right.id)
     .slice(0, Math.max(Number(limit || 50), 1));
+}
+
+// Última matéria servida entre as selecionadas — âncora do rodízio.
+function getLastServedMateriaAmong(materias) {
+  if (!materias.length) return '';
+  const placeholders = materias.map(() => '?').join(', ');
+  const row = db.prepare(`
+    SELECT q.materia AS materia
+    FROM study_served_questions ss
+    JOIN questions q ON q.id_question = ss.question_id
+    WHERE COALESCE(q.materia, '') IN (${placeholders})
+    ORDER BY ss.served_at DESC, ss.id DESC
+    LIMIT 1
+  `).get(...materias);
+  return row?.materia || '';
+}
+
+const singleMateriaParams = (searchParams, materia) => {
+  const sp = new URLSearchParams(searchParams);
+  sp.delete('includeMateria');
+  sp.delete('includeMaterias');
+  sp.set('includeMateria', materia);
+  return sp;
+};
+
+// Alvo adaptativo com rodízio entre matérias, priorização adaptativa completa e
+// custo ~baseline: UMA fila adaptativa com todas as matérias (o scorer é pesado,
+// então evita-se rodá-lo N vezes), agrupada por matéria (melhor primeiro).
+// Serve a melhor da próxima matéria no ciclo, girando a partir da última
+// servida. Se a matéria da vez não apareceu no pool (raro — dominada por
+// outra), faz uma consulta dirigida só para ela, para o rodízio não puxá-la.
+function getRoundRobinAdaptiveTarget(searchParams, opts, included) {
+  const cycle = [...included].sort((a, b) => a.localeCompare(b));
+  const pool = getAdaptiveQueueRows(searchParams, {
+    ...opts,
+    limit: Math.max(60, cycle.length * 40)
+  });
+  const bestByMateria = new Map();
+  for (const row of pool) {
+    if (!bestByMateria.has(row.materia)) bestByMateria.set(row.materia, row);
+  }
+  const last = getLastServedMateriaAmong(cycle);
+  const lastIdx = cycle.indexOf(last);
+  const start = lastIdx >= 0 ? (lastIdx + 1) % cycle.length : 0;
+  for (let i = 0; i < cycle.length; i += 1) {
+    const materia = cycle[(start + i) % cycle.length];
+    if (bestByMateria.has(materia)) return bestByMateria.get(materia);
+    const targeted = getAdaptiveQueueRows(singleMateriaParams(searchParams, materia), {
+      ...opts,
+      limit: 1
+    })[0];
+    if (targeted) return targeted;
+  }
+  return null;
+}
+
+// Um alvo adaptativo. Com 2+ matérias selecionadas, aplica o rodízio; senão,
+// o topo da fila adaptativa normal.
+function getAdaptiveTargetRow(searchParams, opts) {
+  const included = getIncludedMaterias(searchParams);
+  if (included.length >= 2) {
+    const rotated = getRoundRobinAdaptiveTarget(searchParams, opts, included);
+    if (rotated) return rotated;
+  }
+  return getAdaptiveQueueRows(searchParams, opts)[0] || null;
 }
 
 function scoreAdaptiveQuestion(row, context) {
