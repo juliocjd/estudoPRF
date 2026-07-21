@@ -3789,6 +3789,26 @@ function buildExamCoverageAlerts(rows) {
   return alerts;
 }
 
+// Ordenação da lista de questões. Com 2+ matérias selecionadas, faz rodízio
+// (round-robin): 1 questão de cada matéria por vez, em vez de percorrer uma
+// matéria inteira antes da próxima. ROW_NUMBER por matéria dá a "rodada"
+// (1ª de cada, depois 2ª de cada...), e o desempate mantém ordem estável para
+// a paginação/índice funcionarem igual entre getQuestions e getQuestionIds.
+function questionOrderBySql(searchParams, extra = {}) {
+  const includedMaterias = getIncludedMaterias(searchParams, extra);
+  if (includedMaterias.length >= 2) {
+    return `ORDER BY
+      ROW_NUMBER() OVER (
+        PARTITION BY COALESCE(q.materia, '')
+        ORDER BY COALESCE(q.assunto, ''), q.id_question
+      ),
+      COALESCE(q.materia, ''),
+      COALESCE(q.assunto, ''),
+      q.id_question`;
+  }
+  return `ORDER BY COALESCE(q.materia, ''), COALESCE(q.assunto, ''), q.id_question`;
+}
+
 function getQuestions(searchParams) {
   const page = Math.max(1, Number(searchParams.get('page') || 1));
   const limit = Math.min(50, Math.max(5, Number(searchParams.get('limit') || 20)));
@@ -3838,7 +3858,7 @@ function getQuestions(searchParams) {
       GROUP BY question_id
     ) a ON a.question_id = q.id_question
     ${whereSql}
-    ORDER BY COALESCE(q.materia, ''), COALESCE(q.assunto, ''), q.id_question
+    ${questionOrderBySql(searchParams)}
     LIMIT ? OFFSET ?
   `).all(...values, limit, offset);
 
@@ -4505,7 +4525,7 @@ function getQuestionIds(searchParams, extra = {}) {
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
     ${whereSql}
-    ORDER BY COALESCE(q.materia, ''), COALESCE(q.assunto, ''), q.id_question
+    ${questionOrderBySql(searchParams, extra)}
   `).all(...values).map((row) => row.id);
 }
 

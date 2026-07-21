@@ -571,7 +571,18 @@ function bindEvents() {
     updateAdvancedFiltersSummary();
     clearTimeout(includedMatterTimer);
     includedMatterTimer = setTimeout(async () => {
-      await loadCurrentModeTarget();
+      // 2+ matérias → modo lista com rodízio entre elas (o backend intercala
+      // 1 de cada). O adaptativo prioriza por domínio e acaba concentrando
+      // numa matéria só, o que torna a seleção múltipla inútil. Mantém o
+      // filtro de estudo (esconde excluídas/dominadas) para ser uma fila útil.
+      if (state.filters.includedMaterias.length >= 2) {
+        setStudyMode("all");
+        state.filters.hideStudyExcluded = true;
+        if (els.hideStudyExcluded) els.hideStudyExcluded.checked = true;
+        await loadQuestions();
+      } else {
+        await loadCurrentModeTarget();
+      }
       if (state.subjectsVisible) await loadSubjectsRanking();
       if (state.normativeVisible) await loadNormativeReview();
     }, 350);
