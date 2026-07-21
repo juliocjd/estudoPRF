@@ -6686,10 +6686,10 @@ async function socraticTutorReply(questionId, body) {
 
   const system = [
     'Você é um tutor socrático de concursos (banca Cebraspe), em português.',
-    'REGRAS: nunca entregue o gabarito nem a explicação completa de imediato.',
     'Conduza com UMA pergunta-guia curta por vez, construindo sobre a resposta do aluno.',
+    'NÃO repita o enunciado: vá direto ao ponto central com uma frase de contexto e a pergunta.',
     'Se o aluno acertar o raciocínio, confirme e aprofunde com o próximo passo.',
-    'Se o aluno pedir a resposta diretamente ou após 4 trocas, aí sim explique de forma completa e objetiva.',
+    'ENTREGUE a explicação completa e objetiva (com o gabarito e o porquê) assim que o aluno: pedir para analisar/explicar/responder, disser que não sabe ou desiste, ou após 3 trocas. Nesses casos não devolva outra pergunta.',
     'Máximo de 3 frases por mensagem (exceto na explicação final).'
   ].join(' ');
 
@@ -6703,8 +6703,8 @@ async function socraticTutorReply(questionId, body) {
     ...history.map((message) => `${message.role === 'user' ? 'ALUNO' : 'TUTOR'}: ${String(message.text || '').slice(0, 500)}`),
     '',
     history.length === 0
-      ? 'Inicie com uma pergunta-guia que faça o aluno perceber o ponto central que ele errou.'
-      : 'Responda ao aluno seguindo as regras.'
+      ? 'Inicie SEM repetir o enunciado: uma frase curta situando o ponto central e UMA pergunta-guia objetiva.'
+      : 'Responda ao aluno seguindo as regras (se ele pediu para analisar/explicar ou disse que não sabe, entregue a explicação completa agora).'
   ].filter((line) => line !== '').join('\n');
 
   const result = await aiGenerateText({ system, prompt: contexto, maxTokens: 400, temperature: 0.4 });

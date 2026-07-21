@@ -38,39 +38,68 @@ export async function generateText({ system = '', prompt, maxTokens = 800, tempe
   }
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// Cada tentativa é limitada no tempo: sem isso um request travado deixava a
+// chamada pendurada (~86s num teste) e estouraria o maxDuration da Vercel (60s).
+const GEMINI_TIMEOUT_MS = 12000;
+
 async function geminiGenerate({ system, prompt, maxTokens, temperature }) {
   // gemini-flash-latest é o alias que tem cota no tier gratuito: os nomes fixos
   // (gemini-2.0-flash, -lite) voltavam HTTP 429 com "limit: 0" nas chaves novas
   // ("AQ."), então parecia que o limite diário estava sempre esgotado.
-  const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  // Os modelos 2.5 "pensam" por padrão, e esses tokens de raciocínio consomem o
-  // maxOutputTokens — truncando a resposta. thinkingBudget:0 desliga isso.
-  const supportsThinking = /latest|2\.5/.test(model);
-  const generationConfig = { maxOutputTokens: maxTokens, temperature };
-  if (supportsThinking) generationConfig.thinkingConfig = { thinkingBudget: 0 };
-  const response = await fetch(url, {
-    method: 'POST',
-    // Header oficial — compatível com chaves novas (AQ.) e antigas (AIza).
-    headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-    body: JSON.stringify({
+  // A lista funciona como fallback: se o modelo principal estiver sobrecarregado
+  // (HTTP 503 "high demand") ou lento, cai para o "lite" (mais disponível) —
+  // ambos têm cota no tier gratuito.
+  const primary = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+  const models = [...new Set([primary, 'gemini-flash-latest', 'gemini-flash-lite-latest'])];
+  let lastError = 'sem resposta';
+
+  for (const model of models) {
+    // Os modelos 2.5 "pensam" por padrão, e esses tokens de raciocínio consomem
+    // o maxOutputTokens — truncando a resposta. thinkingBudget:0 desliga isso.
+    const supportsThinking = /latest|2\.5/.test(model);
+    const generationConfig = { maxOutputTokens: maxTokens, temperature };
+    if (supportsThinking) generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    const body = JSON.stringify({
       systemInstruction: system ? { parts: [{ text: system }] } : undefined,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig
-    })
-  });
-  if (!response.ok) {
-    const detail = await response.text().catch(() => '');
-    const retry = detail.match(/retry in ([\d.]+)s/i);
-    const friendly =
-      response.status === 429
-        ? `Gemini sem cota no momento (HTTP 429)${retry ? `, tente de novo em ~${Math.ceil(Number(retry[1]))}s` : ''}. Se persistir, a chave/modelo pode não ter tier gratuito (veja ai.dev/rate-limit).`
-        : `Gemini HTTP ${response.status}: ${detail.slice(0, 200)}`;
-    throw new Error(friendly);
+    });
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        // Header oficial — compatível com chaves novas (AQ.) e antigas (AIza).
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+        body,
+        signal: controller.signal
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || '';
+        return { ok: Boolean(text), text, provider: 'gemini', model };
+      }
+      const detail = await response.text().catch(() => '');
+      lastError = `HTTP ${response.status}: ${detail.slice(0, 160)}`;
+    } catch (error) {
+      lastError = error?.name === 'AbortError'
+        ? `timeout após ${GEMINI_TIMEOUT_MS / 1000}s`
+        : (error?.message || String(error));
+    } finally {
+      clearTimeout(timer);
+    }
+    await sleep(300); // pequena pausa antes de tentar o próximo modelo
   }
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || '';
-  return { ok: Boolean(text), text, provider: 'gemini', model };
+
+  const retry = lastError.match(/retry in ([\d.]+)s/i);
+  const friendly = /HTTP 429/.test(lastError)
+    ? `Gemini sem cota no momento${retry ? `, tente de novo em ~${Math.ceil(Number(retry[1]))}s` : ''}. Se persistir, a chave/modelo pode não ter tier gratuito (veja ai.dev/rate-limit).`
+    : /HTTP 5\d\d|UNAVAILABLE|high demand|timeout/i.test(lastError)
+      ? 'O modelo de IA está sobrecarregado agora (muita demanda). Tente de novo em alguns segundos.'
+      : `Gemini ${lastError}`;
+  throw new Error(friendly);
 }
 
 async function anthropicGenerate({ system, prompt, maxTokens, temperature }) {
