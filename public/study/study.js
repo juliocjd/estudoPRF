@@ -274,6 +274,7 @@ const els = {
   supportDrawer: document.querySelector("#supportDrawer"),
   supportTitle: document.querySelector("#supportTitle"),
   supportSubtitle: document.querySelector("#supportSubtitle"),
+  supportResultFlag: document.querySelector("#supportResultFlag"),
   closeSupport: document.querySelector("#closeSupport"),
   supportNextQuestion: document.querySelector("#supportNextQuestion"),
   supportTabs: document.querySelectorAll("[data-support-tab]"),
@@ -7226,6 +7227,31 @@ function renderSupportVisibility() {
     els.supportTitle.textContent = "Outras do assunto";
     els.supportSubtitle.textContent =
       "Agrupamento amplo para consulta, sem supressao de variacoes";
+  }
+  renderSupportResultFlag();
+}
+
+// Selo discreto no cabeçalho do modal indicando se o aluno acertou ou errou —
+// útil no mobile, onde o modal abre sozinho após responder e o resultado não
+// fica visível de imediato. Só aparece para respostas que pontuam.
+function renderSupportResultFlag() {
+  const flag = els.supportResultFlag;
+  if (!flag) return;
+  const result = state.answerResult;
+  const matchesCurrent =
+    result &&
+    Number(result.questionId) === Number(state.currentQuestion?.id);
+  if (matchesCurrent && result.isCorrect === 1) {
+    flag.textContent = "✓ Você acertou";
+    flag.dataset.state = "correct";
+    flag.hidden = false;
+  } else if (matchesCurrent && result.isCorrect === 0) {
+    flag.textContent = "✗ Você errou";
+    flag.dataset.state = "wrong";
+    flag.hidden = false;
+  } else {
+    flag.hidden = true;
+    flag.removeAttribute("data-state");
   }
 }
 

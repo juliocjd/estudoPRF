@@ -1097,6 +1097,24 @@ body.is-report-page {
   font-weight: 700;
 }
 
+/* Selo discreto de acertou/errou no cabeçalho do modal de apoio. */
+.support-head .support-result-flag {
+  justify-self: start;
+  margin-top: 3px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.support-head .support-result-flag[data-state="correct"] {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.support-head .support-result-flag[data-state="wrong"] {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
 .status-button {
   min-height: 30px;
   border: 1px solid var(--border);
