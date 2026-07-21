@@ -5713,6 +5713,22 @@ function canRevealExplanation(question = state.currentQuestion) {
   return hasAnsweredCurrentPrompt(question);
 }
 
+// Há algo para mostrar no painel de apoio (comentário, teoria, resposta atual,
+// atualização normativa etc.). Usado para habilitar "Ver explicação" e para
+// decidir se abrimos o modal automaticamente no mobile após responder.
+function questionHasSupportContent(question = state.currentQuestion) {
+  return Boolean(
+    question?.comment?.html ||
+    question?.comment?.text ||
+    question?.appliedTheoryCard?.available ||
+    question?.legalStudy?.available ||
+    question?.normativeUpdate?.exists ||
+    question?.currentLawAnswer?.exists ||
+    question?.normativeTeachingComment?.exists ||
+    question?.metadata?.desatualizada,
+  );
+}
+
 function supportTabRequiresAnswer(tab) {
   return [
     "comment",
@@ -5729,16 +5745,7 @@ function updateAnswerActions() {
   const question = state.currentQuestion;
   const result = state.answerResult;
   const hasAlternatives = Boolean(question?.alternatives?.length);
-  const hasExplanation = Boolean(
-    question?.comment?.html ||
-    question?.comment?.text ||
-    question?.appliedTheoryCard?.available ||
-    question?.legalStudy?.available ||
-    question?.normativeUpdate?.exists ||
-    question?.currentLawAnswer?.exists ||
-    question?.normativeTeachingComment?.exists ||
-    question?.metadata?.desatualizada,
-  );
+  const hasExplanation = questionHasSupportContent(question);
   const canRevealSupport = canRevealExplanation(question);
   const hasPreviousAnswer = Boolean(question?.answerStats?.total);
 
@@ -5888,6 +5895,17 @@ function renderAnswerResult(result) {
   renderQuickTheoryPanel(state.currentQuestion);
   renderTheoryPanel(state.currentQuestion);
   renderInlineSupportCard();
+
+  // No mobile o card de apoio inline fica escondido, então abrimos o modal
+  // automaticamente após responder — traz a explicação histórica (e as demais
+  // abas) sem o usuário precisar tocar em "Ver explicação".
+  if (
+    mobileLayoutQuery.matches &&
+    canRevealExplanation(state.currentQuestion) &&
+    questionHasSupportContent(state.currentQuestion)
+  ) {
+    openSupportPanel(preferredSupportTab(state.currentQuestion));
+  }
 }
 
 function applyAnswerResultToCurrentQuestion(result) {
