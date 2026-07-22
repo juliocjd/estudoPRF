@@ -210,6 +210,7 @@ const els = {
   viewAllQuestions: document.querySelector("#viewAllQuestions"),
   nextSubject: document.querySelector("#nextSubject"),
   nextUnanswered: document.querySelector("#nextUnanswered"),
+  coverageQueue: document.querySelector("#coverageQueue"),
   smartQueue: document.querySelector("#smartQueue"),
   repairQueue: document.querySelector("#repairQueue"),
   dueReviews: document.querySelector("#dueReviews"),
@@ -740,6 +741,11 @@ function bindEvents() {
     closeAllDropdowns();
     setStudyMode("review");
     loadAdaptiveTarget("revisar_hoje");
+  });
+  els.coverageQueue?.addEventListener("click", () => {
+    closeAllDropdowns();
+    setStudyMode("coverage");
+    loadAdaptiveTarget("prf_otimizado");
   });
   els.toggleCoverage.addEventListener("click", async () => {
     closeAllDropdowns();
@@ -1556,6 +1562,7 @@ function setStudyMode(mode) {
     review: "Modo: Revisar hoje",
     repair: "Plano: Revisar erros",
     unanswered: "Modo: Não resolvidas",
+    coverage: "Modo: Varrer o banco",
     subject: "Modo: Trocar assunto",
     examSource: "Modo: Prova selecionada",
   };
@@ -2067,6 +2074,11 @@ async function loadCurrentModeTarget() {
     return;
   }
 
+  if (state.studyMode === "coverage") {
+    await loadAdaptiveTarget("prf_otimizado");
+    return;
+  }
+
   if (["study", "smart", "adaptive"].includes(state.studyMode)) {
     setStudyMode("adaptive");
     await loadAdaptiveTarget("prf_otimizado");
@@ -2082,6 +2094,8 @@ function buildQuestionParams() {
     limit: String(PAGE_SIZE),
   });
   if (state.filters.q) params.set("q", state.filters.q);
+  // Modo "varrer o banco": só questões nunca respondidas (cobertura).
+  if (state.studyMode === "coverage") params.set("unanswered", "1");
   if (state.filters.materia) params.set("materia", state.filters.materia);
   for (const materia of state.filters.includedMaterias || [])
     params.append("includeMateria", materia);
@@ -2207,7 +2221,11 @@ async function goPrevious() {
 }
 
 async function goNext() {
-  if (state.studyMode === "adaptive" || state.studyMode === "smart") {
+  if (
+    state.studyMode === "adaptive" ||
+    state.studyMode === "smart" ||
+    state.studyMode === "coverage"
+  ) {
     await loadAdaptiveTarget("prf_otimizado");
     return;
   }
@@ -5720,6 +5738,27 @@ function canRevealExplanation(question = state.currentQuestion) {
 // Há algo para mostrar no painel de apoio (comentário, teoria, resposta atual,
 // atualização normativa etc.). Usado para habilitar "Ver explicação" e para
 // decidir se abrimos o modal automaticamente no mobile após responder.
+// Mensagem transparente da próxima revisão: quando vence e por quê. Ajuda o
+// aluno a entender que o intervalo curto é do rating (chute/erro) e cresce a
+// cada acerto — não é aleatório.
+function nextReviewHint(result) {
+  const days = Number(result?.fsrs?.intervalDays || 0);
+  const rating = Number(result?.fsrs?.rating || 0);
+  const when = days === 1
+    ? "amanhã"
+    : days > 1
+      ? `em ${days} dias`
+      : (result?.nextDueAt ? `em ${formatDate(result.nextDueAt)}` : "");
+  if (!when) return "Resposta registrada";
+  const motivo = {
+    1: "você errou — volta cedo",
+    2: "acertou no chute — revisão cedo",
+    3: "acertou",
+    4: "acertou com folga — intervalo maior",
+  }[rating] || "";
+  return `Próxima revisão ${when}${motivo ? ` · ${motivo}` : ""}`;
+}
+
 function questionHasSupportContent(question = state.currentQuestion) {
   return Boolean(
     question?.comment?.html ||
@@ -5758,9 +5797,7 @@ function updateAnswerActions() {
 
   if (result) {
     if (result.isCorrect === 1) {
-      els.answerHint.textContent = result.nextDueAt
-        ? `Próxima revisão: ${formatDate(result.nextDueAt)}`
-        : "Resposta registrada";
+      els.answerHint.textContent = nextReviewHint(result);
       els.submitAnswer.textContent = "Próxima questão";
       els.submitAnswer.dataset.action = "next";
       els.submitAnswer.disabled = false;

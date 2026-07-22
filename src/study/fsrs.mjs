@@ -133,7 +133,13 @@ export function scheduleReview(state, rating, now = new Date(), options = {}) {
     }
   }
 
-  stability = Math.max(stability, 0.1);
+  // Calibração pessoal: escala a estabilidade estimada pela retenção real do
+  // aluno (personalize-fsrs.mjs). >1 estica intervalos (retém melhor que o
+  // alvo), <1 encurta. 1 = neutro (parâmetros padrão).
+  const stabilityMultiplier = Number(options.stabilityMultiplier) > 0
+    ? Number(options.stabilityMultiplier)
+    : 1;
+  stability = Math.max(stability * stabilityMultiplier, 0.1);
   reps += 1;
   if (rating === Rating.Again) lapses += 1;
 

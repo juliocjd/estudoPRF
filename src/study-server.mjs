@@ -5264,6 +5264,11 @@ function getRoundRobinAdaptiveTarget(searchParams, opts, included) {
 // curta pelo servedContext.isNew gravado a cada serviço.
 const NEW_QUESTION_TARGET_RATIO = 0.5;
 const NEW_QUESTION_WINDOW = 6;
+// Trava de diversidade: no máx. MATERIA_RECENT_CAP das últimas
+// MATERIA_RECENT_WINDOW questões podem ser da mesma matéria. Evita uma matéria
+// monopolizar a sessão (ex.: 46% de Redação), sem impedir foco moderado.
+const MATERIA_RECENT_WINDOW = 5;
+const MATERIA_RECENT_CAP = 2;
 
 // Fração de novas nos últimos serviços marcados. null = sem histórico marcado.
 function recentNewQuestionRatio(window = NEW_QUESTION_WINDOW) {
@@ -5281,6 +5286,30 @@ function recentNewQuestionRatio(window = NEW_QUESTION_WINDOW) {
   return tagged.filter((c) => c.isNew).length / tagged.length;
 }
 
+// Quantas das últimas questões servidas são de cada matéria.
+function recentServedMateriaCounts(window = MATERIA_RECENT_WINDOW) {
+  const rows = db.prepare(`
+    SELECT COALESCE(q.materia, '') AS materia
+    FROM study_served_questions ss
+    JOIN questions q ON q.id_question = ss.question_id
+    ORDER BY ss.served_at DESC, ss.id DESC
+    LIMIT ?
+  `).all(window);
+  const counts = new Map();
+  for (const row of rows) counts.set(row.materia, (counts.get(row.materia) || 0) + 1);
+  return counts;
+}
+
+// Escolhe o 1º candidato cuja matéria ainda não estourou a cota recente; se
+// todos estouraram, devolve o de maior score (candidates[0]) — nunca fica vazio.
+function pickWithMateriaDiversity(candidates, recentCounts) {
+  if (!candidates.length) return null;
+  const diverse = candidates.find(
+    (row) => (recentCounts.get(row.materia || '') || 0) < MATERIA_RECENT_CAP
+  );
+  return diverse || candidates[0];
+}
+
 // Um alvo adaptativo. Com 2+ matérias selecionadas, aplica o rodízio. Senão,
 // equilibra questões novas × revisões ~50/50 numa janela curta: se andaram
 // vindo poucas novas, serve a melhor inédita; se vieram poucas revisões, serve
@@ -5296,21 +5325,23 @@ function getAdaptiveTargetRow(searchParams, opts) {
   }
   const queue = getAdaptiveQueueRows(searchParams, opts);
   if (!queue.length) return null;
+  const recentMaterias = recentServedMateriaCounts();
   const ratio = recentNewQuestionRatio();
   const wantNew = ratio === null || ratio < NEW_QUESTION_TARGET_RATIO;
   if (wantNew) {
-    const fresh = queue.find((row) => row.neverAnswered);
+    const fresh = pickWithMateriaDiversity(queue.filter((row) => row.neverAnswered), recentMaterias);
     if (fresh) return fresh;
     // Nenhuma inédita no topo da fila (revisões dominam o score) → busca dirigida.
     const freshParams = new URLSearchParams(searchParams);
     freshParams.set('unanswered', '1');
-    const targeted = getAdaptiveQueueRows(freshParams, { ...opts, limit: 1 })[0];
-    if (targeted) return targeted;
+    const targeted = getAdaptiveQueueRows(freshParams, { ...opts, limit: 20 });
+    const pickedFresh = pickWithMateriaDiversity(targeted, recentMaterias);
+    if (pickedFresh) return pickedFresh;
   } else {
-    const review = queue.find((row) => !row.neverAnswered);
+    const review = pickWithMateriaDiversity(queue.filter((row) => !row.neverAnswered), recentMaterias);
     if (review) return review;
   }
-  return queue[0];
+  return pickWithMateriaDiversity(queue, recentMaterias) || queue[0];
 }
 
 function scoreAdaptiveQuestion(row, context) {
@@ -6722,6 +6753,11 @@ function getFsrsRuntimeOptions() {
     minIntervalDays: FSRS_CONFIG.minIntervalDays,
     maxIntervalDays: FSRS_CONFIG.maxIntervalDays
   };
+  // Calibração pessoal do FSRS (scripts/personalize-fsrs.mjs). Ausente = 1.
+  const multiplier = Number(getSetting('fsrs_stability_multiplier', ''));
+  if (Number.isFinite(multiplier) && multiplier > 0 && multiplier !== 1) {
+    options.stabilityMultiplier = Math.min(2, Math.max(0.6, multiplier));
+  }
   const examDate = getSetting('exam_date', '');
   if (examDate) {
     const daysLeft = Math.ceil((new Date(`${examDate}T12:00:00`).getTime() - Date.now()) / 86400000);
