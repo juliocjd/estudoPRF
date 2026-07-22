@@ -10903,6 +10903,11 @@ function escapeAttr(value) {
         </button>`);
     }
     chips.push(`
+      <button type="button" class="today-chip chip-plan" data-today="plan"
+        title="Plano de estudo: meta do dia, prontidão e evolução">
+        📋 Meta do dia
+      </button>`);
+    chips.push(`
       <button type="button" class="today-chip ${data.dueQuestions > 0 ? "chip-due" : ""}" data-today="reviews"
         title="Questões com revisão vencida (FSRS) — clique para revisar">
         <strong>${data.dueQuestions}</strong> revisar
@@ -10959,6 +10964,7 @@ function escapeAttr(value) {
     const chip = event.target.closest("[data-today]");
     if (!chip) return;
     const action = chip.dataset.today;
+    if (action === "plan") document.dispatchEvent(new CustomEvent("study:open-plan"));
     if (action === "reviews") document.getElementById("dueReviews")?.click();
     if (action === "repair") document.getElementById("repairQueue")?.click();
     if (action === "cloze") document.getElementById("lawClozeButton")?.click();
@@ -10972,6 +10978,205 @@ function escapeAttr(value) {
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) refresh();
   });
+})();
+
+/* ============================================================
+   Plano de estudo: meta diária, prontidão e evolução
+   Alvo de cobertura ponderado pelo peso da prova (não "100% do
+   banco"). Mostra meta do dia (novas + revisões), pendências,
+   cobertura por matéria e burn-down. Cota diária auto-curável.
+   ============================================================ */
+(function studyPlanModule() {
+  const button = document.getElementById("studyPlanButton");
+  if (!button) return;
+  button.addEventListener("click", () => {
+    if (typeof closeAllDropdowns === "function") closeAllDropdowns();
+    openPlan();
+  });
+  document.addEventListener("study:open-plan", openPlan);
+
+  function overlay(html) {
+    let el = document.getElementById("studyPlanOverlay");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "studyPlanOverlay";
+      el.className = "exam-sim-overlay";
+      document.body.appendChild(el);
+    }
+    el.hidden = false;
+    el.innerHTML = html;
+    el.onclick = (event) => {
+      if (event.target.closest("[data-action='close']")) { el.hidden = true; return; }
+      const act = event.target.closest("[data-plan]");
+      if (!act) return;
+      const kind = act.dataset.plan;
+      el.hidden = true;
+      if (kind === "new") document.getElementById("coverageQueue")?.click();
+      if (kind === "review") document.getElementById("dueReviews")?.click();
+      if (kind === "study") document.getElementById("studyNow")?.click();
+    };
+    return el;
+  }
+
+  async function openPlan() {
+    overlay(`<div class="exam-sim-card plan-card"><p class="plan-loading">Carregando plano…</p></div>`);
+    let data;
+    try {
+      data = await api("/api/study-plan");
+    } catch (error) {
+      overlay(`<div class="exam-sim-card plan-card">
+        <p>Não foi possível carregar o plano: ${escapeHtml(error.message || "erro")}.</p>
+        <div class="exam-sim-actions"><button class="button button-primary" data-action="close">Fechar</button></div>
+      </div>`);
+      return;
+    }
+    render(data);
+  }
+
+  function ring(pct) {
+    const r = 42;
+    const c = 2 * Math.PI * r;
+    const off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
+    return `<svg viewBox="0 0 100 100" class="plan-ring" role="img" aria-label="Prontidão ${pct}%">
+      <circle cx="50" cy="50" r="${r}" class="plan-ring-bg"></circle>
+      <circle cx="50" cy="50" r="${r}" class="plan-ring-fg"
+        stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"
+        transform="rotate(-90 50 50)"></circle>
+      <text x="50" y="48" class="plan-ring-num">${pct}%</text>
+      <text x="50" y="63" class="plan-ring-lbl">prontidão</text>
+    </svg>`;
+  }
+
+  function burndownSvg(data) {
+    const pts = data.burndown || [];
+    if (pts.length < 2) return `<p class="plan-empty">O gráfico de evolução aparece depois de alguns dias de estudo.</p>`;
+    const w = 520;
+    const h = 150;
+    const pad = 26;
+    const t = (day) => new Date(`${day}T12:00:00`).getTime();
+    const start = t(pts[0].day);
+    const end = Math.max(t(data.targetDate), t(pts[pts.length - 1].day) + 86400000);
+    const span = Math.max(1, end - start);
+    const maxY = Math.max(data.achievableTarget, 1);
+    const X = (ms) => pad + ((ms - start) / span) * (w - 2 * pad);
+    const Y = (v) => (h - pad) - (v / maxY) * (h - 2 * pad);
+    const actual = pts.map((p) => `${X(t(p.day)).toFixed(1)},${Y(p.covered).toFixed(1)}`).join(" ");
+    const todayX = X(Math.min(Date.now(), end));
+    const covered = pts[pts.length - 1].covered;
+    return `<svg viewBox="0 0 ${w} ${h}" class="plan-burndown" role="img" aria-label="Evolução da cobertura">
+      <line x1="${pad}" y1="${h - pad}" x2="${w - pad}" y2="${h - pad}" class="plan-axis"></line>
+      <line x1="${X(start).toFixed(1)}" y1="${Y(pts[0].covered).toFixed(1)}"
+            x2="${X(end).toFixed(1)}" y2="${Y(maxY).toFixed(1)}" class="plan-ideal"></line>
+      <polyline points="${actual}" class="plan-actual"></polyline>
+      <line x1="${todayX.toFixed(1)}" y1="${pad}" x2="${todayX.toFixed(1)}" y2="${h - pad}" class="plan-todayline"></line>
+      <text x="${pad}" y="16" class="plan-cap">meta ${maxY.toLocaleString("pt-BR")} · coberto ${covered.toLocaleString("pt-BR")}</text>
+      <text x="${(w - pad).toFixed(1)}" y="${(h - 8).toFixed(1)}" class="plan-cap plan-cap-end">${escapeHtml(data.targetDate)}</text>
+    </svg>`;
+  }
+
+  function pendingHtml(data) {
+    const items = [];
+    if (data.today.reviewsDue > 0) {
+      items.push(`<button type="button" class="plan-pending plan-pending-warn" data-plan="review">
+        ⚠ <strong>${data.today.reviewsDue}</strong> revisões atrasadas — limpar</button>`);
+    }
+    if (data.pending.yesterdayShortfall > 0 && data.pending.newYesterday >= 0) {
+      items.push(`<span class="plan-pending">Ontem faltaram <strong>${data.pending.yesterdayShortfall}</strong> novas · o ritmo de hoje já reajustou</span>`);
+    }
+    if (!items.length) items.push(`<span class="plan-pending plan-pending-ok">Em dia com o ritmo ✓</span>`);
+    return items.join("");
+  }
+
+  function subjectsHtml(data) {
+    return data.subjects.map((s) => `
+      <div class="plan-subj">
+        <div class="plan-subj-top">
+          <span class="plan-subj-name">${escapeHtml(s.subjectLabel)}</span>
+          <small>${s.seen}/${s.target}${s.deficit > 0 ? ` · <span class="plan-deficit">banco -${s.deficit}</span>` : ""}</small>
+        </div>
+        <div class="plan-bar" title="Cobertura ${s.coveragePct}% · domínio ${s.masteryPct}% · peso ${s.weightPct}%">
+          <div class="plan-bar-seen" style="width:${s.coveragePct}%"></div>
+          <div class="plan-bar-mast" style="width:${s.masteryPct}%"></div>
+        </div>
+      </div>`).join("");
+  }
+
+  function render(data) {
+    const t = data.today;
+    const goalPct = t.totalGoal > 0 ? Math.round((t.totalDone / t.totalGoal) * 100) : 0;
+    const el = overlay(`
+      <div class="exam-sim-card plan-card">
+        <div class="exam-sim-header">
+          <h2>Plano de estudo</h2>
+          <button class="icon-button" data-action="close" aria-label="Fechar">✕</button>
+        </div>
+
+        <div class="plan-hero">
+          ${ring(data.readinessPct)}
+          <div class="plan-hero-stats">
+            <div class="plan-goal-line">
+              <strong>Meta de hoje: ${t.totalGoal}</strong>
+              <span class="plan-goal-sub">${t.newQuota} novas + ${t.reviewsDue} revisões</span>
+            </div>
+            <div class="plan-progress"><div class="plan-progress-fill" style="width:${goalPct}%"></div></div>
+            <div class="plan-goal-done">${t.totalDone}/${t.totalGoal} feitas hoje · faltam ${Math.max(0, t.totalGoal - t.totalDone)}</div>
+            <div class="plan-meta-row">
+              <span><strong>${data.daysLeft}</strong> dias p/ meta</span>
+              <span><strong>${data.coveredSeen.toLocaleString("pt-BR")}</strong>/${data.achievableTarget.toLocaleString("pt-BR")} cobertas</span>
+              <span>${data.dateSource === "default" ? "data-meta padrão (6m)" : data.dateSource === "exam" ? "data da prova" : "data-meta definida"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="plan-pendings">${pendingHtml(data)}</div>
+
+        <div class="plan-actions">
+          <button class="button button-primary" data-plan="new">Estudar novas (${t.newRemaining})</button>
+          <button class="button button-secondary" data-plan="review">Revisar (${t.reviewsDue})</button>
+        </div>
+
+        <h3 class="plan-h3">Evolução da cobertura</h3>
+        ${burndownSvg(data)}
+
+        <h3 class="plan-h3">Cobertura por matéria <small>(barra clara = visto · escura = dominado)</small></h3>
+        <div class="plan-subjects">${subjectsHtml(data)}</div>
+
+        <h3 class="plan-h3">Ajustes</h3>
+        <form id="planSettingsForm" class="plan-settings">
+          <label>Data-meta <input type="date" name="targetDate" value="${escapeHtml(data.targetDate)}"></label>
+          <label>Alvo total <input type="number" name="targetTotal" value="${data.targetTotal}" min="200" max="8000" step="100"></label>
+          <label>Dias/semana <input type="number" name="daysPerWeek" value="${data.daysPerWeek}" min="1" max="7"></label>
+          <button class="button button-secondary" type="submit">Salvar</button>
+        </form>
+        <p class="plan-note">O alvo é ponderado pelo peso da prova e limitado pela quantidade de questões — “banco -N” marca onde o banco não cobre o peso da matéria. A cota diária se recalcula sozinha: pular um dia só reajusta o ritmo, não vira dívida.</p>
+      </div>`);
+
+    const form = el.querySelector("#planSettingsForm");
+    if (form) {
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const fd = new FormData(form);
+        const submitBtn = form.querySelector("button[type='submit']");
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "Salvando…"; }
+        try {
+          const updated = await api("/api/study-plan", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              targetDate: String(fd.get("targetDate") || ""),
+              targetTotal: Number(fd.get("targetTotal")) || undefined,
+              daysPerWeek: Number(fd.get("daysPerWeek")) || undefined
+            })
+          });
+          if (updated?.error) throw new Error(updated.error);
+          render(updated);
+        } catch (error) {
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "Salvar"; }
+          alert(`Não foi possível salvar: ${error.message || "erro"}`);
+        }
+      });
+    }
+  }
 })();
 
 /* ============================================================

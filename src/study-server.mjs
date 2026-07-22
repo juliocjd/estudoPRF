@@ -494,6 +494,17 @@ async function routeRequest(request, response) {
     return;
   }
 
+  if (url.pathname === '/api/study-plan' && request.method === 'GET') {
+    sendJson(response, 200, getStudyPlan(url.searchParams));
+    return;
+  }
+
+  if (url.pathname === '/api/study-plan' && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, setStudyPlan(body));
+    return;
+  }
+
   const lawClozeAnswerMatch = url.pathname.match(/^\/api\/law-cloze\/(\d+)\/answer$/);
   if (lawClozeAnswerMatch && request.method === 'POST') {
     const body = await readJsonBody(request);
@@ -7135,6 +7146,200 @@ function getTodaySummary() {
     daysLeft: stretch.enabled ? stretch.daysLeft : null,
     finalStretchActive: Boolean(stretch.finalStretchActive)
   };
+}
+
+// ============================================================
+// Plano de estudo: meta diária ancorada num ALVO DE COBERTURA PONDERADO pelo
+// peso da prova (não em "100% do banco", que é desbalanceado e desnecessário).
+// Distribui o alvo total entre as matérias pelo peso, limitado pela quantidade
+// disponível (expondo os déficits estruturais, ex.: Legislação Especial).
+// A cota diária de novas = restante / dias-de-estudo-restantes, recalculada
+// sempre (auto-cura: pular um dia não vira backlog culpado; só reajusta o ritmo).
+// Revisões vencidas são dívida real e aparecem à parte.
+// ============================================================
+const STUDY_PLAN_DEFAULT_TARGET = 3000;
+const STUDY_PLAN_DEFAULT_DAYS_PER_WEEK = 6;
+const STUDY_PLAN_DEFAULT_HORIZON_DAYS = 182; // ~6 meses
+const STUDY_PLAN_MASTERY_THRESHOLD = 0.6;
+
+function resolveStudyPlanSettings() {
+  const targetTotal = Math.max(200, Number(getSetting('study_plan_target_total', '')) || STUDY_PLAN_DEFAULT_TARGET);
+  const daysPerWeek = Math.min(7, Math.max(1, Number(getSetting('study_plan_days_per_week', '')) || STUDY_PLAN_DEFAULT_DAYS_PER_WEEK));
+  let targetDate = String(getSetting('study_plan_target_date', '') || '').trim();
+  let dateSource = 'plan';
+  if (!targetDate) {
+    targetDate = String(getSetting('exam_date', '') || '').trim();
+    dateSource = 'exam';
+  }
+  if (!targetDate) {
+    targetDate = new Date(Date.now() + STUDY_PLAN_DEFAULT_HORIZON_DAYS * 86400000).toISOString().slice(0, 10);
+    dateSource = 'default';
+  }
+  return { targetTotal, daysPerWeek, targetDate, dateSource };
+}
+
+// Distribui o alvo total pelo peso de cada matéria, com teto na disponibilidade.
+function allocateCoverageTargets(subjects, targetTotal) {
+  const totalWeight = subjects.reduce((sum, s) => sum + s.weightPct, 0) || 1;
+  return subjects.map((s) => {
+    const rawTarget = Math.round(targetTotal * (s.weightPct / totalWeight));
+    const target = Math.min(rawTarget, s.valid);
+    return { ...s, rawTarget, target, deficit: Math.max(0, rawTarget - s.valid) };
+  });
+}
+
+function getStudyPlan(searchParams) {
+  const profileId = resolveProfileId(searchParams?.get?.('profile'));
+  const { targetTotal, daysPerWeek, targetDate, dateSource } = resolveStudyPlanSettings();
+
+  // Peso + disponibilidade por matéria (getExamCoverageRows é cacheado).
+  const coverage = getExamCoverageRows(profileId);
+  const seenBySubject = new Map(db.prepare(`
+    SELECT qes.subject_key AS k, COUNT(DISTINCT sa.question_id) AS n
+    FROM question_exam_subjects qes
+    JOIN study_answers sa ON sa.question_id = qes.question_id
+    WHERE qes.profile_id = ?
+    GROUP BY qes.subject_key
+  `).all(profileId).map((r) => [r.k, Number(r.n || 0)]));
+  const masteredBySubject = new Map(db.prepare(`
+    SELECT qes.subject_key AS k, COUNT(DISTINCT qm.question_id) AS n
+    FROM question_exam_subjects qes
+    JOIN question_mastery qm ON qm.question_id = qes.question_id AND qm.mastery_score >= ?
+    WHERE qes.profile_id = ?
+    GROUP BY qes.subject_key
+  `).all(STUDY_PLAN_MASTERY_THRESHOLD, profileId).map((r) => [r.k, Number(r.n || 0)]));
+
+  const baseSubjects = coverage.map((row) => ({
+    subjectKey: row.subject_key,
+    subjectLabel: row.subject_label || row.subject_key,
+    blockKey: row.block_key || '',
+    weightPct: Number(row.expected_pct || 0),
+    valid: Number(row.valid_questions || 0),
+    seen: seenBySubject.get(row.subject_key) || 0,
+    mastered: masteredBySubject.get(row.subject_key) || 0
+  }));
+  const allocated = allocateCoverageTargets(baseSubjects, targetTotal);
+
+  const totalWeight = allocated.reduce((sum, s) => sum + s.weightPct, 0) || 1;
+  let achievableTarget = 0;
+  let coveredSeen = 0;
+  let remaining = 0;
+  let readinessAccum = 0;
+  const subjects = allocated.map((s) => {
+    const seenCapped = Math.min(s.seen, s.target);
+    const masteredCapped = Math.min(s.mastered, s.target);
+    achievableTarget += s.target;
+    coveredSeen += seenCapped;
+    remaining += Math.max(0, s.target - s.seen);
+    if (s.target > 0) readinessAccum += (s.weightPct / totalWeight) * (masteredCapped / s.target);
+    return {
+      subjectKey: s.subjectKey,
+      subjectLabel: s.subjectLabel,
+      blockKey: s.blockKey,
+      weightPct: Number(s.weightPct.toFixed(2)),
+      target: s.target,
+      seen: s.seen,
+      mastered: s.mastered,
+      remaining: Math.max(0, s.target - s.seen),
+      coveragePct: s.target > 0 ? Math.round((seenCapped / s.target) * 100) : 100,
+      masteryPct: s.target > 0 ? Math.round((masteredCapped / s.target) * 100) : 100,
+      deficit: s.deficit
+    };
+  }).sort((a, b) => a.coveragePct - b.coveragePct || b.weightPct - a.weightPct);
+
+  const readinessPct = Math.round(readinessAccum * 100);
+
+  // Horizonte e cota diária.
+  const daysLeft = Math.max(0, Math.ceil((new Date(`${targetDate}T12:00:00`).getTime() - Date.now()) / 86400000));
+  const studyDaysLeft = Math.max(1, Math.floor(daysLeft * (daysPerWeek / 7)));
+  const newPerDay = Math.max(0, Math.ceil(remaining / studyDaysLeft));
+
+  // Burn-down: distintas cobertas por dia (1ª vez que a questão foi respondida).
+  const firstSeenRows = db.prepare(`
+    SELECT SUBSTR(CAST(t.first_seen AS TEXT), 1, 10) AS day, COUNT(*) AS n
+    FROM (
+      SELECT sa.question_id, MIN(sa.answered_at) AS first_seen
+      FROM study_answers sa
+      JOIN question_exam_subjects qes ON qes.question_id = sa.question_id AND qes.profile_id = ?
+      GROUP BY sa.question_id
+    ) t
+    GROUP BY SUBSTR(CAST(t.first_seen AS TEXT), 1, 10)
+    ORDER BY day
+  `).all(profileId);
+  const newByDay = new Map(firstSeenRows.map((r) => [r.day, Number(r.n || 0)]));
+  let cum = 0;
+  const burndown = firstSeenRows.map((r) => {
+    cum += Number(r.n || 0);
+    return { day: r.day, covered: cum };
+  });
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const newToday = newByDay.get(todayStr) || 0;
+  const newYesterday = newByDay.get(yesterdayStr) || 0;
+
+  const answersToday = Number(db.prepare(`
+    SELECT COUNT(*) AS n FROM study_answers WHERE answered_at >= CURRENT_DATE
+  `).get()?.n || 0);
+  const reviewsDoneToday = Math.max(0, answersToday - newToday);
+
+  const overdueReviews = Number(db.prepare(`
+    SELECT COUNT(*) AS n FROM question_mastery
+    WHERE next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != ''
+      AND next_due_at <= CURRENT_TIMESTAMP
+  `).get()?.n || 0);
+
+  const newRemainingToday = Math.max(0, newPerDay - newToday);
+  const yesterdayShortfall = Math.max(0, newPerDay - newYesterday);
+
+  return {
+    profileId,
+    targetDate,
+    dateSource,
+    daysLeft,
+    daysPerWeek,
+    studyDaysLeft,
+    targetTotal,
+    achievableTarget,
+    coveredSeen,
+    remaining,
+    readinessPct,
+    today: {
+      newQuota: newPerDay,
+      newDone: newToday,
+      newRemaining: newRemainingToday,
+      reviewsDue: overdueReviews,
+      reviewsDone: reviewsDoneToday,
+      totalGoal: newPerDay + overdueReviews,
+      totalDone: newToday + reviewsDoneToday
+    },
+    pending: {
+      overdueReviews,
+      yesterdayShortfall,
+      newYesterday
+    },
+    subjects,
+    burndown
+  };
+}
+
+function setStudyPlan(body) {
+  const targetDate = String(body?.targetDate ?? '').trim();
+  if (targetDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return { error: 'Data inválida (use AAAA-MM-DD).' };
+    setSetting('study_plan_target_date', targetDate);
+  } else if (body?.targetDate === '') {
+    setSetting('study_plan_target_date', '');
+  }
+  if (body?.targetTotal != null) {
+    const total = Math.max(200, Math.min(8000, Number(body.targetTotal) || STUDY_PLAN_DEFAULT_TARGET));
+    setSetting('study_plan_target_total', String(total));
+  }
+  if (body?.daysPerWeek != null) {
+    const dpw = Math.min(7, Math.max(1, Number(body.daysPerWeek) || STUDY_PLAN_DEFAULT_DAYS_PER_WEEK));
+    setSetting('study_plan_days_per_week', String(dpw));
+  }
+  return getStudyPlan(new URLSearchParams());
 }
 
 /** Probabilidade implícita de acerto declarada em cada nível de confiança. */
