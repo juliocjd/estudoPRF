@@ -4862,7 +4862,8 @@ function getAdaptiveStudyNext(searchParams) {
     servedContext: {
       score: target.score,
       reasons: target.reasons,
-      clusterPolicy: target.clusterPolicy
+      clusterPolicy: target.clusterPolicy,
+      isNew: Boolean(target.neverAnswered)
     }
   });
   return adaptiveTargetPayload(target, plan, profileId);
@@ -4977,7 +4978,8 @@ function getStudyResumeTarget(searchParams) {
       servedContext: {
         score: target.score,
         reasons: target.reasons,
-        clusterPolicy: target.clusterPolicy
+        clusterPolicy: target.clusterPolicy,
+        isNew: Boolean(target.neverAnswered)
       }
     });
     return {
@@ -5256,15 +5258,59 @@ function getRoundRobinAdaptiveTarget(searchParams, opts, included) {
   return null;
 }
 
-// Um alvo adaptativo. Com 2+ matérias selecionadas, aplica o rodízio; senão,
-// o topo da fila adaptativa normal.
+// Cota de questões novas: sem isso, revisão vencida (+150) sempre supera
+// questão nova (+90), e um backlog de revisões trava o avanço no conteúdo.
+// Alvo de ~metade das questões servidas serem inéditas, medido numa janela
+// curta pelo servedContext.isNew gravado a cada serviço.
+const NEW_QUESTION_TARGET_RATIO = 0.5;
+const NEW_QUESTION_WINDOW = 6;
+
+// Fração de novas nos últimos serviços marcados. null = sem histórico marcado.
+function recentNewQuestionRatio(window = NEW_QUESTION_WINDOW) {
+  const recent = db.prepare(`
+    SELECT served_context_json
+    FROM study_served_questions
+    WHERE served_context_json IS NOT NULL
+    ORDER BY served_at DESC, id DESC
+    LIMIT ?
+  `).all(window);
+  const tagged = recent
+    .map((r) => { try { return JSON.parse(r.served_context_json); } catch { return null; } })
+    .filter((c) => c && typeof c.isNew === 'boolean');
+  if (!tagged.length) return null;
+  return tagged.filter((c) => c.isNew).length / tagged.length;
+}
+
+// Um alvo adaptativo. Com 2+ matérias selecionadas, aplica o rodízio. Senão,
+// equilibra questões novas × revisões ~50/50 numa janela curta: se andaram
+// vindo poucas novas, serve a melhor inédita; se vieram poucas revisões, serve
+// a melhor revisão. Assim o backlog de revisões não trava o avanço no conteúdo
+// novo, e as revisões também não são abandonadas. Mantém a priorização
+// adaptativa dentro de cada grupo (é sempre a MELHOR do grupo escolhido).
 function getAdaptiveTargetRow(searchParams, opts) {
   const included = getIncludedMaterias(searchParams);
   if (included.length >= 2) {
     const rotated = getRoundRobinAdaptiveTarget(searchParams, opts, included);
     if (rotated) return rotated;
+    return getAdaptiveQueueRows(searchParams, opts)[0] || null;
   }
-  return getAdaptiveQueueRows(searchParams, opts)[0] || null;
+  const queue = getAdaptiveQueueRows(searchParams, opts);
+  if (!queue.length) return null;
+  const ratio = recentNewQuestionRatio();
+  const wantNew = ratio === null || ratio < NEW_QUESTION_TARGET_RATIO;
+  if (wantNew) {
+    const fresh = queue.find((row) => row.neverAnswered);
+    if (fresh) return fresh;
+    // Nenhuma inédita no topo da fila (revisões dominam o score) → busca dirigida.
+    const freshParams = new URLSearchParams(searchParams);
+    freshParams.set('unanswered', '1');
+    const targeted = getAdaptiveQueueRows(freshParams, { ...opts, limit: 1 })[0];
+    if (targeted) return targeted;
+  } else {
+    const review = queue.find((row) => !row.neverAnswered);
+    if (review) return review;
+  }
+  return queue[0];
 }
 
 function scoreAdaptiveQuestion(row, context) {
@@ -5403,6 +5449,7 @@ function scoreAdaptiveQuestion(row, context) {
     clusterSize: Number(row.cluster_size || 0),
     clusterTitle: row.cluster_title || '',
     isRepresentative,
+    neverAnswered: Boolean(Number(row.never_answered)),
     hasComment: Boolean(row.has_comment),
     hasAnswer: Boolean(row.has_answer),
     nextDueAt: row.next_due_at || '',
