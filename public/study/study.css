@@ -4749,8 +4749,15 @@ body.is-report-page {
   }
 
   .segment {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 6px;
+  }
+
+  /* Alvos de toque >= 44px no mobile (pager < >, fechar X, ícones de ação). */
+  .icon-button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
   }
 
   .alternative {
@@ -4868,7 +4875,7 @@ body.is-report-page {
   }
 
   .support-tab {
-    min-height: 40px;
+    min-height: 44px;
     min-width: max-content;
     padding: 0 14px;
     overflow: visible;

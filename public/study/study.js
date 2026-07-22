@@ -216,7 +216,6 @@ const els = {
   dueReviews: document.querySelector("#dueReviews"),
   modeMenuButton: document.querySelector("#modeMenuButton"),
   reportsMenuButton: document.querySelector("#reportsMenuButton"),
-  supportMenuButton: document.querySelector("#supportMenuButton"),
   toggleCoverage: document.querySelector("#toggleCoverage"),
   togglePrincipaisPrf: document.querySelector("#togglePrincipaisPrf"),
   toggleTheoryCoverage: document.querySelector("#toggleTheoryCoverage"),
@@ -699,12 +698,12 @@ function bindEvents() {
     await saveStudyState({ resumeLast: state.resumeLast });
   });
 
-  els.prevPage.addEventListener("click", () => goPrevious());
-  els.nextPage.addEventListener("click", () => goNext());
-  els.studyNow.addEventListener("click", () => {
+  els.prevPage.addEventListener("click", () => runNav(goPrevious));
+  els.nextPage.addEventListener("click", () => runNav(goNext));
+  els.studyNow.addEventListener("click", () => runNav(() => {
     setStudyMode("adaptive");
-    loadAdaptiveTarget("prf_otimizado");
-  });
+    return loadAdaptiveTarget("prf_otimizado");
+  }));
   els.viewAllQuestions.addEventListener("click", () => {
     setStudyMode("all");
     state.filters.hideDuplicates = false;
@@ -717,36 +716,36 @@ function bindEvents() {
     updateAdvancedFiltersSummary();
     loadQuestions();
   });
-  els.nextSubject.addEventListener("click", () => {
+  els.nextSubject.addEventListener("click", () => runNav(() => {
     closeAllDropdowns();
     setStudyMode("subject");
-    navigateSpecial("subject");
-  });
-  els.nextUnanswered.addEventListener("click", () => {
+    return navigateSpecial("subject");
+  }));
+  els.nextUnanswered.addEventListener("click", () => runNav(() => {
     closeAllDropdowns();
     setStudyMode("unanswered");
-    navigateSpecial("unanswered");
-  });
-  els.smartQueue.addEventListener("click", () => {
+    return navigateSpecial("unanswered");
+  }));
+  els.smartQueue.addEventListener("click", () => runNav(() => {
     closeAllDropdowns();
     setStudyMode("adaptive");
-    loadAdaptiveTarget("prf_otimizado");
-  });
-  els.repairQueue.addEventListener("click", () => {
+    return loadAdaptiveTarget("prf_otimizado");
+  }));
+  els.repairQueue.addEventListener("click", () => runNav(() => {
     closeAllDropdowns();
     setStudyMode("repair");
-    loadAdaptiveTarget("revisar_erros");
-  });
-  els.dueReviews.addEventListener("click", () => {
+    return loadAdaptiveTarget("revisar_erros");
+  }));
+  els.dueReviews.addEventListener("click", () => runNav(() => {
     closeAllDropdowns();
     setStudyMode("review");
-    loadAdaptiveTarget("revisar_hoje");
-  });
-  els.coverageQueue?.addEventListener("click", () => {
+    return loadAdaptiveTarget("revisar_hoje");
+  }));
+  els.coverageQueue?.addEventListener("click", () => runNav(() => {
     closeAllDropdowns();
     setStudyMode("coverage");
-    loadAdaptiveTarget("prf_otimizado");
-  });
+    return loadAdaptiveTarget("prf_otimizado");
+  }));
   els.toggleCoverage.addEventListener("click", async () => {
     closeAllDropdowns();
     await openReportPage("coverage");
@@ -2036,6 +2035,41 @@ function isCurrentQuestionRequest(requestToken) {
   return !requestToken || requestToken === questionRequestToken;
 }
 
+// Traduz falhas de rede/servidor em mensagem curta pro usuário (mobile, conexão
+// instável). fetchJson já lança "Tempo esgotado"/"Sem conexão"; aqui só mapeamos
+// os HTTP e o genérico.
+function friendlyErrorMessage(error) {
+  const raw = (error && error.message) || String(error || "");
+  if (/tempo esgotado/i.test(raw)) return "Tempo esgotado. Verifique sua conexão e tente de novo.";
+  if (/sem conexão|failed to fetch|networkerror/i.test(raw)) return "Sem conexão com o servidor. Verifique sua internet e tente de novo.";
+  if (/HTTP 5\d\d/.test(raw)) return "O servidor está instável agora. Tente novamente em instantes.";
+  if (/HTTP 4\d\d/.test(raw)) return "Não foi possível carregar esta questão.";
+  return "Algo deu errado ao carregar. Tente novamente.";
+}
+
+// Estado de erro visível ao falhar uma navegação/carga (antes o toque em
+// "Próxima questão"/"Estudar agora" simplesmente não fazia nada quando a API caía).
+function showNavError(error) {
+  const msg = friendlyErrorMessage(error);
+  if (els.questionQuickStatus) els.questionQuickStatus.textContent = "Erro ao carregar";
+  if (els.statement) els.statement.innerHTML = `<p class="empty">${escapeHtml(msg)}</p>`;
+  if (els.answerStatus) els.answerStatus.textContent = msg;
+  if (els.answerHint) els.answerHint.textContent = "Toque em “Próxima questão” para tentar de novo.";
+  if (els.submitAnswer) els.submitAnswer.disabled = true;
+  console.error("Falha de navegação:", error);
+}
+
+// Envolve os handlers de navegação: garante que qualquer rejeição vire um estado
+// de erro visível em vez de um toque morto e um unhandledrejection silencioso.
+function runNav(action) {
+  try {
+    const result = action();
+    if (result && typeof result.catch === "function") result.catch(showNavError);
+  } catch (error) {
+    showNavError(error);
+  }
+}
+
 function renderQuestionLoading(message = "Carregando questao...") {
   state.selectedId = null;
   state.currentQuestion = null;
@@ -2209,7 +2243,9 @@ function renderEmptyQuestion(message = "") {
 async function goPrevious() {
   if (state.rowIndex > 0) {
     state.rowIndex -= 1;
-    await selectQuestion(state.rows[state.rowIndex].id);
+    const requestToken = beginQuestionRequest();
+    await selectQuestion(state.rows[state.rowIndex].id, { requestToken });
+    if (!isCurrentQuestionRequest(requestToken)) return;
     renderPager();
     return;
   }
@@ -2242,7 +2278,9 @@ async function goNext() {
 
   if (state.rowIndex < state.rows.length - 1) {
     state.rowIndex += 1;
-    await selectQuestion(state.rows[state.rowIndex].id);
+    const requestToken = beginQuestionRequest();
+    await selectQuestion(state.rows[state.rowIndex].id, { requestToken });
+    if (!isCurrentQuestionRequest(requestToken)) return;
     renderPager();
     return;
   }
@@ -3423,7 +3461,9 @@ async function openQuestionDirect(questionId, options = {}) {
   closeSupportPanel();
   closeAllDropdowns();
   try {
-    await selectQuestion(targetId);
+    const requestToken = beginQuestionRequest();
+    await selectQuestion(targetId, { requestToken });
+    if (!isCurrentQuestionRequest(requestToken)) return;
     const rowIndex = state.rows.findIndex((row) => Number(row.id) === targetId);
     if (rowIndex >= 0) {
       state.rowIndex = rowIndex;
@@ -7108,6 +7148,9 @@ function closeSupportPanel() {
   ) {
     state.lastSupportTrigger.focus();
   }
+  // Sinaliza para o módulo de IA soltar um toast de erro que foi adiado enquanto
+  // o modal de apoio estava aberto (mobile).
+  document.dispatchEvent(new CustomEvent("support-panel-closed"));
 }
 
 function lockPageScroll() {
@@ -9681,8 +9724,27 @@ async function api(url, options) {
   return fetchJson(url, options);
 }
 
-async function fetchJson(url, options) {
-  const response = await fetch(url, options);
+// Timeout de rede: sem isso, uma conexão móvel que cai deixa o fetch pendurado
+// para sempre e o "Buscando questões..." nunca sai. 25s < 60s do limite da Vercel.
+const FETCH_TIMEOUT_MS = 25000;
+
+async function fetchJson(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      signal: options.signal || controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted || error?.name === "AbortError") {
+      throw new Error("Tempo esgotado ao falar com o servidor.");
+    }
+    throw new Error("Sem conexão com o servidor.");
+  } finally {
+    clearTimeout(timer);
+  }
   if (!response.ok) {
     let detail = "";
     try {
@@ -10315,6 +10377,16 @@ function escapeAttr(value) {
    ============================================================ */
 (function aiPostErrorModule() {
   let aiOn = false;
+  // Toast de erro adiado enquanto o modal de apoio está aberto no mobile (ele
+  // auto-abre ao errar). Soltamos quando o modal fecha, para não sobrepor a
+  // explicação — mas sem perder o acesso ao tutor/diagnóstico.
+  let pendingToastId = null;
+  document.addEventListener("support-panel-closed", () => {
+    if (pendingToastId == null) return;
+    const id = pendingToastId;
+    pendingToastId = null;
+    showErrorToast(id);
+  });
   fetch("/api/ai/status").then((response) => response.json())
     .then((data) => { aiOn = Boolean(data.available); })
     .catch(() => {});
@@ -10337,6 +10409,12 @@ function escapeAttr(value) {
   };
 
   function showErrorToast(questionId) {
+    // No mobile o modal de apoio abre sozinho ao errar; adia o toast para o
+    // fechamento do modal (evento support-panel-closed) para não flutuar por cima.
+    if (mobileLayoutQuery.matches && state.supportOpen) {
+      pendingToastId = questionId;
+      return;
+    }
     dismissToast();
     const toast = document.createElement("div");
     toast.id = "aiErrorToast";

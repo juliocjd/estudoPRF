@@ -2,6 +2,10 @@ node_modules/
 .env
 .env.*
 !.env.example
+# Lixo do mount FUSE (órfãos de WAL do SQLite ao deletar arquivo em uso)
+.fuse_hidden*
+# Dump acidental do servidor (redirecionamento > outputs)
+/outputs
 /pdfs/
 pdfs-prf-sample/
 !public/pdfs/

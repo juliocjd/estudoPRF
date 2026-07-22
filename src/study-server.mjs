@@ -10,7 +10,7 @@ import { loadEnvFiles } from '../scripts/lib/env.mjs';
 import { getContranPrfResolutionExamStats } from '../scripts/contran-prf-exam-counts.mjs';
 import { gerar_plano_prf } from '../scripts/plano_estudos_prf.mjs';
 // FSRS: agendamento de revisões baseado no modelo DSR (ver src/study/fsrs.mjs)
-import { gradeAnswer as fsrsGradeAnswer, scheduleReview as fsrsScheduleReview, retrievability as fsrsRetrievability, FSRS_VERSION } from './study/fsrs.mjs';
+import { gradeAnswer as fsrsGradeAnswer, scheduleReview as fsrsScheduleReview, FSRS_VERSION } from './study/fsrs.mjs';
 import { FSRS_CONFIG, DERIVED_CE_ID_START } from './study/study-config.mjs';
 import { generateText as aiGenerateText, aiAvailable, aiProviderName, extractJson as aiExtractJson } from './study/ai-provider.mjs';
 import {
@@ -3693,6 +3693,8 @@ function setActiveExamProfile(body) {
     throw error;
   }
 
+  invalidateProfileCache();
+  invalidateExamCoverageCache();
   return getExamProfiles();
 }
 
@@ -3707,7 +3709,30 @@ function getExamCoverage(searchParams) {
   };
 }
 
+// Cache de cobertura por perfil. Os campos usados no hot path adaptativo
+// (coverage_gap_pct) são estáticos por questão; os dinâmicos (tentativas,
+// revisões vencidas, mastery) só alimentam o relatório /api/exam-coverage. TTL
+// curto mantém o relatório fresco e invalidateExamCoverageCache() (chamado no
+// saveAnswer e na troca de perfil) zera o cache após cada escrita relevante.
+// Antes disso, esta agregação de base inteira rodava 2–N vezes por troca de
+// questão (getAdaptiveQueueRows a chama em toda montagem de fila).
+const examCoverageCache = new Map(); // profileId -> { rows, expires }
+const EXAM_COVERAGE_TTL_MS = 20000;
+const blockWeightsCache = new Map(); // profileId -> Map(blockKey -> pct)  (estático)
+function invalidateExamCoverageCache() {
+  examCoverageCache.clear();
+  blockWeightsCache.clear();
+}
+
 function getExamCoverageRows(profileId) {
+  const cached = examCoverageCache.get(profileId);
+  if (cached && cached.expires > Date.now()) return cached.rows;
+  const rows = computeExamCoverageRows(profileId);
+  examCoverageCache.set(profileId, { rows, expires: Date.now() + EXAM_COVERAGE_TTL_MS });
+  return rows;
+}
+
+function computeExamCoverageRows(profileId) {
   const totalValidMapped = db.prepare(`
     SELECT COUNT(DISTINCT q.id_question) AS n
     FROM question_exam_subjects qes
@@ -5087,7 +5112,12 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
     )`);
   }
   const finalWhere = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
-  const fetchLimit = Math.max(Number(limit || 50) * 30, 600);
+  // A query não tem ORDER BY (a priorização é toda no scorer em JS), então este
+  // é o tamanho do pool de candidatos que o scorer enxerga. *30 puxava 2.400
+  // linhas para servir 1 questão — payload e scoring caros no bridge síncrono.
+  // *15 corta pela metade mantendo pool amplo o bastante para revisões vencidas
+  // e inéditas aparecerem. Reduzir mais exigiria pré-ordenar no SQL.
+  const fetchLimit = Math.max(Number(limit || 50) * 15, 600);
   const coverage = new Map(getExamCoverageRows(resolvedProfile).map((row) => [row.subject_key, row]));
   const blockWeights = getPrfBlockWeights(resolvedProfile);
 
@@ -5239,23 +5269,41 @@ function getRoundRobinAdaptiveTarget(searchParams, opts, included) {
     ...opts,
     limit: Math.max(60, cycle.length * 40)
   });
-  const bestByMateria = new Map();
+  // Melhor questão por matéria, separando inéditas de revisões. Sem essa
+  // separação, revisão vencida (+150) sempre supera questão nova (+90) e o
+  // backlog de revisões trava o avanço no conteúdo novo dentro de cada matéria
+  // — a mesma cota nova/revisão que o modo de matéria única aplica via
+  // NEW_QUESTION_TARGET_RATIO, agora também no rodízio.
+  const bestNewByMateria = new Map();
+  const bestReviewByMateria = new Map();
   for (const row of pool) {
-    if (!bestByMateria.has(row.materia)) bestByMateria.set(row.materia, row);
+    if (row.neverAnswered) {
+      if (!bestNewByMateria.has(row.materia)) bestNewByMateria.set(row.materia, row);
+    } else if (!bestReviewByMateria.has(row.materia)) {
+      bestReviewByMateria.set(row.materia, row);
+    }
   }
+  const ratio = recentNewQuestionRatio();
+  const wantNew = ratio === null || ratio < NEW_QUESTION_TARGET_RATIO;
+  const pickForMateria = (materia) => (wantNew
+    ? (bestNewByMateria.get(materia) || bestReviewByMateria.get(materia))
+    : (bestReviewByMateria.get(materia) || bestNewByMateria.get(materia))) || null;
   const last = getLastServedMateriaAmong(cycle);
   const lastIdx = cycle.indexOf(last);
   const start = lastIdx >= 0 ? (lastIdx + 1) % cycle.length : 0;
   for (let i = 0; i < cycle.length; i += 1) {
     const materia = cycle[(start + i) % cycle.length];
-    if (bestByMateria.has(materia)) return bestByMateria.get(materia);
+    const picked = pickForMateria(materia);
+    if (picked) return picked;
     const targeted = getAdaptiveQueueRows(singleMateriaParams(searchParams, materia), {
       ...opts,
       limit: 1
     })[0];
     if (targeted) return targeted;
   }
-  return null;
+  // Rodízio não achou nada nas matérias do ciclo → melhor do pool já montado
+  // (evita refazer a fila inteira no chamador).
+  return pool[0] || null;
 }
 
 // Cota de questões novas: sem isso, revisão vencida (+150) sempre supera
@@ -5310,7 +5358,8 @@ function pickWithMateriaDiversity(candidates, recentCounts) {
   return diverse || candidates[0];
 }
 
-// Um alvo adaptativo. Com 2+ matérias selecionadas, aplica o rodízio. Senão,
+// Um alvo adaptativo. Com 2+ matérias selecionadas, aplica o rodízio (que já
+// respeita a cota nova/revisão por matéria). Senão,
 // equilibra questões novas × revisões ~50/50 numa janela curta: se andaram
 // vindo poucas novas, serve a melhor inédita; se vieram poucas revisões, serve
 // a melhor revisão. Assim o backlog de revisões não trava o avanço no conteúdo
@@ -5319,9 +5368,9 @@ function pickWithMateriaDiversity(candidates, recentCounts) {
 function getAdaptiveTargetRow(searchParams, opts) {
   const included = getIncludedMaterias(searchParams);
   if (included.length >= 2) {
-    const rotated = getRoundRobinAdaptiveTarget(searchParams, opts, included);
-    if (rotated) return rotated;
-    return getAdaptiveQueueRows(searchParams, opts)[0] || null;
+    // getRoundRobinAdaptiveTarget já cai para o melhor do pool que montou; não
+    // refazer a fila aqui (era um segundo pipeline completo redundante).
+    return getRoundRobinAdaptiveTarget(searchParams, opts, included);
   }
   const queue = getAdaptiveQueueRows(searchParams, opts);
   if (!queue.length) return null;
@@ -5941,6 +5990,8 @@ function updateClusterMastery(database, questionId, answerResult, attemptMeta) {
 }
 
 function getPrfBlockWeights(profileId) {
+  const cached = blockWeightsCache.get(profileId);
+  if (cached) return cached;
   const rows = db.prepare(`
     SELECT block_key, SUM(expected_pct) AS expected_pct
     FROM exam_subject_weights
@@ -5951,6 +6002,7 @@ function getPrfBlockWeights(profileId) {
   for (const [key, value] of PRF_BLOCK_TARGETS) {
     if (weights.has(key)) weights.set(key, value);
   }
+  blockWeightsCache.set(profileId, weights);
   return weights;
 }
 
@@ -9242,6 +9294,10 @@ function saveAnswer(questionId, body) {
   setSetting('last_question_id', String(questionId));
   setSetting('last_answered_question_id', String(questionId));
   updateStudyFlowAnswered(questionId, attemptMeta);
+  // Zera o cache de cobertura para o relatório refletir esta resposta (tentativas,
+  // revisões vencidas, mastery) imediatamente. O hot path adaptativo usa só campos
+  // estáticos, então isso não afeta a próxima questão servida.
+  invalidateExamCoverageCache();
 
   return {
     questionId,
@@ -10947,13 +11003,25 @@ function limitText(value, maxLength) {
   return String(value ?? '').slice(0, maxLength);
 }
 
+// Memo do perfil resolvido. Chamado 2–3× por troca de questão (getAdaptiveStudyNext
+// + getAdaptiveQueueRows + rodízio), cada chamada custava 1–2 round-trips. Zerado
+// por invalidateProfileCache() na troca de perfil ativo.
+const resolvedProfileCache = new Map(); // requested (string) -> profileId
+function invalidateProfileCache() {
+  resolvedProfileCache.clear();
+}
+
 function resolveProfileId(requested) {
-  const profileId = String(requested || '').trim()
+  const key = String(requested || '').trim();
+  const cached = resolvedProfileCache.get(key);
+  if (cached) return cached;
+  const profileId = key
     || db.prepare('SELECT id FROM exam_profiles WHERE is_active = 1 ORDER BY updated_at DESC LIMIT 1').get()?.id
     || 'prf_2021_qconcursos_disciplina';
   if (!db.prepare('SELECT 1 FROM exam_profiles WHERE id = ?').get(profileId)) {
     throw new Error(`Perfil de prova nao encontrado: ${profileId}`);
   }
+  resolvedProfileCache.set(key, profileId);
   return profileId;
 }
 
@@ -10991,7 +11059,12 @@ function currentSqlTimestamp() {
 function isDue(value) {
   if (!value) return false;
   if (value instanceof Date) return value.getTime() <= Date.now();
-  const normalized = String(value).trim().replace(' ', 'T');
+  let normalized = String(value).trim().replace(' ', 'T');
+  // Timestamps do SQLite são UTC naïve (sem 'Z'); sem forçar UTC o JS os
+  // interpreta como hora local e o bônus de revisão vencida (+150) dispara com o
+  // offset do fuso de atraso (~3h em São Paulo). No Postgres o valor já vem com
+  // 'Z' (normalizeValue → toISOString), então o regex não altera nada.
+  if (!/[zZ]$|[+-]\d{2}:?\d{2}$/.test(normalized)) normalized += 'Z';
   const parsed = new Date(normalized);
   return !Number.isNaN(parsed.getTime()) && parsed.getTime() <= Date.now();
 }
