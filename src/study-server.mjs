@@ -5100,10 +5100,15 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
     }
   }
   if (resolvedPlan === 'revisar_erros') {
-    filters.push('(last_answer.is_correct = 0 OR qm.last_result = 0 OR cm.last_result = 0)');
+    // Só questões que a PRÓPRIA pessoa errou (não novas que só compartilham um
+    // cluster com erro). cm.last_result deixava questão nunca respondida vazar.
+    filters.push('(last_answer.is_correct = 0 OR qm.last_result = 0)');
   }
   if (resolvedPlan === 'revisar_hoje') {
-    filters.push('(qm.next_due_at <= CURRENT_TIMESTAMP OR cm.next_due_at <= CURRENT_TIMESTAMP)');
+    // Só questões já respondidas e com revisão vencida (qm.next_due_at só existe
+    // após responder). O OR cm.next_due_at trazia questões novas de clusters
+    // vencidos — o "Revisar" deve ser exclusivo do que há para revisar.
+    filters.push('(qm.next_due_at IS NOT NULL AND qm.next_due_at <= CURRENT_TIMESTAMP)');
   }
   if (excludeQuestionId && resolvedPlan !== 'ver_todas') {
     filters.push(`q.id_question != ${Number(excludeQuestionId)}`);
@@ -5386,6 +5391,13 @@ function getAdaptiveTargetRow(searchParams, opts) {
   const queue = getAdaptiveQueueRows(searchParams, opts);
   if (!queue.length) return null;
   const recentMaterias = recentServedMateriaCounts();
+  // Planos de revisão/reparo: o pool já vem filtrado (só vencidas / só erros),
+  // então serve o melhor sem aplicar a cota de novas — senão o "Revisar" tenta
+  // intercalar questões novas.
+  const plan = resolveStudyPlan(opts?.plan);
+  if (plan === 'revisar_hoje' || plan === 'revisar_erros') {
+    return pickWithMateriaDiversity(queue, recentMaterias) || queue[0];
+  }
   const ratio = recentNewQuestionRatio();
   const wantNew = ratio === null || ratio < NEW_QUESTION_TARGET_RATIO;
   if (wantNew) {
