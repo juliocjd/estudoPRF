@@ -1,4 +1,9 @@
 const PAGE_SIZE = 20;
+// Timeout de rede: sem isso, uma conexão móvel que cai deixa o fetch pendurado
+// para sempre e o "Buscando questões..." nunca sai. 25s < 60s do limite da Vercel.
+// Declarado no topo (não junto de fetchJson) para não cair em TDZ quando a
+// inicialização chama fetchJson antes de a linha original ser avaliada.
+const FETCH_TIMEOUT_MS = 25000;
 const CONTRAN_NORMATIVE_DISPLAY_PREFERENCE_KEY =
   "contran_normative_full_text_display_preference";
 const CONTRAN_NORMATIVE_LAST_OPEN_KEY = "contran_normative_full_text_last_open";
@@ -9723,10 +9728,6 @@ async function api(url, options) {
   }
   return fetchJson(url, options);
 }
-
-// Timeout de rede: sem isso, uma conexão móvel que cai deixa o fetch pendurado
-// para sempre e o "Buscando questões..." nunca sai. 25s < 60s do limite da Vercel.
-const FETCH_TIMEOUT_MS = 25000;
 
 async function fetchJson(url, options = {}) {
   const controller = new AbortController();
