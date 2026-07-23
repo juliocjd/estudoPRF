@@ -4704,6 +4704,28 @@ body.is-report-page {
     white-space: nowrap;
   }
 
+  /* tabela-questao (wrapper do enunciado vindo do banco, com largura fixa em px)
+     é caixa de texto, não tabela de dados: precisa caber na tela e quebrar linha
+     em vez de rolar na horizontal. */
+  .statement table.tabela-questao,
+  .support-body table.tabela-questao {
+    display: table;
+    width: 100% !important;
+    max-width: 100%;
+    table-layout: fixed;
+    overflow-x: visible;
+    white-space: normal;
+  }
+
+  .statement table.tabela-questao td,
+  .statement table.tabela-questao th,
+  .support-body table.tabela-questao td,
+  .support-body table.tabela-questao th {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   .statement-association-table {
     table-layout: auto;
     min-width: 520px;
