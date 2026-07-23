@@ -10988,12 +10988,20 @@ function escapeAttr(value) {
    cobertura por matéria e burn-down. Cota diária auto-curável.
    ============================================================ */
 (function studyPlanModule() {
-  const button = document.getElementById("studyPlanButton");
-  if (!button) return;
-  button.addEventListener("click", () => {
-    if (typeof closeAllDropdowns === "function") closeAllDropdowns();
-    openPlan();
-  });
+  // Entradas: menu "Estudar" (desktop), menu "Desempenho" (também visível no
+  // mobile, onde o dropdown "Estudar" e a barra de chips ficam ocultos) e o
+  // chip "Meta do dia" via evento.
+  const entryButtons = [
+    document.getElementById("studyPlanButton"),
+    document.getElementById("studyPlanReportsButton")
+  ].filter(Boolean);
+  if (!entryButtons.length) return;
+  for (const button of entryButtons) {
+    button.addEventListener("click", () => {
+      if (typeof closeAllDropdowns === "function") closeAllDropdowns();
+      openPlan();
+    });
+  }
   document.addEventListener("study:open-plan", openPlan);
 
   function overlay(html) {
