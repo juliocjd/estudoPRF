@@ -7161,10 +7161,16 @@ const STUDY_PLAN_DEFAULT_TARGET = 3000;
 const STUDY_PLAN_DEFAULT_DAYS_PER_WEEK = 6;
 const STUDY_PLAN_DEFAULT_HORIZON_DAYS = 182; // ~6 meses
 const STUDY_PLAN_MASTERY_THRESHOLD = 0.6;
+// Teto diário de revisão: um backlog de revisões vencidas (ex.: 420) tornava a
+// meta do dia impossível. A meta soma novas + min(vencidas, teto); o backlog
+// total continua visível como pendência e drena em poucos dias (revisão certa
+// empurra o cartão semanas à frente). Assim o dia é sempre completável.
+const STUDY_PLAN_DEFAULT_REVIEW_CAP = 50;
 
 function resolveStudyPlanSettings() {
   const targetTotal = Math.max(200, Number(getSetting('study_plan_target_total', '')) || STUDY_PLAN_DEFAULT_TARGET);
   const daysPerWeek = Math.min(7, Math.max(1, Number(getSetting('study_plan_days_per_week', '')) || STUDY_PLAN_DEFAULT_DAYS_PER_WEEK));
+  const reviewCap = Math.max(10, Math.min(400, Number(getSetting('study_plan_review_cap', '')) || STUDY_PLAN_DEFAULT_REVIEW_CAP));
   let targetDate = String(getSetting('study_plan_target_date', '') || '').trim();
   let dateSource = 'plan';
   if (!targetDate) {
@@ -7175,7 +7181,7 @@ function resolveStudyPlanSettings() {
     targetDate = new Date(Date.now() + STUDY_PLAN_DEFAULT_HORIZON_DAYS * 86400000).toISOString().slice(0, 10);
     dateSource = 'default';
   }
-  return { targetTotal, daysPerWeek, targetDate, dateSource };
+  return { targetTotal, daysPerWeek, reviewCap, targetDate, dateSource };
 }
 
 // Distribui o alvo total pelo peso de cada matéria, com teto na disponibilidade.
@@ -7190,7 +7196,7 @@ function allocateCoverageTargets(subjects, targetTotal) {
 
 function getStudyPlan(searchParams) {
   const profileId = resolveProfileId(searchParams?.get?.('profile'));
-  const { targetTotal, daysPerWeek, targetDate, dateSource } = resolveStudyPlanSettings();
+  const { targetTotal, daysPerWeek, reviewCap, targetDate, dateSource } = resolveStudyPlanSettings();
 
   // Peso + disponibilidade por matéria (getExamCoverageRows é cacheado).
   const coverage = getExamCoverageRows(profileId);
@@ -7292,12 +7298,21 @@ function getStudyPlan(searchParams) {
   const newRemainingToday = Math.max(0, newPerDay - newToday);
   const yesterdayShortfall = Math.max(0, newPerDay - newYesterday);
 
+  // Meta de revisão do dia = teto (não o backlog inteiro). O backlog fica
+  // visível como pendência. reviewsDone é limitado ao alvo para a barra de
+  // progresso não passar de 100% num dia em que se revisou além do teto.
+  const reviewsTarget = Math.min(overdueReviews, reviewCap);
+  const reviewsCounted = Math.min(reviewsDoneToday, reviewsTarget);
+  const totalGoal = newPerDay + reviewsTarget;
+  const totalDone = Math.min(newToday, newPerDay) + reviewsCounted;
+
   return {
     profileId,
     targetDate,
     dateSource,
     daysLeft,
     daysPerWeek,
+    reviewCap,
     studyDaysLeft,
     targetTotal,
     achievableTarget,
@@ -7308,10 +7323,13 @@ function getStudyPlan(searchParams) {
       newQuota: newPerDay,
       newDone: newToday,
       newRemaining: newRemainingToday,
-      reviewsDue: overdueReviews,
+      reviewsBacklog: overdueReviews,
+      reviewsCap: reviewCap,
+      reviewsTarget,
       reviewsDone: reviewsDoneToday,
-      totalGoal: newPerDay + overdueReviews,
-      totalDone: newToday + reviewsDoneToday
+      reviewsRemaining: Math.max(0, reviewsTarget - reviewsDoneToday),
+      totalGoal,
+      totalDone
     },
     pending: {
       overdueReviews,
@@ -7338,6 +7356,10 @@ function setStudyPlan(body) {
   if (body?.daysPerWeek != null) {
     const dpw = Math.min(7, Math.max(1, Number(body.daysPerWeek) || STUDY_PLAN_DEFAULT_DAYS_PER_WEEK));
     setSetting('study_plan_days_per_week', String(dpw));
+  }
+  if (body?.reviewCap != null) {
+    const cap = Math.max(10, Math.min(400, Number(body.reviewCap) || STUDY_PLAN_DEFAULT_REVIEW_CAP));
+    setSetting('study_plan_review_cap', String(cap));
   }
   return getStudyPlan(new URLSearchParams());
 }

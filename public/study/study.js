@@ -11085,9 +11085,13 @@ function escapeAttr(value) {
 
   function pendingHtml(data) {
     const items = [];
-    if (data.today.reviewsDue > 0) {
+    const backlog = data.today.reviewsBacklog;
+    if (backlog > 0) {
+      const extra = backlog > data.today.reviewsTarget
+        ? ` <small>(${data.today.reviewsTarget}/dia · ~${Math.ceil(backlog / Math.max(1, data.today.reviewsTarget))} dias p/ zerar)</small>`
+        : "";
       items.push(`<button type="button" class="plan-pending plan-pending-warn" data-plan="review">
-        ⚠ <strong>${data.today.reviewsDue}</strong> revisões atrasadas — limpar</button>`);
+        ⚠ <strong>${backlog}</strong> revisões atrasadas${extra}</button>`);
     }
     if (data.pending.yesterdayShortfall > 0 && data.pending.newYesterday >= 0) {
       items.push(`<span class="plan-pending">Ontem faltaram <strong>${data.pending.yesterdayShortfall}</strong> novas · o ritmo de hoje já reajustou</span>`);
@@ -11125,7 +11129,7 @@ function escapeAttr(value) {
           <div class="plan-hero-stats">
             <div class="plan-goal-line">
               <strong>Meta de hoje: ${t.totalGoal}</strong>
-              <span class="plan-goal-sub">${t.newQuota} novas + ${t.reviewsDue} revisões</span>
+              <span class="plan-goal-sub">${t.newQuota} novas + ${t.reviewsTarget} revisões${t.reviewsBacklog > t.reviewsTarget ? ` <small>(de ${t.reviewsBacklog} atrasadas)</small>` : ""}</span>
             </div>
             <div class="plan-progress"><div class="plan-progress-fill" style="width:${goalPct}%"></div></div>
             <div class="plan-goal-done">${t.totalDone}/${t.totalGoal} feitas hoje · faltam ${Math.max(0, t.totalGoal - t.totalDone)}</div>
@@ -11141,7 +11145,7 @@ function escapeAttr(value) {
 
         <div class="plan-actions">
           <button class="button button-primary" data-plan="new">Estudar novas (${t.newRemaining})</button>
-          <button class="button button-secondary" data-plan="review">Revisar (${t.reviewsDue})</button>
+          <button class="button button-secondary" data-plan="review">Revisar (${t.reviewsRemaining})</button>
         </div>
 
         <h3 class="plan-h3">Evolução da cobertura</h3>
@@ -11155,9 +11159,10 @@ function escapeAttr(value) {
           <label>Data-meta <input type="date" name="targetDate" value="${escapeHtml(data.targetDate)}"></label>
           <label>Alvo total <input type="number" name="targetTotal" value="${data.targetTotal}" min="200" max="8000" step="100"></label>
           <label>Dias/semana <input type="number" name="daysPerWeek" value="${data.daysPerWeek}" min="1" max="7"></label>
+          <label>Revisões/dia <input type="number" name="reviewCap" value="${data.reviewCap}" min="10" max="400" step="5"></label>
           <button class="button button-secondary" type="submit">Salvar</button>
         </form>
-        <p class="plan-note">O alvo é ponderado pelo peso da prova e limitado pela quantidade de questões — “banco -N” marca onde o banco não cobre o peso da matéria. A cota diária se recalcula sozinha: pular um dia só reajusta o ritmo, não vira dívida.</p>
+        <p class="plan-note">O alvo é ponderado pelo peso da prova e limitado pela quantidade de questões — “banco -N” marca onde o banco não cobre o peso da matéria. A cota de novas se recalcula sozinha (pular um dia só reajusta o ritmo). O teto de revisões/dia deixa a meta completável mesmo com backlog: revisão certa empurra o cartão semanas à frente, então a pilha de atrasadas drena em poucos dias.</p>
       </div>`);
 
     const form = el.querySelector("#planSettingsForm");
@@ -11174,7 +11179,8 @@ function escapeAttr(value) {
             body: JSON.stringify({
               targetDate: String(fd.get("targetDate") || ""),
               targetTotal: Number(fd.get("targetTotal")) || undefined,
-              daysPerWeek: Number(fd.get("daysPerWeek")) || undefined
+              daysPerWeek: Number(fd.get("daysPerWeek")) || undefined,
+              reviewCap: Number(fd.get("reviewCap")) || undefined
             })
           });
           if (updated?.error) throw new Error(updated.error);
