@@ -3585,9 +3585,15 @@ function renderQuestion(question, options = {}) {
   els.openTeaching.disabled = !hasTeachingSupport;
   els.toggleComment.disabled = !hasSupportExplanation;
   els.openTeaching.textContent = "Resposta pela legislacao atual";
-  const commentLabel = isContranPrfUnpublishedQuestion(question)
-    ? "Comentário do professor"
-    : "Explicação histórica";
+  // Rótulo honesto: quando a resolução foi GERADA por IA (questão sem comentário
+  // do professor), não chamar de "Explicação histórica".
+  const isAiResolution = question?.answering?.aiGenerated
+    || question?.comment?.sourceType === 'ai_generated';
+  const commentLabel = isAiResolution
+    ? "Resolução por IA"
+    : isContranPrfUnpublishedQuestion(question)
+      ? "Comentário do professor"
+      : "Explicação histórica";
   els.toggleComment.textContent = commentLabel;
   if (els.supportTabComment) els.supportTabComment.textContent = commentLabel;
   if (els.supportTabTeaching) {
@@ -6641,12 +6647,18 @@ function renderAnswerResultBox() {
   els.answerResult.hidden = false;
 }
 
-// Aviso quando o gabarito da questão foi inferido por IA (extracted_answer_source
-// = 'ai_inferred'). Pede mais atenção do usuário e lembra do "Editar questão".
+// Aviso quando o gabarito veio de IA. Dois níveis: "inferido" (a IA leu o
+// comentário do professor) e "gerado" (a IA resolveu do zero, sem fonte oficial
+// — atenção maior). Lembra do "Editar questão" para corrigir/confirmar.
 function aiInferredAnswerWarning() {
-  return state.currentQuestion?.answering?.aiInferred
-    ? '<span class="answer-result-note ai-inferred-note">⚠ Gabarito inferido por IA — confira. Se discordar, use “Editar questão”.</span>'
-    : '';
+  const answering = state.currentQuestion?.answering;
+  if (answering?.aiGenerated) {
+    return '<span class="answer-result-note ai-generated-note">🤖 Gabarito e resolução <strong>gerados por IA, sem fonte oficial</strong> — confira. Se discordar, use “Editar questão”.</span>';
+  }
+  if (answering?.aiInferred) {
+    return '<span class="answer-result-note ai-inferred-note">⚠ Gabarito inferido por IA — confira. Se discordar, use “Editar questão”.</span>';
+  }
+  return '';
 }
 
 function nonScoringAnswerTitle(result) {

@@ -4515,6 +4515,7 @@ function historicalAnswerSourceSql(questionAlias, commentAlias) {
     ? `CASE
         WHEN COALESCE(${commentAlias}.extracted_answer, '') = '' THEN ''
         WHEN COALESCE(${commentAlias}.extracted_answer_source, '') = 'ai_inferred' THEN 'comment_ai_inferred'
+        WHEN COALESCE(${commentAlias}.extracted_answer_source, '') = 'ai_generated' THEN 'comment_ai_generated'
         ELSE 'comment_extracted'
       END`
     : `CASE WHEN COALESCE(${commentAlias}.extracted_answer, '') != '' THEN 'comment_extracted' ELSE '' END`;
@@ -9473,7 +9474,9 @@ async function getQuestion(questionId) {
       nonScoringReason: correction.nonScoringReason || '',
       canScore: Boolean(correction.canScore),
       aiInferred: question.historical_answer_source === 'comment_ai_inferred'
-        || correction.answerSource === 'comment_ai_inferred'
+        || correction.answerSource === 'comment_ai_inferred',
+      aiGenerated: question.historical_answer_source === 'comment_ai_generated'
+        || correction.answerSource === 'comment_ai_generated'
     },
     studyStatus,
     adaptive,
