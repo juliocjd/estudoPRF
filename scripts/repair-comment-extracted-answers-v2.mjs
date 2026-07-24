@@ -53,16 +53,19 @@ function certoErradoDefinitive(text) {
   if (m) return statusToCE(m[1]);
   m = n.match(/\bresposta\s*(?:correta\s*)?[:\-]?\s*(certo|correto|errado|incorreto)\b/);
   if (m) return statusToCE(m[1]);
-  // conclusão: "portanto/logo/assim/por isso/dessa forma/conclui-se(,)? ... (in)correto o item"
-  m = n.match(/\b(?:portanto|logo|assim|por isso|dessa forma|conclui-se|desse modo|destarte)\b[^.]*?\b(estando\s+)?(certo|correto|errado|incorreto)\b[^.]{0,20}\bo\s+item\b/);
+  // conclusão: "portanto/logo/assim/... (in)correto o item/quesito/questão"
+  m = n.match(/\b(?:portanto|logo|assim|por isso|dessa forma|conclui-se|desse modo|destarte)\b[^.]*?\b(estando\s+)?(certo|correto|errado|incorreto)\b[^.]{0,20}\bo\s+(?:item|quesito|questao)\b/);
   if (m) return statusToCE(m[2]);
-  m = n.match(/\b(?:portanto|logo|assim|por isso|dessa forma|conclui-se|desse modo|destarte)\b[^.]*?\bo\s+item\b[^.]{0,20}\b(esta|e)\s+(certo|correto|errado|incorreto)\b/);
+  m = n.match(/\b(?:portanto|logo|assim|por isso|dessa forma|conclui-se|desse modo|destarte)\b[^.]*?\bo\s+(?:item|quesito|questao)\b[^.]{0,20}\b(esta|e)\s+(certo|correto|errado|incorreto)\b/);
   if (m) return statusToCE(m[3]);
-  // "estando (in)correto o item" / "(in)correto o item"
-  m = n.match(/\bestando\s+(certo|correto|errado|incorreto)\s+o\s+item\b/);
+  // "(certo/errado) o item/quesito/questão" (com marcador de conclusão curto: logo/daí)
+  m = n.match(/\b(?:logo|dai|entao|assim|portanto),?\s+(certo|correto|errado|incorreto)\s+o\s+(?:item|quesito|questao)\b/);
   if (m) return statusToCE(m[1]);
-  // terminal isolado: "... item incorreto." no fim
-  m = n.match(/\b(?:o\s+)?item\s+(certo|correto|errado|incorreto)\s*\.?\s*$/);
+  // "estando (in)correto o item/quesito/questão"
+  m = n.match(/\bestando\s+(certo|correto|errado|incorreto)\s+o\s+(?:item|quesito|questao)\b/);
+  if (m) return statusToCE(m[1]);
+  // terminal isolado: "... item/quesito incorreto." no fim
+  m = n.match(/\b(?:o\s+)?(?:item|quesito|questao)\s+(certo|correto|errado|incorreto)\s*\.?\s*$/);
   if (m) return statusToCE(m[1]);
   m = n.match(/^(certo|errado)\.?\s/);
   if (m) return statusToCE(m[1]);
@@ -73,11 +76,11 @@ function certoErradoVerdicts(text) {
   const n = norm(text);
   const out = [];
   const patterns = [
-    /\b(nao\s+(?:esta|e)\s+)?(certo|correto|errado|incorreto)\s+o\s+item\b/g,
-    /\bo\s+item\s+(nao\s+)?(esta|e)\s+(certo|correto|errado|incorreto)\b/g,
+    /\b(nao\s+(?:esta|e)\s+)?(certo|correto|errado|incorreto)\s+o\s+(?:item|quesito)\b/g,
+    /\bo\s+(?:item|quesito)\s+(nao\s+)?(esta|e)\s+(certo|correto|errado|incorreto)\b/g,
     /\b(?:a\s+)?(?:assertiva|afirmativa|questao|alternativa)\s+(nao\s+)?(esta|e)\s+(certa|correta|errada|incorreta|verdadeira|falsa)\b/g,
     /\b(nao\s+)?(?:e|esta)\s+(correto|incorreto|certo|errado)\s+afirmar\b/g,
-    /\bitem\s+(certo|correto|errado|incorreto)\b/g,
+    /\b(?:item|quesito)\s+(certo|correto|errado|incorreto)\b/g,
   ];
   const pushNeg = (neg, status) => {
     let ce = statusToCE(status);
