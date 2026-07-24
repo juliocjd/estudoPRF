@@ -494,6 +494,11 @@ async function routeRequest(request, response) {
     return;
   }
 
+  if (url.pathname === '/api/study-plan/progress' && request.method === 'GET') {
+    sendJson(response, 200, getStudyPlanProgress(url.searchParams));
+    return;
+  }
+
   if (url.pathname === '/api/study-plan' && request.method === 'GET') {
     sendJson(response, 200, getStudyPlan(url.searchParams));
     return;
@@ -7350,6 +7355,70 @@ function getStudyPlan(searchParams) {
     },
     subjects,
     burndown
+  };
+}
+
+// Versão leve para o indicador ao vivo durante o estudo: só os contadores do dia
+// (novas e revisões, feito/meta), sem burndown nem lista de matérias. Chamado a
+// cada resposta, então evita as consultas pesadas do plano completo.
+function getStudyPlanProgress(searchParams) {
+  const profileId = resolveProfileId(searchParams?.get?.('profile'));
+  const { targetTotal, daysPerWeek, reviewCap, targetDate } = resolveStudyPlanSettings();
+
+  const coverage = getExamCoverageRows(profileId);
+  const seenBySubject = new Map(db.prepare(`
+    SELECT qes.subject_key AS k, COUNT(DISTINCT sa.question_id) AS n
+    FROM question_exam_subjects qes
+    JOIN study_answers sa ON sa.question_id = qes.question_id
+    WHERE qes.profile_id = ?
+    GROUP BY qes.subject_key
+  `).all(profileId).map((r) => [r.k, Number(r.n || 0)]));
+
+  const allocated = allocateCoverageTargets(coverage.map((row) => ({
+    subjectKey: row.subject_key,
+    weightPct: Number(row.expected_pct || 0),
+    valid: Number(row.valid_questions || 0)
+  })), targetTotal);
+  let remaining = 0;
+  for (const s of allocated) {
+    remaining += Math.max(0, s.target - (seenBySubject.get(s.subjectKey) || 0));
+  }
+
+  const daysLeft = Math.max(0, Math.ceil((new Date(`${targetDate}T12:00:00`).getTime() - Date.now()) / 86400000));
+  const studyDaysLeft = Math.max(1, Math.floor(daysLeft * (daysPerWeek / 7)));
+  const newQuota = Math.max(0, Math.ceil(remaining / studyDaysLeft));
+
+  const newToday = Number(db.prepare(`
+    SELECT COUNT(*) AS n FROM (
+      SELECT sa.question_id
+      FROM study_answers sa
+      JOIN question_exam_subjects qes ON qes.question_id = sa.question_id AND qes.profile_id = ?
+      GROUP BY sa.question_id
+      HAVING MIN(sa.answered_at) >= CURRENT_DATE
+    ) t
+  `).get(profileId)?.n || 0);
+  const answersToday = Number(db.prepare(`
+    SELECT COUNT(*) AS n FROM study_answers WHERE answered_at >= CURRENT_DATE
+  `).get()?.n || 0);
+  const overdueReviews = Number(db.prepare(`
+    SELECT COUNT(*) AS n FROM question_mastery
+    WHERE next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != ''
+      AND next_due_at <= CURRENT_TIMESTAMP
+  `).get()?.n || 0);
+
+  const reviewsDone = Math.max(0, answersToday - newToday);
+  const reviewsTarget = Math.min(overdueReviews, reviewCap);
+
+  return {
+    newQuota,
+    newDone: newToday,
+    newRemaining: Math.max(0, newQuota - newToday),
+    newComplete: newQuota > 0 ? newToday >= newQuota : true,
+    reviewsTarget,
+    reviewsDone,
+    reviewsRemaining: Math.max(0, reviewsTarget - reviewsDone),
+    reviewsComplete: reviewsTarget > 0 ? reviewsDone >= reviewsTarget : true,
+    reviewsBacklog: overdueReviews
   };
 }
 

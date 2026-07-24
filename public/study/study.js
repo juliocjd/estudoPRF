@@ -3425,6 +3425,7 @@ async function selectQuestion(questionId, options = {}) {
   }
 
   renderQuestion(question, options);
+  document.dispatchEvent(new CustomEvent("study:meta-refresh"));
   await saveStudyState({
     currentQuestionId: questionId,
     mode: state.studyMode,
@@ -11192,6 +11193,101 @@ function escapeAttr(value) {
       });
     }
   }
+})();
+
+/* ============================================================
+   Indicador ao vivo da meta do dia (novas / revisões) + efeito
+   de conclusão. Fica no painel de resposta (visível no mobile),
+   evita ter que abrir o plano para ver quantas faltam de cada.
+   ============================================================ */
+(function metaDayProgressModule() {
+  const el = document.getElementById("metaDayProgress");
+  if (!el) return;
+  const STUDY_MODES = new Set(["adaptive", "smart", "review", "repair", "coverage"]);
+  let last = null;
+  let prevComplete = { news: null, reviews: null };
+
+  const inStudyMode = () => STUDY_MODES.has(state.studyMode);
+
+  function render() {
+    if (!last || !inStudyMode()) { el.hidden = true; return; }
+    const p = last;
+    const item = (label, done, target, complete) => {
+      const shown = Math.min(done, target);
+      return `<span class="mdp-item ${complete ? "is-complete" : ""}">
+        <span class="mdp-ico">${complete ? "✓" : "•"}</span>
+        <span class="mdp-label">${label}</span>
+        <span class="mdp-count">${complete ? target : shown}/${target}</span>
+      </span>`;
+    };
+    const allDone = p.newComplete && p.reviewsComplete;
+    el.className = `meta-day-progress${allDone ? " is-all-done" : ""}`;
+    el.innerHTML = `
+      ${item("Novas", p.newDone, p.newQuota, p.newComplete)}
+      ${item("Revisões", p.reviewsDone, p.reviewsTarget, p.reviewsComplete)}
+      ${allDone ? '<span class="mdp-alldone">meta do dia ✓</span>' : ""}`;
+    el.hidden = false;
+  }
+
+  function checkCrossings(p) {
+    const firstLoad = prevComplete.news === null;
+    const newJust = !firstLoad && !prevComplete.news && p.newComplete;
+    const revJust = !firstLoad && !prevComplete.reviews && p.reviewsComplete;
+    prevComplete = { news: p.newComplete, reviews: p.reviewsComplete };
+    if (!inStudyMode()) return;
+    if (newJust || revJust) {
+      const dayComplete = p.newComplete && p.reviewsComplete;
+      celebrate(dayComplete ? "day" : newJust ? "new" : "review");
+    }
+  }
+
+  function celebrate(kind) {
+    const msg = kind === "day"
+      ? "🎉 Meta do dia completa!"
+      : kind === "new"
+        ? "✅ Novas do dia concluídas!"
+        : "✅ Revisões do dia concluídas!";
+    // pulso no indicador
+    el.classList.remove("mdp-pulse");
+    void el.offsetWidth;
+    el.classList.add("mdp-pulse");
+    // toast comemorativo
+    const old = document.getElementById("metaCelebrateToast");
+    if (old) old.remove();
+    const toast = document.createElement("div");
+    toast.id = "metaCelebrateToast";
+    toast.className = `meta-celebrate ${kind === "day" ? "is-day" : ""}`;
+    toast.setAttribute("role", "status");
+    toast.innerHTML = `<span class="mc-msg">${msg}</span>${
+      kind === "day" ? '<span class="mc-confetti" aria-hidden="true">✦ ✶ ✦ ✶ ✦</span>' : ""
+    }`;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("is-in"));
+    setTimeout(() => {
+      toast.classList.remove("is-in");
+      setTimeout(() => toast.remove(), 400);
+    }, kind === "day" ? 5000 : 3500);
+  }
+
+  async function refresh() {
+    try {
+      const params = new URLSearchParams();
+      if (state.activeProfile) params.set("profile", state.activeProfile);
+      const p = await api(`/api/study-plan/progress?${params}`);
+      last = p;
+      checkCrossings(p);
+      render();
+    } catch {
+      // silencioso: o indicador é auxiliar, não pode atrapalhar o estudo
+    }
+  }
+
+  // Após responder (study:progress), os contadores mudam → busca e checa conclusão.
+  document.addEventListener("study:progress", () => { refresh(); });
+  // Ao trocar de questão só re-renderiza a visibilidade (sem nova requisição).
+  document.addEventListener("study:meta-refresh", () => { render(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+  refresh();
 })();
 
 /* ============================================================
