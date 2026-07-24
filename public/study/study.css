@@ -6103,3 +6103,16 @@ tbody tr:hover {
   .meta-celebrate { transition: opacity 0.2s ease; }
   .meta-celebrate .mc-confetti { animation: none; }
 }
+
+/* Aviso de gabarito inferido por IA (atenção do usuário) */
+.ai-inferred-note {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  border-left: 3px solid var(--warning, #d08700);
+}

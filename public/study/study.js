@@ -6617,27 +6617,36 @@ function renderAnswerResultBox() {
   const resolution =
     '<button class="answer-result-link" type="button" data-action="show-comment">Ver resolução</button>';
   const normative = normativeAnswerWarning(result);
+  const ai = aiInferredAnswerWarning();
   if (result.isCorrect === 1) {
     els.answerResult.className = "answer-result is-correct";
     els.answerResult.innerHTML = `
       <span class="answer-result-icon" aria-hidden="true">✓</span>
-      <span><strong>Você acertou!</strong> Muito bem! ${resolution}${normative}</span>
+      <span><strong>Você acertou!</strong> Muito bem! ${resolution}${normative}${ai}</span>
     `;
   } else if (result.isCorrect === 0) {
     els.answerResult.className = "answer-result is-wrong";
     els.answerResult.innerHTML = `
       <span class="answer-result-icon" aria-hidden="true">×</span>
-      <span><strong>Você errou!</strong> Gabarito: <strong>${escapeHtml(displayAnswerForCurrentQuestion(result.expectedAnswer || ""))}</strong>. ${resolution}${normative}</span>
+      <span><strong>Você errou!</strong> Gabarito: <strong>${escapeHtml(displayAnswerForCurrentQuestion(result.expectedAnswer || ""))}</strong>. ${resolution}${normative}${ai}</span>
     `;
   } else {
     els.answerResult.className = "answer-result";
     const title = nonScoringAnswerTitle(result);
     els.answerResult.innerHTML = `
       <span class="answer-result-icon" aria-hidden="true">?</span>
-      <span><strong>${escapeHtml(title)}</strong>. ${resolution}${normative}</span>
+      <span><strong>${escapeHtml(title)}</strong>. ${resolution}${normative}${ai}</span>
     `;
   }
   els.answerResult.hidden = false;
+}
+
+// Aviso quando o gabarito da questão foi inferido por IA (extracted_answer_source
+// = 'ai_inferred'). Pede mais atenção do usuário e lembra do "Editar questão".
+function aiInferredAnswerWarning() {
+  return state.currentQuestion?.answering?.aiInferred
+    ? '<span class="answer-result-note ai-inferred-note">⚠ Gabarito inferido por IA — confira. Se discordar, use “Editar questão”.</span>'
+    : '';
 }
 
 function nonScoringAnswerTitle(result) {

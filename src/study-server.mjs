@@ -97,6 +97,7 @@ if (activeDbClient === 'sqlite') {
 }
 if (!skipStartupSchemaMaintenance) {
   ensureStudyTimeColumns(db);
+  ensureColumn(db, 'comments', 'extracted_answer_source', 'TEXT');
   initHistoricalCommentEditSchema(db);
   initQuestionStudyStatusSchema(db);
   initTheoryPagesSchema(db);
@@ -4508,6 +4509,15 @@ function historicalAnswerSql(questionAlias, commentAlias) {
 }
 
 function historicalAnswerSourceSql(questionAlias, commentAlias) {
+  // Distingue gabarito extraído por regra vs inferido por IA (coluna
+  // extracted_answer_source='ai_inferred'), para o app sinalizar "confira".
+  const extractedCase = columnExists('comments', 'extracted_answer_source')
+    ? `CASE
+        WHEN COALESCE(${commentAlias}.extracted_answer, '') = '' THEN ''
+        WHEN COALESCE(${commentAlias}.extracted_answer_source, '') = 'ai_inferred' THEN 'comment_ai_inferred'
+        ELSE 'comment_extracted'
+      END`
+    : `CASE WHEN COALESCE(${commentAlias}.extracted_answer, '') != '' THEN 'comment_extracted' ELSE '' END`;
   return `COALESCE(NULLIF(${questionAlias}.official_answer_source, ''), NULLIF((
     SELECT nq.answer_source
     FROM notebook_questions nq
@@ -4515,10 +4525,7 @@ function historicalAnswerSourceSql(questionAlias, commentAlias) {
       AND COALESCE(nq.answer, '') != ''
     ORDER BY nq.notebook_id, nq.position
     LIMIT 1
-  ), ''), CASE
-    WHEN COALESCE(${commentAlias}.extracted_answer, '') != '' THEN 'comment_extracted'
-    ELSE ''
-  END)`;
+  ), ''), ${extractedCase})`;
 }
 
 function currentLawVerifiedAnswerSql(questionAlias) {
@@ -9464,7 +9471,9 @@ async function getQuestion(questionId) {
       correctionMode: correction.mode || '',
       currentLawStatus: correction.currentLawStatus || '',
       nonScoringReason: correction.nonScoringReason || '',
-      canScore: Boolean(correction.canScore)
+      canScore: Boolean(correction.canScore),
+      aiInferred: question.historical_answer_source === 'comment_ai_inferred'
+        || correction.answerSource === 'comment_ai_inferred'
     },
     studyStatus,
     adaptive,
