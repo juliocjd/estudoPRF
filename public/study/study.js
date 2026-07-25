@@ -882,6 +882,11 @@ function bindEvents() {
     const button = event.target.closest('[data-action="show-comment"]');
     if (button) {
       showCommentPanel();
+      return;
+    }
+    const parent = event.target.closest('[data-action="open-parent"]');
+    if (parent?.dataset.parent) {
+      openQuestionDirect(Number(parent.dataset.parent));
     }
   });
 
@@ -6627,7 +6632,7 @@ function renderAnswerResultBox() {
   const resolution =
     '<button class="answer-result-link" type="button" data-action="show-comment">Ver resolução</button>';
   const normative = normativeAnswerWarning(result);
-  const ai = aiInferredAnswerWarning();
+  const ai = aiInferredAnswerWarning() + derivedQuestionNote();
   if (result.isCorrect === 1) {
     els.answerResult.className = "answer-result is-correct";
     els.answerResult.innerHTML = `
@@ -6663,6 +6668,16 @@ function aiInferredAnswerWarning() {
     return '<span class="answer-result-note ai-inferred-note">⚠ Gabarito inferido por IA — confira. Se discordar, use “Editar questão”.</span>';
   }
   return '';
+}
+
+// Selo de item CERTO/ERRADO derivado de uma questão de múltipla escolha original.
+function derivedQuestionNote() {
+  const d = state.currentQuestion?.metadata?.derived;
+  if (!d) return "";
+  const link = d.parentId
+    ? ` <button type="button" class="answer-result-link" data-action="open-parent" data-parent="${d.parentId}">ver questão original</button>`
+    : "";
+  return `<span class="answer-result-note derived-note">🔗 Item derivado de uma questão de múltipla escolha original.${link}</span>`;
 }
 
 function nonScoringAnswerTitle(result) {

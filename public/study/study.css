@@ -6153,3 +6153,15 @@ tbody tr:hover {
   border-left: 3px solid var(--danger);
 }
 .ai-generated-note strong { color: var(--danger); }
+
+/* Selo de item derivado (CE gerado de uma questão de múltipla escolha original) */
+.derived-note {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--info-soft);
+  color: var(--text);
+  font-size: 12.5px;
+  border-left: 3px solid var(--info, #2563eb);
+}

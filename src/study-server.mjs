@@ -9455,7 +9455,11 @@ async function getQuestion(questionId) {
       anulada: Boolean(question.anulada),
       desatualizada: Boolean(question.desatualizada),
       isUnpublished: Boolean(contranPrfUnpublished?.exists),
-      origin: contranPrfUnpublished?.origin || ''
+      origin: contranPrfUnpublished?.origin || '',
+      // Item CERTO/ERRADO derivado de uma questão original (id do pai na url).
+      derived: question.official_answer_source === 'derived_from_parent_gabarito'
+        ? { parentId: Number((String(question.url || '').match(/\/questoes\/(\d+)/) || [])[1]) || null }
+        : null
     },
     normativeUpdate,
     currentLawAnswer,
