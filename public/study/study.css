@@ -125,11 +125,26 @@ button:disabled {
 }
 
 .topbar-metrics {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(88px, 1fr));
-  gap: 6px;
-  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
   min-width: 0;
+}
+
+/* Chips do dia crescem; tempo de estudo à direita; alerta CONTRAN (quando
+   aparece) ocupa a largura toda embaixo, em vez de espremer numa coluna. */
+.topbar-metrics > #todayPanel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.topbar-metrics > .study-time-panel {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.topbar-metrics > #contranCurrencyMonitor {
+  flex: 1 1 100%;
+  order: 9;
 }
 
 .topbar-metrics .stats {
@@ -242,10 +257,10 @@ button:disabled {
 }
 
 .filter-bar {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.15fr) minmax(150px, 0.8fr) minmax(170px, 0.9fr) minmax(230px, 1.1fr) minmax(190px, 0.9fr) auto;
-  gap: 10px;
-  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  align-items: flex-end;
   padding: 12px 24px;
   border-bottom: 1px solid var(--border);
   background: #fbfdff;
@@ -259,6 +274,12 @@ button:disabled {
   display: grid;
   gap: 5px;
   min-width: 0;
+  flex: 1 1 158px;
+}
+
+/* Busca é o campo principal — ganha mais espaço. */
+.filter-bar > .field-search {
+  flex: 2 1 240px;
 }
 
 .field span,
@@ -328,7 +349,8 @@ button:disabled {
 /* Seleção de várias matérias — botão + dropdown popover, ao lado da Matéria */
 .field-multi-materia {
   position: relative;
-  align-self: end;
+  align-self: flex-end;
+  flex: 0 0 auto;
 }
 .field-multi-materia > summary {
   cursor: pointer;
@@ -399,9 +421,10 @@ button:disabled {
 .filter-actions {
   display: flex;
   gap: 8px;
-  align-items: end;
-  justify-content: space-between;
-  min-width: 260px;
+  align-items: flex-end;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  min-width: 220px;
 }
 
 #activeFiltersLabel {

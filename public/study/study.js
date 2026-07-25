@@ -775,6 +775,10 @@ function bindEvents() {
     closeAllDropdowns();
     await openReportPage("normative");
   });
+  document.getElementById("contranMonitorButton")?.addEventListener("click", () => {
+    closeAllDropdowns();
+    document.dispatchEvent(new CustomEvent("study:open-contran"));
+  });
   els.toggleContranMap?.addEventListener("click", async () => {
     closeAllDropdowns();
     await openReportPage("contranMap");
@@ -11327,7 +11331,10 @@ function escapeAttr(value) {
         ? "hoje"
         : `há ${n} dia${n === 1 ? "" : "s"}`;
 
-  function render(data) {
+  let lastData = null;
+
+  function render(data, force = false) {
+    lastData = data || lastData;
     if (!data || !data.available) {
       panel.hidden = true;
       return;
@@ -11337,7 +11344,10 @@ function escapeAttr(value) {
     const checkFailed = ac.ran && !ac.ok;
     const checkStale = !ac.ran || ac.stale;
     const alert = flagged.length > 0 || checkFailed || checkStale || Boolean(data.stale);
-    if (!alert && !(data.supersededCount > 0)) {
+    // Na home só aparece quando há DESATUALIZAÇÃO real (resolução a revisar,
+    // verificação falhou ou vencida). O estado "tudo ok" fica acessível sob
+    // demanda pelo menu (force=true), não polui a tela inicial.
+    if (!force && !alert) {
       panel.hidden = true;
       return;
     }
@@ -11387,7 +11397,7 @@ function escapeAttr(value) {
       .join("");
 
     panel.innerHTML = `
-      <details class="ccm"${flagged.length || checkFailed ? " open" : ""}>
+      <details class="ccm"${flagged.length || checkFailed || force ? " open" : ""}>
         <summary class="ccm-summary ${flagged.length || checkFailed ? "is-stale" : "is-ok"}">
           ${statusIcon} Resoluções CONTRAN — ${escapeHtml(statusLine)}
           ${flagged.length ? `<span class="ccm-count">${flagged.length} a revisar</span>` : `<span class="ccm-count">${ac.officialCount || 0} conferidas</span>`}
@@ -11454,5 +11464,15 @@ function escapeAttr(value) {
     }
   });
 
-  api("/api/contran-resolutions/currency").then(render).catch(() => {});
+  // Acesso sob demanda (menu): mostra o painel completo mesmo quando está tudo ok.
+  document.addEventListener("study:open-contran", () => {
+    const show = (data) => {
+      render(data, true);
+      panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    };
+    if (lastData) show(lastData);
+    else api("/api/contran-resolutions/currency").then(show).catch(() => {});
+  });
+
+  api("/api/contran-resolutions/currency").then((d) => render(d)).catch(() => {});
 })();
