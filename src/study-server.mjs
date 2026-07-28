@@ -1202,12 +1202,26 @@ function getLocalDateKey(value) {
   return year && month && day ? `${year}-${month}-${day}` : '';
 }
 
+// Normaliza um timestamp do banco para ISO parseável pelo Date().
+// Postgres devolve "2026-07-09 15:38:48.808648+00" (espaço + fuso de 2 dígitos);
+// SQLite devolve "2026-07-09 15:38:48" (sem fuso, em UTC). Ambos viram ISO válido:
+// offset de 2 dígitos (+00) é completado para +00:00; ausência de fuso vira Z.
+function normalizeSqlTimestampIso(ts) {
+  const s = String(ts ?? '').trim().replace(' ', 'T');
+  if (!s.includes('T')) return s;
+  if (/[zZ]$/.test(s)) return s;
+  if (/[+-]\d{2}(:?\d{2})?$/.test(s)) {
+    return s.replace(/([+-]\d{2})$/, '$1:00').replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+  }
+  return `${s}Z`;
+}
+
 function parseSqlDate(value) {
   if (value instanceof Date && Number.isFinite(value.getTime())) return value;
   const raw = String(value || '').trim();
   if (!raw) return null;
-  const normalized = /^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(raw)
-    ? `${raw.replace(' ', 'T')}Z`
+  const normalized = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(raw)
+    ? normalizeSqlTimestampIso(raw)
     : raw;
   const date = new Date(normalized);
   return Number.isFinite(date.getTime()) ? date : null;
@@ -4701,10 +4715,17 @@ function getSmartQueueV2(searchParams) {
 }
 
 function getSmartQueueV2Rows(searchParams, { profileId, limit = 50, mode = 'study' } = {}) {
+  const isBrowse = ['all', 'ver_todas'].includes(String(mode || '').trim());
   const { whereSql, values } = buildQuestionWhere(searchParams, {
-    hideStudyExcluded: !['all', 'ver_todas'].includes(String(mode || '').trim())
+    hideStudyExcluded: !isBrowse
   });
-  const finalWhere = appendWhere(whereSql, 'qes.profile_id = ?');
+  let finalWhere = appendWhere(whereSql, 'qes.profile_id = ?');
+  // Estudo/simulado nunca servem anuladas (a banca as cancelou). Só o modo
+  // navegação/"ver todas" pode exibi-las. Antes o scorer só penalizava −100,
+  // deixando anuladas subirem no simulado e serem pontuadas indevidamente.
+  if (!isBrowse) {
+    finalWhere = appendWhere(finalWhere, 'COALESCE(q.anulada, 0) = 0');
+  }
   const coverage = new Map(getExamCoverageRows(profileId).map((row) => [row.subject_key, row]));
   const answerSql = currentLawStudyAnswerSql('q', 'c');
   const hasNormative = hasNormativeUpdateTable();
@@ -5147,6 +5168,20 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
       WHERE ss_recent.question_id = q.id_question
         AND ss_recent.served_at >= datetime('now', '-${ADAPTIVE_SERVED_COOLDOWN_MINUTES} minutes')
     )`);
+    // Cooldown por CLUSTER de duplicata: após servir uma questão de um cluster
+    // exato/near-duplicado, as OUTRAS cópias (ids diferentes) também ficam em
+    // cooldown, evitando near-repeats em sequência. Clusters temáticos
+    // (same_skill) e questões sem cluster não são afetados.
+    filters.push(`(
+      pc.cluster_id IS NULL
+      OR pc.cluster_type NOT IN ('exact_hash', 'normalized_statement', 'near_duplicate')
+      OR NOT EXISTS (
+        SELECT 1
+        FROM study_served_questions ss_cluster
+        WHERE ss_cluster.cluster_id = pc.cluster_id
+          AND ss_cluster.served_at >= datetime('now', '-${ADAPTIVE_SERVED_COOLDOWN_MINUTES} minutes')
+      )
+    )`);
   }
   const finalWhere = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
   // A query não tem ORDER BY (a priorização é toda no scorer em JS), então este
@@ -5257,7 +5292,13 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
     LEFT JOIN study_answers last_answer ON last_answer.id = answer_stats.last_id
     ${normativeJoin}
     ${finalWhere}
-    ${resolvedPlan === 'revisar_hoje' ? 'ORDER BY qm.next_due_at ASC' : ''}
+    ORDER BY
+      CASE
+        WHEN qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= CURRENT_TIMESTAMP THEN 0
+        WHEN answer_stats.question_id IS NULL THEN 1
+        ELSE 2
+      END,
+      qm.next_due_at ASC
     LIMIT ?
   `).all(resolvedProfile, resolvedProfile, ...values, fetchLimit);
 
@@ -5461,10 +5502,15 @@ function scoreAdaptiveQuestion(row, context) {
   const clusterPolicy = resolveClusterPolicy(row.cluster_policy, row.cluster_type, Number(row.cluster_size || 0));
   const clusterCanSuppress = ['suppress_variants', 'reinforcement'].includes(clusterPolicy);
   const duplicateCluster = clusterCanSuppress && ['exact_hash', 'normalized_statement', 'near_duplicate'].includes(row.cluster_type);
+  // Para clusters de DUPLICATA (exact_hash/normalized_statement/near_duplicate),
+  // maestria baixa NÃO destrava as variantes — senão todo cluster novo (maestria 0)
+  // mostra todas as cópias como "novas". Elas só reaparecem se houve erro, dúvida
+  // ou a revisão do cluster venceu. Para clusters temáticos (same_skill), manter
+  // o reforço quando o domínio está fraco.
   const variantUnlocked = clusterCanSuppress && (row.cluster_last_result === 0
     || ['doubt', 'guess'].includes(row.cluster_last_confidence)
-    || cMastery < 0.35
-    || clusterDue);
+    || clusterDue
+    || (!duplicateCluster && cMastery < 0.35));
   const clusterDominated = clusterCanSuppress && cMastery >= 0.85 && !clusterDue;
   const answeredCorrectNotDue = !due
     && !clusterDue
@@ -6162,24 +6208,32 @@ function startExamSimulation(body) {
     INSERT INTO exam_simulations (id, profile_id, started_at, mode, total_items)
     VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?)
   `);
-  const insertItem = db.prepare(`
-    INSERT INTO exam_simulation_items (simulation_id, question_id, position, block_key, subject_key)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-  const subjectByQuestion = db.prepare(`
-    SELECT subject_key, block_key
+  // Lookup de matéria/bloco em LOTE (antes era 1 query por questão dentro do loop
+  // — até ~240 round-trips no Neon, arriscando o teto de 60s da Vercel).
+  const subjectMap = new Map();
+  const subjectPh = plan.questionIds.map(() => '?').join(',');
+  for (const row of db.prepare(`
+    SELECT question_id, subject_key, block_key
     FROM question_exam_subjects
-    WHERE question_id = ? AND profile_id = ?
-    LIMIT 1
-  `);
+    WHERE profile_id = ? AND question_id IN (${subjectPh})
+  `).all(profileId, ...plan.questionIds)) {
+    if (!subjectMap.has(row.question_id)) subjectMap.set(row.question_id, row);
+  }
 
   db.exec('BEGIN');
   try {
     insertSimulation.run(simulationId, profileId, mode, plan.questionIds.length);
+    // INSERT multi-linha (uma query em vez de N).
+    const itemsPh = plan.questionIds.map(() => '(?, ?, ?, ?, ?)').join(', ');
+    const itemsValues = [];
     plan.questionIds.forEach((questionId, index) => {
-      const subject = subjectByQuestion.get(questionId, profileId) || {};
-      insertItem.run(simulationId, questionId, index + 1, subject.block_key || '', subject.subject_key || '');
+      const subject = subjectMap.get(questionId) || {};
+      itemsValues.push(simulationId, questionId, index + 1, subject.block_key || '', subject.subject_key || '');
     });
+    db.prepare(`
+      INSERT INTO exam_simulation_items (simulation_id, question_id, position, block_key, subject_key)
+      VALUES ${itemsPh}
+    `).run(...itemsValues);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');
@@ -6211,7 +6265,14 @@ function saveExamSimulationAnswer(simulationId, body) {
   const elapsedMs = Number(body?.elapsedMs);
   const answer = blank ? '' : String(body?.answer || '').trim();
   const expected = getExpectedAnswer(questionId);
-  const normalized = blank ? { answer: '', isCorrect: null } : normalizeSimulationAnswer(questionId, answer, expected);
+  // Questão anulada nunca pontua ±1 (a banca a cancelou): registra a resposta,
+  // mas isCorrect fica null (não-pontuada), igual ao estudo normal.
+  const isCanceled = Boolean(db.prepare('SELECT COALESCE(anulada, 0) AS a FROM questions WHERE id_question = ?').get(questionId)?.a);
+  const normalized = blank
+    ? { answer: '', isCorrect: null }
+    : isCanceled
+      ? { answer, isCorrect: null }
+      : normalizeSimulationAnswer(questionId, answer, expected);
   const score = blank ? 0 : normalized.isCorrect === 1 ? 1 : normalized.isCorrect === 0 ? -1 : 0;
 
   db.prepare(`
@@ -7129,10 +7190,46 @@ function saoPauloToday() {
 }
 // Data (AAAA-MM-DD) de um timestamp armazenado (UTC) no fuso de Brasília.
 function toSaoPauloDate(ts) {
-  const s = String(ts || '').trim().replace(' ', 'T');
-  const iso = /[zZ]$|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`;
-  const t = new Date(iso).getTime();
+  // Antes a regex exigia fuso de 4 dígitos; o Postgres manda "+00" (2 dígitos),
+  // então caía no ramo `${s}Z` gerando "...+00Z" inválido → NaN → '' (streak
+  // sempre 0, burndown vazio). normalizeSqlTimestampIso trata o +00 corretamente.
+  const t = new Date(normalizeSqlTimestampIso(ts)).getTime();
   return Number.isNaN(t) ? '' : new Date(t - SAO_PAULO_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+// Teto de segurança para a cota diária de novas. Impede que, na data da prova ou
+// depois (studyDaysLeft cai a 1), a cota vire o backlog inteiro e a meta fique
+// impossível.
+const STUDY_PLAN_MAX_NEW_PER_DAY = 120;
+
+// Meta de revisão do dia medida pela REDUÇÃO real do backlog vencido, não por
+// "questões já vistas respondidas hoje" (que contava re-resposta de não-vencida
+// e fazia a meta fechar com o backlog intacto). Usa um snapshot do PICO de
+// vencidas no dia (fuso de Brasília) como baseline estável; o feito é quanto o
+// vencido caiu desde esse pico. reviewCap limita o esforço diário.
+function computeDueReviewGoal(reviewCap) {
+  const overdue = Number(db.prepare(`
+    SELECT COUNT(*) AS n FROM question_mastery
+    WHERE next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != ''
+      AND next_due_at <= CURRENT_TIMESTAMP
+  `).get()?.n || 0);
+  const { spDate } = saoPauloToday();
+  let snap = null;
+  try { snap = JSON.parse(getSetting('study_review_snapshot', '') || 'null'); } catch { snap = null; }
+  let dueAtStart = overdue;
+  if (snap && snap.date === spDate) dueAtStart = Math.max(Number(snap.due || 0), overdue);
+  if (!snap || snap.date !== spDate || dueAtStart !== Number(snap.due || 0)) {
+    setSetting('study_review_snapshot', JSON.stringify({ date: spDate, due: dueAtStart }));
+  }
+  const reviewsTarget = Math.min(dueAtStart, reviewCap);
+  const cleared = Math.max(0, dueAtStart - overdue);
+  return {
+    reviewsTarget,
+    reviewsDone: Math.min(cleared, reviewsTarget),
+    reviewsRemaining: Math.max(0, reviewsTarget - cleared),
+    reviewsComplete: reviewsTarget > 0 ? cleared >= reviewsTarget : true,
+    reviewsBacklog: overdue
+  };
 }
 
 function getTodaySummary() {
@@ -7319,7 +7416,7 @@ function getStudyPlan(searchParams) {
   // Horizonte e cota diária.
   const daysLeft = Math.max(0, Math.ceil((new Date(`${targetDate}T12:00:00`).getTime() - Date.now()) / 86400000));
   const studyDaysLeft = Math.max(1, Math.floor(daysLeft * (daysPerWeek / 7)));
-  const newPerDay = Math.max(0, Math.ceil(remaining / studyDaysLeft));
+  const newPerDay = Math.min(STUDY_PLAN_MAX_NEW_PER_DAY, Math.max(0, Math.ceil(remaining / studyDaysLeft)));
 
   // Burn-down: distintas cobertas por dia (1ª vez que a questão foi respondida).
   // 1ª resposta de cada questão; o dia é agrupado no fuso de Brasília (em JS),
@@ -7350,26 +7447,15 @@ function getStudyPlan(searchParams) {
     WHERE sa.answered_at >= ?
       AND NOT EXISTS (SELECT 1 FROM study_answers p WHERE p.question_id = sa.question_id AND p.answered_at < ?)
   `).get(sp.startSql, sp.startSql)?.n || 0);
-  const reviewsDoneToday = Number(db.prepare(`
-    SELECT COUNT(DISTINCT sa.question_id) AS n FROM study_answers sa
-    WHERE sa.answered_at >= ?
-      AND EXISTS (SELECT 1 FROM study_answers p WHERE p.question_id = sa.question_id AND p.answered_at < ?)
-  `).get(sp.startSql, sp.startSql)?.n || 0);
-
-  const overdueReviews = Number(db.prepare(`
-    SELECT COUNT(*) AS n FROM question_mastery
-    WHERE next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != ''
-      AND next_due_at <= CURRENT_TIMESTAMP
-  `).get()?.n || 0);
-
   const newRemainingToday = Math.max(0, newPerDay - newToday);
   const yesterdayShortfall = Math.max(0, newPerDay - newYesterday);
 
-  // Meta de revisão do dia = teto (não o backlog inteiro). O backlog fica
-  // visível como pendência. reviewsDone é limitado ao alvo para a barra de
-  // progresso não passar de 100% num dia em que se revisou além do teto.
-  const reviewsTarget = Math.min(overdueReviews, reviewCap);
-  const reviewsCounted = Math.min(reviewsDoneToday, reviewsTarget);
+  // Meta de revisão pela redução real do backlog vencido no dia (não por
+  // re-respostas de questões não-vencidas). Ver computeDueReviewGoal.
+  const reviewGoal = computeDueReviewGoal(reviewCap);
+  const overdueReviews = reviewGoal.reviewsBacklog;
+  const reviewsTarget = reviewGoal.reviewsTarget;
+  const reviewsCounted = reviewGoal.reviewsDone;
   const totalGoal = newPerDay + reviewsTarget;
   const totalDone = Math.min(newToday, newPerDay) + reviewsCounted;
 
@@ -7393,8 +7479,8 @@ function getStudyPlan(searchParams) {
       reviewsBacklog: overdueReviews,
       reviewsCap: reviewCap,
       reviewsTarget,
-      reviewsDone: reviewsDoneToday,
-      reviewsRemaining: Math.max(0, reviewsTarget - reviewsDoneToday),
+      reviewsDone: reviewsCounted,
+      reviewsRemaining: reviewGoal.reviewsRemaining,
       totalGoal,
       totalDone
     },
@@ -7436,7 +7522,7 @@ function getStudyPlanProgress(searchParams) {
 
   const daysLeft = Math.max(0, Math.ceil((new Date(`${targetDate}T12:00:00`).getTime() - Date.now()) / 86400000));
   const studyDaysLeft = Math.max(1, Math.floor(daysLeft * (daysPerWeek / 7)));
-  const newQuota = Math.max(0, Math.ceil(remaining / studyDaysLeft));
+  const newQuota = Math.min(STUDY_PLAN_MAX_NEW_PER_DAY, Math.max(0, Math.ceil(remaining / studyDaysLeft)));
 
   const spStart = saoPauloToday().startSql; // meia-noite de Brasília (em UTC)
   // NOVA = a 1ª resposta da questão foi hoje. REVISÃO = respondida hoje E já
@@ -7452,32 +7538,19 @@ function getStudyPlanProgress(searchParams) {
         WHERE p.question_id = sa.question_id AND p.answered_at < ?
       )
   `).get(spStart, spStart)?.n || 0);
-  const reviewsDone = Number(db.prepare(`
-    SELECT COUNT(DISTINCT sa.question_id) AS n
-    FROM study_answers sa
-    WHERE sa.answered_at >= ?
-      AND EXISTS (
-        SELECT 1 FROM study_answers p
-        WHERE p.question_id = sa.question_id AND p.answered_at < ?
-      )
-  `).get(spStart, spStart)?.n || 0);
-  const overdueReviews = Number(db.prepare(`
-    SELECT COUNT(*) AS n FROM question_mastery
-    WHERE next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != ''
-      AND next_due_at <= CURRENT_TIMESTAMP
-  `).get()?.n || 0);
-  const reviewsTarget = Math.min(overdueReviews, reviewCap);
+  // Revisão: redução real do backlog vencido no dia (ver computeDueReviewGoal).
+  const reviewGoal = computeDueReviewGoal(reviewCap);
 
   return {
     newQuota,
     newDone: newToday,
     newRemaining: Math.max(0, newQuota - newToday),
     newComplete: newQuota > 0 ? newToday >= newQuota : true,
-    reviewsTarget,
-    reviewsDone,
-    reviewsRemaining: Math.max(0, reviewsTarget - reviewsDone),
-    reviewsComplete: reviewsTarget > 0 ? reviewsDone >= reviewsTarget : true,
-    reviewsBacklog: overdueReviews
+    reviewsTarget: reviewGoal.reviewsTarget,
+    reviewsDone: reviewGoal.reviewsDone,
+    reviewsRemaining: reviewGoal.reviewsRemaining,
+    reviewsComplete: reviewGoal.reviewsComplete,
+    reviewsBacklog: reviewGoal.reviewsBacklog
   };
 }
 
@@ -7638,14 +7711,16 @@ function normalizeSimulationAnswer(questionId, rawAnswer, expected) {
 }
 
 function getSmartQueueRows(searchParams, options = {}) {
+  const hideExcluded = options.hideStudyExcluded !== false;
   const { whereSql, values } = buildQuestionWhere(searchParams, {
-    hideStudyExcluded: options.hideStudyExcluded !== false
+    hideStudyExcluded: hideExcluded
   });
   const dueOnly = Boolean(options.dueOnly);
-  const extraWhere = dueOnly
-    ? "qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now')"
-    : '';
-  const finalWhere = appendWhere(whereSql, extraWhere);
+  const extraConds = [];
+  if (dueOnly) extraConds.push("qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now')");
+  // Navegação/estudo não serve anuladas (só browse). Antes só havia penalidade −80.
+  if (hideExcluded) extraConds.push('COALESCE(q.anulada, 0) = 0');
+  const finalWhere = appendWhere(whereSql, extraConds.join(' AND '));
   const answerSql = currentLawStudyAnswerSql('q', 'c');
   const currentLawVerifiedSql = currentLawVerifiedRowSql('qcla');
 
@@ -8219,9 +8294,15 @@ function normalizeExpectedAnswerForScoring(question, alternatives = [], rawExpec
   }
 
   if (/^[A-E]$/.test(normalized)) {
-    return alternatives.length && !alternatives.some((item) => normalizeAnswer(item.letter) === normalized)
-      ? { answer: '', reason: 'answer_alternative_not_found' }
-      : { answer: normalized, reason: '' };
+    // Múltipla escolha precisa de pelo menos 2 alternativas E a letra do gabarito
+    // entre elas. Antes, com 0 alternativas o && curto-circuitava e a questão era
+    // pontuável mesmo sem alternativas (item quebrado marcado como certo/errado).
+    if (alternatives.length < 2) {
+      return { answer: '', reason: 'no_valid_alternative' };
+    }
+    return alternatives.some((item) => normalizeAnswer(item.letter) === normalized)
+      ? { answer: normalized, reason: '' }
+      : { answer: '', reason: 'answer_alternative_not_found' };
   }
 
   const alternative = alternatives.find((item) => normalizeAnswer(item.text) === normalized);

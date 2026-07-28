@@ -1382,7 +1382,15 @@ function bindEvents() {
     event.preventDefault();
     const action = els.submitAnswer.dataset.action || "respond";
     if (action !== "respond") {
-      await runAnswerAction(action);
+      // Evita que toque-duplo/Enter em "Próxima" dispare duas navegações (a 2ª
+      // buscaria e descartaria outra questão adaptativa, queimando-a).
+      if (els.submitAnswer.dataset.navBusy === "1") return;
+      els.submitAnswer.dataset.navBusy = "1";
+      try {
+        await runAnswerAction(action);
+      } finally {
+        delete els.submitAnswer.dataset.navBusy;
+      }
       return;
     }
 
@@ -1412,7 +1420,14 @@ function bindEvents() {
       // A resposta já está gravada aqui; avisa o painel antes de renderizar,
       // para que um erro de renderização não impeça a atualização dos contadores.
       document.dispatchEvent(new CustomEvent("study:progress"));
-      renderAnswerResult(result);
+      // Erro ao RENDERIZAR não é erro ao SALVAR: a resposta já foi persistida.
+      // Isolar evita o falso "não foi possível registrar" que convidava a
+      // responder de novo (resposta duplicada).
+      try {
+        renderAnswerResult(result);
+      } catch (renderError) {
+        console.error("Falha ao renderizar resultado (resposta já salva):", renderError);
+      }
       loadStats().catch(() => {});
     } catch (error) {
       syncQuestionTimerTracking();
