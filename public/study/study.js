@@ -316,6 +316,7 @@ const els = {
   commentPanel: document.querySelector("#commentPanel"),
   commentInfo: document.querySelector("#commentInfo"),
   commentEditStatus: document.querySelector("#commentEditStatus"),
+  commentGabaritoEditor: document.querySelector("#commentGabaritoEditor"),
   commentBody: document.querySelector("#commentBody"),
   subjectsPanel: document.querySelector("#subjectsPanel"),
   subjectsInfo: document.querySelector("#subjectsInfo"),
@@ -887,6 +888,21 @@ function bindEvents() {
     const parent = event.target.closest('[data-action="open-parent"]');
     if (parent?.dataset.parent) {
       openQuestionDirect(Number(parent.dataset.parent));
+    }
+  });
+
+  els.commentGabaritoEditor?.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-action]");
+    if (!btn) return;
+    const action = btn.dataset.action;
+    if (action === "gabarito-edit") {
+      state.gabaritoEditMode = true;
+      renderCommentGabaritoEditor(state.currentQuestion);
+    } else if (action === "gabarito-cancel") {
+      state.gabaritoEditMode = false;
+      renderCommentGabaritoEditor(state.currentQuestion);
+    } else if (action === "gabarito-save") {
+      saveCommentGabarito();
     }
   });
 
@@ -3416,6 +3432,7 @@ async function selectQuestion(questionId, options = {}) {
   state.supportOpen = false;
   state.supportTab = "comment";
   state.inlineSupportTab = "comment";
+  state.gabaritoEditMode = false;
   state.sawComment = false;
   state.openedTheory = false;
   resetQuestionTimer();
@@ -3852,8 +3869,64 @@ function isContranPrfUnpublishedQuestion(question) {
   );
 }
 
+// Editor compacto de gabarito dentro do modal de apoio (mobile-friendly): mostra
+// o gabarito atual + "Editar"; ao editar, um seletor + Salvar. Salva SÓ o gabarito
+// (nao mexe no enunciado). É a forma clara de alterar o gabarito no celular.
+function renderCommentGabaritoEditor(question) {
+  const el = els.commentGabaritoEditor;
+  if (!el) return;
+  const qid = question?.id || question?.questionId;
+  if (!qid) { el.hidden = true; el.innerHTML = ""; return; }
+  const current = questionCoreAnswerValue(question);
+  if (state.gabaritoEditMode) {
+    el.innerHTML = `
+      <div class="gabarito-row is-editing">
+        <span class="gabarito-label">Gabarito</span>
+        <select id="gabaritoSelect" aria-label="Gabarito da questão">${questionCoreAnswerOptions(question, current)}</select>
+        <button type="button" class="button button-primary gabarito-btn" data-action="gabarito-save">Salvar</button>
+        <button type="button" class="button button-ghost gabarito-btn" data-action="gabarito-cancel">Cancelar</button>
+        <span class="gabarito-msg" id="gabaritoMsg"></span>
+      </div>`;
+  } else {
+    const label = current ? (displayAnswerForCurrentQuestion(current) || current) : "sem gabarito";
+    el.innerHTML = `
+      <div class="gabarito-row">
+        <span class="gabarito-label">Gabarito</span>
+        <strong class="gabarito-value">${escapeHtml(label)}</strong>
+        <button type="button" class="button button-secondary gabarito-btn" data-action="gabarito-edit">Editar</button>
+      </div>`;
+  }
+  el.hidden = false;
+}
+
+async function saveCommentGabarito() {
+  if (!state.selectedId) return;
+  const sel = els.commentGabaritoEditor?.querySelector("#gabaritoSelect");
+  const msg = els.commentGabaritoEditor?.querySelector("#gabaritoMsg");
+  const answer = sel ? sel.value : "";
+  if (msg) msg.textContent = "salvando…";
+  try {
+    const res = await api(`/api/questions/${state.selectedId}/gabarito`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answer }),
+    });
+    if (res.error) throw new Error(res.error);
+    state.gabaritoEditMode = false;
+    if (res.question) {
+      state.currentQuestion = res.question;
+      renderHistoricalCommentPanel(res.question);
+    }
+    renderCommentGabaritoEditor(state.currentQuestion);
+    loadStats().catch(() => {});
+  } catch (error) {
+    if (msg) msg.textContent = `erro: ${error.message || "falhou"}`;
+  }
+}
+
 function renderHistoricalCommentPanel(question) {
   if (!els.commentBody) return;
+  renderCommentGabaritoEditor(question);
   if (isContranPrfUnpublishedQuestion(question)) {
     renderContranPrfUnpublishedCommentPanel(question);
     return;

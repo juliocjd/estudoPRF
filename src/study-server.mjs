@@ -415,6 +415,14 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const questionGabaritoMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/gabarito$/);
+  if (questionGabaritoMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const result = await setQuestionGabarito(Number(questionGabaritoMatch[1]), body);
+    sendJson(response, result?.error ? 400 : 200, result);
+    return;
+  }
+
   const contranNormativeArticlesMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/contran-normative-articles$/);
   if (contranNormativeArticlesMatch && request.method === 'GET') {
     sendJson(response, 200, getQuestionContranNormativeArticles(Number(contranNormativeArticlesMatch[1])));
@@ -8673,6 +8681,43 @@ function saveCurrentLawAnswerEdit(questionId, body) {
       Boolean(updatedQuestion?.desatualizada)
     )
   };
+}
+
+// Edita SOMENTE o gabarito (official_answer), sem tocar no enunciado/HTML — usado
+// pelo editor compacto dentro do modal de apoio (mobile). Regenerar o enunciado
+// (como o saveQuestionCoreEdit faz) perderia o negrito das questoes de texto-base.
+async function setQuestionGabarito(questionId, body) {
+  const question = db.prepare(`
+    SELECT q.id_question, q.type_question, q.desatualizada, q.anulada,
+      ${historicalAnswerSql('q', 'c')} AS historical_answer
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    WHERE q.id_question = ?
+    LIMIT 1
+  `).get(questionId);
+  if (!question) return { error: 'Questao nao encontrada.' };
+
+  const alternatives = db.prepare(`
+    SELECT letter, text FROM alternatives WHERE question_id = ? ORDER BY position
+  `).all(questionId);
+  const requested = String(body?.answer ?? body?.officialAnswer ?? '').trim();
+  const normalized = requested
+    ? normalizeExpectedAnswerForScoring(question, alternatives, requested)
+    : { answer: '', reason: '' };
+  if (requested && !normalized.answer) {
+    return { error: 'Gabarito invalido para o tipo da questao.' };
+  }
+  const officialAnswer = normalized.answer;
+  const sets = ['official_answer = ?', 'official_answer_source = ?'];
+  const params = [officialAnswer, officialAnswer ? 'operator_edit' : ''];
+  if (tableColumnExists('questions', 'updated_at')) sets.push('updated_at = CURRENT_TIMESTAMP');
+  params.push(questionId);
+  db.prepare(`UPDATE questions SET ${sets.join(', ')} WHERE id_question = ?`).run(...params);
+
+  if (hasCurrentLawAnswerTable()) {
+    syncQuestionCurrentLawAnswerFromCoreEdit(question, officialAnswer);
+  }
+  return { ok: true, question: await getQuestion(questionId) };
 }
 
 async function saveQuestionCoreEdit(questionId, body) {
