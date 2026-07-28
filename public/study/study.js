@@ -11270,7 +11270,10 @@ function escapeAttr(value) {
 
         <h3 class="plan-h3">Ajustes</h3>
         <form id="planSettingsForm" class="plan-settings">
-          <label>Data-meta <input type="date" name="targetDate" value="${escapeHtml(data.targetDate)}"></label>
+          <label>Data da prova
+            <input type="date" name="targetDate" value="${data.dateSource === 'default' ? '' : escapeHtml(data.targetDate)}">
+            <small class="plan-hint">${data.dateSource === 'default' ? 'Opcional — defina quando sair o edital (usando horizonte padrão)' : 'Meta recalcula pela data'}</small>
+          </label>
           <label>Alvo total <input type="number" name="targetTotal" value="${data.targetTotal}" min="200" max="8000" step="100"></label>
           <label>Dias/semana <input type="number" name="daysPerWeek" value="${data.daysPerWeek}" min="1" max="7"></label>
           <label>Revisões/dia <input type="number" name="reviewCap" value="${data.reviewCap}" min="10" max="400" step="5"></label>
