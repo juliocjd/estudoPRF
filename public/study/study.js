@@ -272,6 +272,7 @@ const els = {
   errorTypeSelect: document.querySelector("#errorTypeSelect"),
   submitAnswer: document.querySelector("#submitAnswer"),
   secondaryExplain: document.querySelector("#secondaryExplain"),
+  skipQuestion: document.querySelector("#skipQuestion"),
   similarQuestions: document.querySelector("#similarQuestions"),
   toggleComment: document.querySelector("#toggleComment"),
   showSimilar: document.querySelector("#showSimilar"),
@@ -1333,7 +1334,8 @@ function bindEvents() {
     handleHistoricalTableResizePointerDown,
   );
 
-  els.confidenceOptions.addEventListener("click", (event) => {
+  // Confiança removida da UI (motor fixo em "certeza"); listener só se existir.
+  els.confidenceOptions?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-confidence]");
     if (!button) return;
     els.confidenceSelect.value = button.dataset.confidence || "sure";
@@ -1343,6 +1345,9 @@ function bindEvents() {
   els.secondaryExplain.addEventListener("click", () => {
     runAnswerAction(els.secondaryExplain.dataset.action || "explain");
   });
+
+  // "Pular": avança sem responder (não passa pelo bloqueio answer-first).
+  els.skipQuestion?.addEventListener("click", () => runNav(goNext));
 
   els.similarQuestions.addEventListener("click", () => showSimilarPanel());
 
@@ -1632,7 +1637,7 @@ async function loadResumeTarget() {
 
 function renderConfidenceOptions() {
   els.confidenceOptions
-    .querySelectorAll("[data-confidence]")
+    ?.querySelectorAll("[data-confidence]")
     .forEach((button) => {
       button.classList.toggle(
         "is-active",
@@ -5930,6 +5935,15 @@ function updateAnswerActions() {
   els.secondaryExplain.hidden = false;
   els.errorTypeWrapper.hidden = true;
 
+  // "Pular" aparece quando o avanço está travado (answer-first, ainda sem
+  // resposta) — evita ter que rolar até a seta > do topo. Depois de responder,
+  // o botão principal já vira "Próxima".
+  if (els.skipQuestion) {
+    const showSkip = Boolean(question) && !result && isAnswerFirstStudyMode() && !canRevealSupport;
+    els.skipQuestion.hidden = !showSkip;
+    els.skipQuestion.disabled = !showSkip;
+  }
+
   if (result) {
     if (result.isCorrect === 1) {
       els.answerHint.textContent = nextReviewHint(result);
@@ -5982,7 +5996,7 @@ function updateAnswerActions() {
 
   if (hasPreviousAnswer) {
     if (isAnswerFirstStudyMode() && !canRevealSupport) {
-      els.answerHint.textContent = "Responda para liberar a explicação";
+      els.answerHint.textContent = "";
       els.submitAnswer.textContent = "Responder";
       els.submitAnswer.dataset.action = "respond";
       els.submitAnswer.disabled = true;
@@ -6177,7 +6191,6 @@ function answerHistoryMarkup(question) {
     <span>Erros: <strong>${Number(stats.wrong || 0)}</strong></span>
     <span>Sem correção: <strong>${Number(stats.unknown || 0)}</strong></span>
     ${last ? `<span>Última resposta: <strong>${escapeHtml(lastStatus)}</strong></span>` : ""}
-    ${last?.confidence ? `<span>Confiança: <strong>${escapeHtml(confidenceLabel(last.confidence))}</strong></span>` : ""}
     ${last?.error_type ? `<span>Tipo de erro: <strong>${escapeHtml(errorTypeLabel(last.error_type))}</strong></span>` : ""}
   `;
 }
@@ -7222,7 +7235,7 @@ function openSupportPanel(tab = "comment", options = {}) {
         ? canRevealAppliedTheory(state.currentQuestion)
         : canRevealExplanation(state.currentQuestion);
   if (supportTabRequiresAnswer(tab) && !tabCanReveal) {
-    els.answerHint.textContent = "Responda para liberar a explicação";
+    els.answerHint.textContent = "";
     return;
   }
   state.supportOpen = true;

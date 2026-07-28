@@ -534,7 +534,6 @@
           <form class="answer-panel" id="answerForm">
             <div class="answer-head">
               <div>
-                <strong>Sua resposta</strong>
                 <span id="answerHint">Escolha uma alternativa</span>
               </div>
               <button
@@ -564,25 +563,9 @@
               </span>
             </div>
 
-            <fieldset class="confidence-field">
-              <legend>Confiança</legend>
-              <input id="confidenceSelect" type="hidden" value="sure" />
-              <div class="segmented-control" id="confidenceOptions">
-                <button
-                  class="segment is-active"
-                  type="button"
-                  data-confidence="sure"
-                >
-                  Certeza
-                </button>
-                <button class="segment" type="button" data-confidence="doubt">
-                  Dúvida
-                </button>
-                <button class="segment" type="button" data-confidence="guess">
-                  Chute
-                </button>
-              </div>
-            </fieldset>
+            <!-- Confiança removida da UI: o motor sempre pontua como "certeza"
+                 (certo/errado), conforme preferência do usuário. -->
+            <input id="confidenceSelect" type="hidden" value="sure" />
 
             <div class="alternatives" id="alternatives"></div>
 
@@ -609,6 +592,14 @@
                 disabled
               >
                 Responder
+              </button>
+              <button
+                id="skipQuestion"
+                class="button button-secondary"
+                type="button"
+                hidden
+              >
+                Pular
               </button>
               <button
                 id="secondaryExplain"

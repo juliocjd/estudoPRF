@@ -1464,12 +1464,6 @@ body.is-report-page {
   grid-column: 1 / -1;
 }
 
-/* Quando o botão de explicação está escondido (antes de responder), o "Responder"
-   ocupa a linha toda em vez de deixar um vão à direita. */
-.answer-actions:has(> #secondaryExplain[hidden]) > #submitAnswer {
-  grid-column: 1 / -1;
-}
-
 .answer-actions .button-primary {
   min-height: 44px;
 }
