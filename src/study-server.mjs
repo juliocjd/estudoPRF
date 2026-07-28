@@ -5257,17 +5257,29 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
     LEFT JOIN study_answers last_answer ON last_answer.id = answer_stats.last_id
     ${normativeJoin}
     ${finalWhere}
+    ${resolvedPlan === 'revisar_hoje' ? 'ORDER BY qm.next_due_at ASC' : ''}
     LIMIT ?
   `).all(resolvedProfile, resolvedProfile, ...values, fetchLimit);
 
-  return rows
-    .map((row) => scoreAdaptiveQuestion(row, {
-      plan: resolvedPlan,
-      profileId: resolvedProfile,
-      coverageRow: coverage.get(row.subject_key),
-      blockExpectedPct: blockWeights.get(row.block_key || '') || 0
-    }))
-    .sort((left, right) => right.score - left.score || left.materia.localeCompare(right.materia) || left.assunto.localeCompare(right.assunto) || left.id - right.id)
+  const scored = rows.map((row) => scoreAdaptiveQuestion(row, {
+    plan: resolvedPlan,
+    profileId: resolvedProfile,
+    coverageRow: coverage.get(row.subject_key),
+    blockExpectedPct: blockWeights.get(row.block_key || '') || 0
+  }));
+  // "Revisar": prioriza as MAIS vencidas (next_due_at mais antigo), não o score.
+  // Assim o backlog antigo sai primeiro (memória mais decaída), com desempate por
+  // score. Nos demais planos, ordena pelo score adaptativo.
+  const byOldestDue = (left, right) =>
+    String(left.nextDueAt || '~').localeCompare(String(right.nextDueAt || '~'))
+    || right.score - left.score;
+  const byScore = (left, right) =>
+    right.score - left.score
+    || left.materia.localeCompare(right.materia)
+    || left.assunto.localeCompare(right.assunto)
+    || left.id - right.id;
+  return scored
+    .sort(resolvedPlan === 'revisar_hoje' ? byOldestDue : byScore)
     .slice(0, Math.max(Number(limit || 50), 1));
 }
 
