@@ -19,6 +19,9 @@ try {
   const weights = getProfileWeights(db, profileId);
   const aliases = buildAliasesForProfile(profileId, weights);
   const aliasSource = aliasSourceForProfile(profileId);
+  // Rebuild idempotente: descarta aliases antigos desta fonte antes de re-semear,
+  // para não deixar padrões obsoletos (ex.: recorte por assunto) na tabela.
+  db.prepare('DELETE FROM subject_aliases WHERE source = ?').run(aliasSource);
   seedAliases(db, aliases, aliasSource);
   const report = mapQuestions(db, profileId, aliasSource);
   printReport(profileId, report);
@@ -153,17 +156,6 @@ function buildAliasesForProfile(profileId, weights) {
       confidence
     });
   };
-  const pushTopic = (rawMateria, rawAssunto, subjectKey, confidence = 1) => {
-    if (!labels.has(subjectKey)) return;
-    aliases.push({
-      rawMateria,
-      rawAssunto,
-      subjectKey,
-      subjectLabel: labels.get(subjectKey),
-      blockKey: block.get(subjectKey) || '',
-      confidence
-    });
-  };
 
   if (profileId === 'prf_2021_edital_blocos') {
     push('Legislação de Trânsito e Transportes', 'bloco_2_legislacao_transito');
@@ -204,7 +196,40 @@ function buildAliasesForProfile(profileId, weights) {
   const geoKey = labels.has('geopolitica_conhecimentos_gerais') ? 'geopolitica_conhecimentos_gerais' : 'geopolitica';
 
   if (profileId === 'prf_principais') {
-    addPrincipaisPrfTopicAliases(pushTopic, specialKey);
+    // Cobertura por MATÉRIA inteira (disciplinas centrais da PRF). Antes o perfil
+    // usava um recorte por assunto (allow-list) que deixava temas de alto rendimento
+    // fora — ex.: Licitações (Lei 14.133), Princípios, Controle da Administração,
+    // Agentes Públicos. Como matéria é superconjunto do recorte, isso só adiciona
+    // vínculos, nunca remove. redacao_oficial tem chave própria neste perfil.
+    push('Legislação de Trânsito e Transportes', 'legislacao_transito');
+    push('Legislacao de Transito', 'legislacao_transito'); // rótulo normalizado (questões derivadas importadas)
+    push('Língua Portuguesa (Português)', 'portugues');
+    push('Redação Oficial', 'redacao_oficial');
+    push('Direito Administrativo (Doutrina e Leis Federais)', 'direito_administrativo');
+    push('Direito Administrativo Estadual e do DF', 'direito_administrativo', 0.75);
+    push('Direito Administrativo Municipal', 'direito_administrativo', 0.75);
+    push('Administração Geral e Pública', 'direito_administrativo', 0.75);
+    push('Direito Constitucional (CF/1988 e Doutrina)', 'direito_constitucional');
+    push('Direito Penal', 'direito_penal');
+    push('Direito Processual Penal', 'direito_processual_penal');
+    push('Informática', 'informatica');
+    push('TI - Ciência de Dados e Inteligência Artificial', 'informatica', 0.85);
+    push('TI - Redes de Computadores', 'informatica', 0.85);
+    push('TI - Banco de Dados', 'informatica', 0.85);
+    push('TI - Desenvolvimento de Sistemas', 'informatica', 0.85);
+    push('TI - Organização e Arquitetura dos Computadores', 'informatica', 0.85);
+    push('TI - Segurança da Informação', 'informatica', 0.85);
+    push('TI - Sistemas Operacionais', 'informatica', 0.85);
+    push('Matemática', 'raciocinio_logico_matematico');
+    push('Estatística', 'raciocinio_logico_matematico', 0.85);
+    push('Raciocínio Lógico', 'raciocinio_logico_matematico');
+    push('Física', 'fisica');
+    push('Direitos Humanos', 'direitos_humanos');
+    push('Ética no Serviço Público', 'etica', 0.9);
+    push('Legislação Penal e Processual Penal Especial', specialKey);
+    push('Legislação Geral Federal', specialKey, 0.85);
+    push('Segurança Pública e Legislação Policial', specialKey, 0.8);
+    push('Direito Internacional Público e Privado', specialKey, 0.6);
     return aliases;
   }
 
@@ -242,208 +267,6 @@ function buildAliasesForProfile(profileId, weights) {
   push('Pedagogia', geoKey, 0.4);
   push('Segurança Privada e Transportes', geoKey, 0.4);
   return aliases;
-}
-
-function addPrincipaisPrfTopicAliases(pushTopic, specialKey) {
-  const addMany = (rawMateria, subjectKey, patterns, confidence = 1) => {
-    for (const pattern of patterns) pushTopic(rawMateria, pattern, subjectKey, confidence);
-  };
-
-  addMany('Legislação de Trânsito e Transportes', 'legislacao_transito', [
-    '%Normas Gerais de Circulação%',
-    '%Infrações%',
-    '%Penalidades%',
-    '%Medidas Administrativas%',
-    '%Processo Administrativo%',
-    '%Habilita%',
-    '%Sistema Nacional de Trânsito%',
-    '%Dos Veículos%',
-    '%Registro de Veículos%',
-    '%Sinalização%',
-    '%973/2022%',
-    '%985/2022%',
-    '%882/2021%',
-    '%993/2023%',
-    '%960/2022%',
-    '%432/2013%',
-    '%789/2020%',
-    '%969/2022%',
-    '%525/2015%',
-    '%798/2020%',
-    '%819/2021%',
-    '%508/2014%',
-    '%623/2016%',
-    '%24/1998%',
-    '%927/2022%',
-    '%941/2022%'
-  ]);
-
-  addMany('Língua Portuguesa (Português)', 'portugues', [
-    '%Interpreta%',
-    '%Reescrita%',
-    '%Coer%',
-    '%Coes%',
-    '%Pontua%',
-    '%Concord%',
-    '%Clareza%',
-    '%Tipologia%',
-    '%Gênero Textual%',
-    '%Significa%',
-    '%Conjun%',
-    '%Sinônimos%',
-    '%Colocação%',
-    '%Regência%',
-    '%Crase%'
-  ]);
-  addMany('Redação Oficial', 'portugues', [
-    '%Atributos da Redação Oficial%',
-    '%Fechos%',
-    '%Identificação do Signatário%',
-    '%Pronomes de Tratamento%',
-    '%Padrão Ofício%',
-    '%Vocativos%',
-    '%Correio Eletrônico%',
-    '%Julgamento de Trechos%'
-  ], 0.9);
-
-  addMany('Direito Constitucional (CF/1988 e Doutrina)', 'direito_constitucional', [
-    '%Direitos e Deveres Individuais%',
-    '%Segurança Pública%',
-    '%Princípios Fundamentais%',
-    '%União:%',
-    '%Direitos Políticos%',
-    '%Soberania Popular%',
-    '%Nacionalidade%',
-    '%Separação de Poderes%',
-    '%Direitos Sociais%',
-    '%Forças Armadas%'
-  ]);
-
-  addMany('Direito Administrativo (Doutrina e Leis Federais)', 'direito_administrativo', [
-    '%Poder de Polícia%',
-    '%Regime Disciplinar%',
-    '%Lei nº 8.112%',
-    '%Atos Administrativos%',
-    '%Responsabilidade%',
-    '%Administração Indireta%',
-    '%Administração Direta%',
-    '%Desconcentração%',
-    '%Descentralização%',
-    '%Acesso à Informação%',
-    '%Lei nº 12.527%',
-    '%Poder Disciplinar%',
-    '%Poder Hierárquico%'
-  ]);
-
-  addMany('Direito Penal', 'direito_penal', [
-    '%Imputabilidade Penal%',
-    '%Conflitos de Leis Penais no Tempo%',
-    '%Dolo, Culpa%',
-    '%Tentativa%',
-    '%Erro de Tipo%',
-    '%Erro de Proibição%',
-    '%Legítima Defesa%',
-    '%Ilicitude%',
-    '%Furto%',
-    '%Roubo%',
-    '%Peculato%',
-    '%Corrupção Passiva%',
-    '%Concussão%',
-    '%Falsidade Ideológica%',
-    '%Crimes contra a Administração%'
-  ]);
-
-  addMany('Direito Processual Penal', 'direito_processual_penal', [
-    '%Ação Penal%',
-    '%Prisão em Flagrante%',
-    '%Prova%',
-    '%Perícias%',
-    '%Busca e Apreensão%',
-    '%Inquérito Policial%',
-    '%Interrogatório%',
-    '%Cadeia de Custódia%',
-    '%Prisão%',
-    '%Medidas Cautelares%'
-  ]);
-
-  addMany('Direitos Humanos', 'direitos_humanos', [
-    '%Declaração Universal%',
-    '%Direitos Humanos na Constituição%',
-    '%CADH%',
-    '%Tratados Internacionais%',
-    '%Posição Hierárquica%'
-  ]);
-
-  addMany('Informática', 'informatica', [
-    '%Segurança da Informação%',
-    '%Ameaças%',
-    '%Internet%',
-    '%Protocolos de Redes%',
-    '%Redes%',
-    '%Computação em Nuvem%',
-    '%Cloud Computing%',
-    '%Firewall%',
-    '%Webmails%',
-    '%Correio Eletrônico%',
-    '%Navegadores%',
-    '%Sistemas Operacionais%',
-    '%Windows 10%',
-    '%Windows 11%'
-  ]);
-  addMany('TI - Ciência de Dados e Inteligência Artificial', 'informatica', [
-    '%Big Data%',
-    '%Business Intelligence%',
-    '%Analytics%',
-    '%Machine Learning%',
-    '%Inteligência Artificial%'
-  ], 0.85);
-  addMany('TI - Redes de Computadores', 'informatica', ['%Internet das Coisas%', '%Cloud Computing%'], 0.85);
-  addMany('TI - Segurança da Informação', 'informatica', ['%Transferência Segura%'], 0.85);
-
-  addMany('Matemática', 'raciocinio_logico_matematico', [
-    '%Função%',
-    '%Porcentagem%',
-    '%Progressão Aritmética%',
-    '%Proporções%',
-    '%Gráficos e Tabelas%',
-    '%Geometria Espacial%',
-    '%Equações de Primeiro Grau%',
-    '%Equações de Segundo Grau%'
-  ]);
-  addMany('Estatística', 'raciocinio_logico_matematico', [
-    '%Probabilidade%',
-    '%Análise Combinatória%',
-    '%Séries Estatísticas%',
-    '%Desvio Padrão%',
-    '%Variância%',
-    '%Mediana%',
-    '%Quartil%'
-  ], 0.85);
-  addMany('Raciocínio Lógico', 'raciocinio_logico_matematico', ['%Sequências%']);
-
-  addMany('Física', 'fisica', [
-    '%Cinemática%',
-    '%Dinâmica%',
-    '%Energia%',
-    '%Trabalho%',
-    '%Potência%',
-    '%Quantidade de Movimento%',
-    '%Impulso%',
-    '%Colisões%',
-    '%Atrito%',
-    '%Movimento Circular%'
-  ]);
-
-  addMany('Legislação Penal e Processual Penal Especial', specialKey, [
-    '%Crimes no Código de Trânsito Brasileiro%',
-    '%Lei nº 9.503/1997%'
-  ]);
-  addMany('Segurança Pública e Legislação Policial', specialKey, [
-    '%Competências da PRF%',
-    '%Carreira de Policial Rodoviário Federal%',
-    '%PRF%'
-  ], 0.85);
-  addMany('Legislação Geral Federal', specialKey, ['%Indenização de Fronteira%'], 0.75);
 }
 
 function seedAliases(database, aliases, source) {
@@ -516,8 +339,11 @@ function printReport(profileId, report) {
 }
 
 function ensureSchema(database) {
+  // Sonda portável: funciona em SQLite e Postgres (sqlite_schema não existe no Neon).
   for (const tableName of ['exam_profiles', 'exam_subject_weights', 'subject_aliases', 'question_exam_subjects']) {
-    if (!database.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name=?").get(tableName)) {
+    try {
+      database.prepare(`SELECT 1 FROM ${tableName} LIMIT 1`).get();
+    } catch (error) {
       throw new Error(`Tabela ausente: ${tableName}. Rode migrate-exam-profiles primeiro.`);
     }
   }
