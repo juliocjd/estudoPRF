@@ -7096,6 +7096,25 @@ function saveLawClozeAnswer(cardId, body) {
 }
 
 /** Resumo do dia para o painel "Hoje": tudo que orienta a sessão num olhar. */
+// "Hoje" no fuso de Brasília (America/Sao_Paulo = UTC-3 fixo, sem horário de
+// verão desde 2019). Sem isso, os contadores diários usam CURRENT_DATE (meia-
+// noite UTC) e zeram às 21h de Brasília. startSql = meia-noite local expressa em
+// UTC, para comparar com answered_at (armazenado em UTC).
+const SAO_PAULO_OFFSET_MS = 3 * 60 * 60 * 1000;
+function saoPauloToday() {
+  const spNow = new Date(Date.now() - SAO_PAULO_OFFSET_MS);
+  const spDate = spNow.toISOString().slice(0, 10);
+  const spYesterday = new Date(spNow.getTime() - 86400000).toISOString().slice(0, 10);
+  return { spDate, spYesterday, startSql: `${spDate} 03:00:00` };
+}
+// Data (AAAA-MM-DD) de um timestamp armazenado (UTC) no fuso de Brasília.
+function toSaoPauloDate(ts) {
+  const s = String(ts || '').trim().replace(' ', 'T');
+  const iso = /[zZ]$|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`;
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? '' : new Date(t - SAO_PAULO_OFFSET_MS).toISOString().slice(0, 10);
+}
+
 function getTodaySummary() {
   const dueQuestions = db.prepare(`
     SELECT COUNT(*) AS total
@@ -7116,32 +7135,29 @@ function getTodaySummary() {
     `).get() || cloze;
   }
 
+  const sp = saoPauloToday();
   const today = db.prepare(`
     SELECT COUNT(*) AS total,
       SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS correct,
       COALESCE(SUM(CASE WHEN elapsed_ms IS NULL THEN 0
         WHEN elapsed_ms > 600000 THEN 600000 ELSE elapsed_ms END), 0) AS time_ms
     FROM study_answers
-    WHERE answered_at >= CURRENT_DATE
-  `).get();
+    WHERE answered_at >= ?
+  `).get(sp.startSql);
 
-  // Streak: dias consecutivos (terminando hoje ou ontem) com ao menos 1 resposta.
-  const since = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  // Streak: dias (fuso de Brasília) consecutivos com ao menos 1 resposta.
+  const since = new Date(Date.now() - 92 * 86400000).toISOString().slice(0, 10);
   const activeDays = new Set(
-    db.prepare(`
-      SELECT DISTINCT SUBSTR(CAST(answered_at AS TEXT), 1, 10) AS day
-      FROM study_answers
-      WHERE answered_at >= ?
-    `).all(since).map((row) => row.day)
+    db.prepare(`SELECT answered_at FROM study_answers WHERE answered_at >= ?`)
+      .all(since).map((row) => toSaoPauloDate(row.answered_at)).filter(Boolean)
   );
   let streakDays = 0;
-  const cursor = new Date();
-  if (!activeDays.has(cursor.toISOString().slice(0, 10))) {
-    cursor.setUTCDate(cursor.getUTCDate() - 1); // streak preservado se ainda não estudou hoje
-  }
-  while (activeDays.has(cursor.toISOString().slice(0, 10))) {
+  let cur = activeDays.has(sp.spDate) ? sp.spDate : sp.spYesterday;
+  while (activeDays.has(cur)) {
     streakDays += 1;
-    cursor.setUTCDate(cursor.getUTCDate() - 1);
+    const d = new Date(`${cur}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 1);
+    cur = d.toISOString().slice(0, 10);
   }
 
   let projected = null;
@@ -7286,32 +7302,32 @@ function getStudyPlan(searchParams) {
   const newPerDay = Math.max(0, Math.ceil(remaining / studyDaysLeft));
 
   // Burn-down: distintas cobertas por dia (1ª vez que a questão foi respondida).
+  // 1ª resposta de cada questão; o dia é agrupado no fuso de Brasília (em JS),
+  // para o burndown e o "hoje" não usarem meia-noite UTC.
   const firstSeenRows = db.prepare(`
-    SELECT SUBSTR(CAST(t.first_seen AS TEXT), 1, 10) AS day, COUNT(*) AS n
-    FROM (
-      SELECT sa.question_id, MIN(sa.answered_at) AS first_seen
-      FROM study_answers sa
-      JOIN question_exam_subjects qes ON qes.question_id = sa.question_id AND qes.profile_id = ?
-      GROUP BY sa.question_id
-    ) t
-    GROUP BY SUBSTR(CAST(t.first_seen AS TEXT), 1, 10)
-    ORDER BY day
+    SELECT MIN(sa.answered_at) AS first_seen
+    FROM study_answers sa
+    JOIN question_exam_subjects qes ON qes.question_id = sa.question_id AND qes.profile_id = ?
+    GROUP BY sa.question_id
   `).all(profileId);
-  const newByDay = new Map(firstSeenRows.map((r) => [r.day, Number(r.n || 0)]));
+  const newByDay = new Map();
+  for (const r of firstSeenRows) {
+    const day = toSaoPauloDate(r.first_seen);
+    if (day) newByDay.set(day, (newByDay.get(day) || 0) + 1);
+  }
   let cum = 0;
-  const burndown = firstSeenRows.map((r) => {
-    cum += Number(r.n || 0);
-    return { day: r.day, covered: cum };
+  const burndown = [...newByDay.keys()].sort().map((day) => {
+    cum += newByDay.get(day);
+    return { day, covered: cum };
   });
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const newToday = newByDay.get(todayStr) || 0;
-  const newYesterday = newByDay.get(yesterdayStr) || 0;
+  const sp = saoPauloToday();
+  const newToday = newByDay.get(sp.spDate) || 0;
+  const newYesterday = newByDay.get(sp.spYesterday) || 0;
 
   const answersToday = Number(db.prepare(`
-    SELECT COUNT(*) AS n FROM study_answers WHERE answered_at >= CURRENT_DATE
-  `).get()?.n || 0);
+    SELECT COUNT(*) AS n FROM study_answers WHERE answered_at >= ?
+  `).get(sp.startSql)?.n || 0);
   const reviewsDoneToday = Math.max(0, answersToday - newToday);
 
   const overdueReviews = Number(db.prepare(`
@@ -7396,18 +7412,19 @@ function getStudyPlanProgress(searchParams) {
   const studyDaysLeft = Math.max(1, Math.floor(daysLeft * (daysPerWeek / 7)));
   const newQuota = Math.max(0, Math.ceil(remaining / studyDaysLeft));
 
+  const spStart = saoPauloToday().startSql; // meia-noite de Brasília (em UTC)
   const newToday = Number(db.prepare(`
     SELECT COUNT(*) AS n FROM (
       SELECT sa.question_id
       FROM study_answers sa
       JOIN question_exam_subjects qes ON qes.question_id = sa.question_id AND qes.profile_id = ?
       GROUP BY sa.question_id
-      HAVING MIN(sa.answered_at) >= CURRENT_DATE
+      HAVING MIN(sa.answered_at) >= ?
     ) t
-  `).get(profileId)?.n || 0);
+  `).get(profileId, spStart)?.n || 0);
   const answersToday = Number(db.prepare(`
-    SELECT COUNT(*) AS n FROM study_answers WHERE answered_at >= CURRENT_DATE
-  `).get()?.n || 0);
+    SELECT COUNT(*) AS n FROM study_answers WHERE answered_at >= ?
+  `).get(spStart)?.n || 0);
   const overdueReviews = Number(db.prepare(`
     SELECT COUNT(*) AS n FROM question_mastery
     WHERE next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != ''

@@ -11253,11 +11253,12 @@ function escapeAttr(value) {
     if (!last || !inStudyMode()) { el.hidden = true; return; }
     const p = last;
     const item = (label, done, target, complete) => {
-      const shown = Math.min(done, target);
+      // Mostra o total real (não limita à meta): ao ultrapassar, vira 17/16 etc.,
+      // para você ver e se motivar por ter passado da meta.
       return `<span class="mdp-item ${complete ? "is-complete" : ""}">
         <span class="mdp-ico">${complete ? "✓" : "•"}</span>
         <span class="mdp-label">${label}</span>
-        <span class="mdp-count">${complete ? target : shown}/${target}</span>
+        <span class="mdp-count">${done}/${target}</span>
       </span>`;
     };
     const allDone = p.newComplete && p.reviewsComplete;
