@@ -5927,6 +5927,7 @@ function updateAnswerActions() {
   const hasPreviousAnswer = Boolean(question?.answerStats?.total);
 
   els.secondaryExplain.disabled = !question;
+  els.secondaryExplain.hidden = false;
   els.errorTypeWrapper.hidden = true;
 
   if (result) {
@@ -5970,9 +5971,10 @@ function updateAnswerActions() {
       : "Responder";
     els.submitAnswer.dataset.action = "respond";
     els.submitAnswer.disabled = !hasAlternatives;
-    els.secondaryExplain.textContent = canRevealSupport
-      ? "Ver explicação"
-      : "Responda para liberar";
+    // Sem responder ainda: em vez de um botão travado "Responda para liberar",
+    // simplesmente escondemos o botão de explicação até ele estar disponível.
+    els.secondaryExplain.hidden = !canRevealSupport;
+    els.secondaryExplain.textContent = "Ver explicação";
     els.secondaryExplain.dataset.action = "explain";
     els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
     return;
@@ -5984,9 +5986,7 @@ function updateAnswerActions() {
       els.submitAnswer.textContent = "Responder";
       els.submitAnswer.dataset.action = "respond";
       els.submitAnswer.disabled = true;
-      els.secondaryExplain.textContent = "Responda para liberar";
-      els.secondaryExplain.dataset.action = "explain";
-      els.secondaryExplain.disabled = true;
+      els.secondaryExplain.hidden = true;
       return;
     }
     els.answerHint.textContent =
@@ -6009,9 +6009,8 @@ function updateAnswerActions() {
   els.submitAnswer.textContent = "Responder";
   els.submitAnswer.dataset.action = "respond";
   els.submitAnswer.disabled = true;
-  els.secondaryExplain.textContent = canRevealSupport
-    ? "Ver explicação"
-    : "Responda para liberar";
+  els.secondaryExplain.hidden = !canRevealSupport;
+  els.secondaryExplain.textContent = "Ver explicação";
   els.secondaryExplain.dataset.action = "explain";
   els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
 }
