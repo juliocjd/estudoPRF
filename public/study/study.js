@@ -272,7 +272,6 @@ const els = {
   errorTypeSelect: document.querySelector("#errorTypeSelect"),
   submitAnswer: document.querySelector("#submitAnswer"),
   secondaryExplain: document.querySelector("#secondaryExplain"),
-  skipQuestion: document.querySelector("#skipQuestion"),
   similarQuestions: document.querySelector("#similarQuestions"),
   toggleComment: document.querySelector("#toggleComment"),
   showSimilar: document.querySelector("#showSimilar"),
@@ -1344,10 +1343,6 @@ function bindEvents() {
   els.secondaryExplain.addEventListener("click", () => {
     runAnswerAction(els.secondaryExplain.dataset.action || "explain");
   });
-
-  // "Pular": avança sem responder (não passa pelo bloqueio answer-first, igual à
-  // seta > do topo, mas visível ao lado de "Responder").
-  els.skipQuestion?.addEventListener("click", () => runNav(goNext));
 
   els.similarQuestions.addEventListener("click", () => showSimilarPanel());
 
@@ -5933,14 +5928,6 @@ function updateAnswerActions() {
 
   els.secondaryExplain.disabled = !question;
   els.errorTypeWrapper.hidden = true;
-
-  // "Pular" só faz sentido quando o avanço está travado (answer-first e ainda
-  // não respondeu). Depois de responder, o próprio botão principal vira "Próxima".
-  if (els.skipQuestion) {
-    const showSkip = Boolean(question) && !result && isAnswerFirstStudyMode() && !canRevealSupport;
-    els.skipQuestion.hidden = !showSkip;
-    els.skipQuestion.disabled = !showSkip;
-  }
 
   if (result) {
     if (result.isCorrect === 1) {
