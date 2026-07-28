@@ -53,6 +53,7 @@ try {
   const commented = new Set();
   const nbAns = new Map();
   const cmAns = new Map();
+  const altMap = new Map();
   for (let i = 0; i < candIds.length; i += 400) {
     const c = candIds.slice(i, i + 400);
     const ph = c.map(() => '?').join(',');
@@ -60,28 +61,44 @@ try {
     for (const r of db.prepare(`SELECT DISTINCT question_id AS q FROM comments WHERE question_id IN (${ph}) AND (COALESCE(html,'')!='' OR COALESCE(text,'')!='')`).all(...c)) commented.add(r.q);
     for (const r of db.prepare(`SELECT question_id AS q, answer AS a FROM notebook_questions WHERE question_id IN (${ph}) AND COALESCE(answer,'')!=''`).all(...c)) { if (!nbAns.has(r.q)) nbAns.set(r.q, String(r.a).trim()); }
     for (const r of db.prepare(`SELECT question_id AS q, extracted_answer AS a FROM comments WHERE question_id IN (${ph}) AND COALESCE(extracted_answer,'')!=''`).all(...c)) cmAns.set(r.q, String(r.a).trim());
+    // alternativas (para múltipla escolha): o texto do statement é só o enunciado;
+    // o que distingue são as alternativas.
+    for (const r of db.prepare(`SELECT question_id AS q, COALESCE(text, html, '') AS v FROM alternatives WHERE question_id IN (${ph}) ORDER BY question_id, position`).all(...c)) {
+      const k = String(r.v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      if (!altMap.has(r.q)) altMap.set(r.q, []);
+      altMap.get(r.q).push(k);
+    }
   }
   const bestAnswer = (x) => String(x.o || '').trim() || nbAns.get(x.id) || cmAns.get(x.id) || '';
+  const stripNorm = (s) => String(s || '').replace(/<[^>]+>/g, ' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const boldOf = (html) => (String(html || '').match(/<(?:b|strong)[^>]*>([\s\S]*?)<\/(?:b|strong)>/gi) || [])
-    .map((m) => m.replace(/<[^>]+>/g, ' ').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim())
-    .filter(Boolean).join(' | ');
+    .map((m) => stripNorm(m)).filter(Boolean).join(' | ');
+  const altKeyOf = (id) => (altMap.get(id) || []).slice().sort().join(' || ');
+  const imgKeyOf = (html) => (String(html || '').match(/<img[^>]+src=["']?([^"'>\s]+)/gi) || [])
+    .map((m) => m.replace(/.*src=["']?/i, '')).sort().join(' ');
 
   // GUARDAS: só é duplicata real se, no grupo, o gabarito (de qualquer fonte) for
-  // conhecido e IGUAL para todos, E o texto em negrito for igual. Isso separa as
-  // baterias "cloze" CEBRASPE (mesmo texto-base, negrito/assertiva diferentes) das
-  // duplicatas de importação verdadeiras.
+  // conhecido e IGUAL para todos, E o texto em negrito, as ALTERNATIVAS e as
+  // IMAGENS forem iguais. Isso separa das duplicatas verdadeiras: (a) baterias
+  // "cloze" (mesmo texto-base, negrito/assertiva diferentes); (b) múltipla escolha
+  // com enunciado genérico ("assinale a opção correta") mas alternativas distintas;
+  // (c) questões de figura/placa/sinal com mesmo texto mas imagem diferente.
   const safeGroups = [];
-  let divAnswer = 0, divBold = 0, allEmpty = 0;
+  let divAnswer = 0, divBold = 0, divAlt = 0, divImg = 0, allEmpty = 0;
   for (const g of groups) {
     const answers = new Set(g.map(bestAnswer).filter(Boolean));
     const bolds = new Set(g.map((x) => boldOf(x.sh)));
+    const alts = new Set(g.map((x) => altKeyOf(x.id)));
+    const imgs = new Set(g.map((x) => imgKeyOf(x.sh)));
     if (answers.size > 1) { divAnswer += 1; continue; }
     if (bolds.size > 1) { divBold += 1; continue; }
+    if (alts.size > 1) { divAlt += 1; continue; }
+    if (imgs.size > 1) { divImg += 1; continue; }
     if (answers.size === 0) { allEmpty += 1; continue; }
     safeGroups.push(g);
   }
   const reviewCount = divAnswer;
-  console.log(`guardas -> excluídos: gabarito divergente ${divAnswer}, negrito divergente ${divBold}, sem gabarito ${allEmpty}`);
+  console.log(`guardas -> excluídos: gabarito ${divAnswer}, negrito ${divBold}, alternativas ${divAlt}, imagem ${divImg}, sem gabarito ${allEmpty}`);
 
   const score = (x) => (ansCnt.get(x.id) ? 1e6 : 0) + (x.o ? 1e4 : 0) + (commented.has(x.id) ? 1e2 : 0) + (ansCnt.get(x.id) || 0);
 
