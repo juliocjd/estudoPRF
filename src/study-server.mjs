@@ -7342,13 +7342,19 @@ function getStudyPlan(searchParams) {
   });
 
   const sp = saoPauloToday();
-  const newToday = newByDay.get(sp.spDate) || 0;
   const newYesterday = newByDay.get(sp.spYesterday) || 0;
-
-  const answersToday = Number(db.prepare(`
-    SELECT COUNT(*) AS n FROM study_answers WHERE answered_at >= ?
-  `).get(sp.startSql)?.n || 0);
-  const reviewsDoneToday = Math.max(0, answersToday - newToday);
+  // Contadores de hoje pelos mesmos critérios do indicador ao vivo (histórico,
+  // não perfil): nova = 1ª resposta hoje; revisão = respondida hoje e antes.
+  const newToday = Number(db.prepare(`
+    SELECT COUNT(DISTINCT sa.question_id) AS n FROM study_answers sa
+    WHERE sa.answered_at >= ?
+      AND NOT EXISTS (SELECT 1 FROM study_answers p WHERE p.question_id = sa.question_id AND p.answered_at < ?)
+  `).get(sp.startSql, sp.startSql)?.n || 0);
+  const reviewsDoneToday = Number(db.prepare(`
+    SELECT COUNT(DISTINCT sa.question_id) AS n FROM study_answers sa
+    WHERE sa.answered_at >= ?
+      AND EXISTS (SELECT 1 FROM study_answers p WHERE p.question_id = sa.question_id AND p.answered_at < ?)
+  `).get(sp.startSql, sp.startSql)?.n || 0);
 
   const overdueReviews = Number(db.prepare(`
     SELECT COUNT(*) AS n FROM question_mastery
@@ -7433,25 +7439,33 @@ function getStudyPlanProgress(searchParams) {
   const newQuota = Math.max(0, Math.ceil(remaining / studyDaysLeft));
 
   const spStart = saoPauloToday().startSql; // meia-noite de Brasília (em UTC)
+  // NOVA = a 1ª resposta da questão foi hoje. REVISÃO = respondida hoje E já
+  // respondida antes de hoje. Definido pelo HISTÓRICO (não por perfil): assim
+  // uma questão nova nunca conta como revisão. O antigo answersToday - newToday
+  // jogava respostas de questões fora do perfil (nunca respondidas) em revisões.
   const newToday = Number(db.prepare(`
-    SELECT COUNT(*) AS n FROM (
-      SELECT sa.question_id
-      FROM study_answers sa
-      JOIN question_exam_subjects qes ON qes.question_id = sa.question_id AND qes.profile_id = ?
-      GROUP BY sa.question_id
-      HAVING MIN(sa.answered_at) >= ?
-    ) t
-  `).get(profileId, spStart)?.n || 0);
-  const answersToday = Number(db.prepare(`
-    SELECT COUNT(*) AS n FROM study_answers WHERE answered_at >= ?
-  `).get(spStart)?.n || 0);
+    SELECT COUNT(DISTINCT sa.question_id) AS n
+    FROM study_answers sa
+    WHERE sa.answered_at >= ?
+      AND NOT EXISTS (
+        SELECT 1 FROM study_answers p
+        WHERE p.question_id = sa.question_id AND p.answered_at < ?
+      )
+  `).get(spStart, spStart)?.n || 0);
+  const reviewsDone = Number(db.prepare(`
+    SELECT COUNT(DISTINCT sa.question_id) AS n
+    FROM study_answers sa
+    WHERE sa.answered_at >= ?
+      AND EXISTS (
+        SELECT 1 FROM study_answers p
+        WHERE p.question_id = sa.question_id AND p.answered_at < ?
+      )
+  `).get(spStart, spStart)?.n || 0);
   const overdueReviews = Number(db.prepare(`
     SELECT COUNT(*) AS n FROM question_mastery
     WHERE next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != ''
       AND next_due_at <= CURRENT_TIMESTAMP
   `).get()?.n || 0);
-
-  const reviewsDone = Math.max(0, answersToday - newToday);
   const reviewsTarget = Math.min(overdueReviews, reviewCap);
 
   return {
