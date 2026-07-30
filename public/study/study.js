@@ -5972,14 +5972,17 @@ function updateAnswerActions() {
     }
 
     if (result.isCorrect === 0) {
+      // Mesma posição dos botões do acerto (não trocar "Ver explicação" com
+      // "Próxima" — a troca quebrava a memória muscular). Só o aviso e o seletor
+      // de tipo de erro mudam.
       els.answerHint.textContent = "Revise a explicação antes de avançar";
       els.errorTypeWrapper.hidden = false;
-      els.submitAnswer.textContent = "Ver explicação";
-      els.submitAnswer.dataset.action = "explain";
-      els.submitAnswer.disabled = !hasExplanation;
-      els.secondaryExplain.textContent = "Próxima questão";
-      els.secondaryExplain.dataset.action = "next";
-      els.secondaryExplain.disabled = false;
+      els.submitAnswer.textContent = "Próxima questão";
+      els.submitAnswer.dataset.action = "next";
+      els.submitAnswer.disabled = false;
+      els.secondaryExplain.textContent = "Ver explicação";
+      els.secondaryExplain.dataset.action = "explain";
+      els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
       return;
     }
 
@@ -6018,19 +6021,15 @@ function updateAnswerActions() {
       els.secondaryExplain.hidden = true;
       return;
     }
-    els.answerHint.textContent =
-      state.studyMode === "adaptive"
-        ? "Esta questão já foi respondida. Você pode revisar ou seguir."
-        : "Questão já respondida";
-    els.submitAnswer.textContent =
-      state.studyMode === "adaptive"
-        ? "Próxima recomendada"
-        : "Próxima questão";
+    els.answerHint.textContent = "Questão já respondida";
+    els.submitAnswer.textContent = "Próxima questão";
     els.submitAnswer.dataset.action = "next";
     els.submitAnswer.disabled = false;
-    els.secondaryExplain.textContent = "Histórico";
-    els.secondaryExplain.dataset.action = "history";
-    els.secondaryExplain.disabled = false;
+    // Mantém "Ver explicação" na mesma posição do resto do fluxo (antes era
+    // "Histórico", que fazia o botão secundário "mudar de lugar" entre telas).
+    els.secondaryExplain.textContent = "Ver explicação";
+    els.secondaryExplain.dataset.action = "explain";
+    els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
     return;
   }
 

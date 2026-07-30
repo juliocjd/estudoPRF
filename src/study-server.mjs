@@ -7202,32 +7202,30 @@ function toSaoPauloDate(ts) {
 // impossível.
 const STUDY_PLAN_MAX_NEW_PER_DAY = 120;
 
-// Meta de revisão do dia medida pela REDUÇÃO real do backlog vencido, não por
-// "questões já vistas respondidas hoje" (que contava re-resposta de não-vencida
-// e fazia a meta fechar com o backlog intacto). Usa um snapshot do PICO de
-// vencidas no dia (fuso de Brasília) como baseline estável; o feito é quanto o
-// vencido caiu desde esse pico. reviewCap limita o esforço diário.
+// Meta de revisão do dia medida pelas revisões VENCIDAS efetivamente feitas hoje
+// (study_answers.was_due_review, marcado no momento da resposta). É monotônica:
+// não zera quando novos cartões vencem durante o dia, e re-responder questão
+// não-vencida não conta. reviewCap limita o esforço diário; o alvo é o total de
+// vencidas do dia (feitas + ainda pendentes), com teto no cap.
 function computeDueReviewGoal(reviewCap) {
   const overdue = Number(db.prepare(`
     SELECT COUNT(*) AS n FROM question_mastery
     WHERE next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != ''
       AND next_due_at <= CURRENT_TIMESTAMP
   `).get()?.n || 0);
-  const { spDate } = saoPauloToday();
-  let snap = null;
-  try { snap = JSON.parse(getSetting('study_review_snapshot', '') || 'null'); } catch { snap = null; }
-  let dueAtStart = overdue;
-  if (snap && snap.date === spDate) dueAtStart = Math.max(Number(snap.due || 0), overdue);
-  if (!snap || snap.date !== spDate || dueAtStart !== Number(snap.due || 0)) {
-    setSetting('study_review_snapshot', JSON.stringify({ date: spDate, due: dueAtStart }));
-  }
-  const reviewsTarget = Math.min(dueAtStart, reviewCap);
-  const cleared = Math.max(0, dueAtStart - overdue);
+  const spStart = saoPauloToday().startSql;
+  const reviewsDone = columnExists('study_answers', 'was_due_review')
+    ? Number(db.prepare(`
+        SELECT COUNT(DISTINCT question_id) AS n FROM study_answers
+        WHERE answered_at >= ? AND COALESCE(was_due_review, 0) = 1
+      `).get(spStart)?.n || 0)
+    : 0;
+  const reviewsTarget = Math.min(reviewsDone + overdue, reviewCap);
   return {
     reviewsTarget,
-    reviewsDone: Math.min(cleared, reviewsTarget),
-    reviewsRemaining: Math.max(0, reviewsTarget - cleared),
-    reviewsComplete: reviewsTarget > 0 ? cleared >= reviewsTarget : true,
+    reviewsDone: Math.min(reviewsDone, reviewsTarget),
+    reviewsRemaining: Math.max(0, reviewsTarget - reviewsDone),
+    reviewsComplete: reviewsTarget > 0 ? reviewsDone >= reviewsTarget : true,
     reviewsBacklog: overdue
   };
 }
@@ -9746,14 +9744,25 @@ function saveAnswer(questionId, body) {
   const attemptMeta = normalizeAttemptMeta(body, isCorrect);
   const storedCorrectionMode = correction.canScore ? correction.mode : 'non_scoring';
 
+  // Esta resposta é de uma REVISÃO que estava VENCIDA? Lido ANTES de atualizar a
+  // maestria (que empurra next_due_at pra frente). A meta de revisão conta só
+  // estas — assim ela não zera quando novos cartões vencem durante o dia, e
+  // re-responder questão não-vencida não infla o progresso.
+  const priorMastery = db.prepare(`
+    SELECT COALESCE(attempts, 0) AS attempts,
+      CASE WHEN next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != '' AND next_due_at <= CURRENT_TIMESTAMP THEN 1 ELSE 0 END AS is_due
+    FROM question_mastery WHERE question_id = ?
+  `).get(questionId);
+  const wasDueReview = priorMastery && Number(priorMastery.attempts) > 0 && Number(priorMastery.is_due) === 1 ? 1 : 0;
+
   db.prepare(`
     INSERT INTO study_answers (
       question_id, answer_letter, answer_text, expected_answer, is_correct, answered_at,
       confidence, error_type, elapsed_ms, study_mode, saw_comment, opened_theory,
       session_id, correction_mode, expected_answer_source, non_scoring_reason,
-      current_law_status_at_answer, scoring_version, created_at
+      current_law_status_at_answer, scoring_version, was_due_review, created_at
     )
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `).run(
     questionId,
     alternative.letter,
@@ -9771,7 +9780,8 @@ function saveAnswer(questionId, body) {
     correction.answerSource || '',
     correction.nonScoringReason || '',
     correction.currentLawStatus || '',
-    correction.scoringVersion || SCORING_VERSION
+    correction.scoringVersion || SCORING_VERSION,
+    wasDueReview
   );
 
   const mastery = isCorrect === null
