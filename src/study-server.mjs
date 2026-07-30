@@ -551,6 +551,13 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const errorTypeMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/error-type$/);
+  if (errorTypeMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    sendJson(response, 200, setLastAnswerErrorType(Number(errorTypeMatch[1]), body?.errorType));
+    return;
+  }
+
   const studyStatusMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/study-status$/);
   if (studyStatusMatch && request.method === 'POST') {
     const body = await readJsonBody(request);
@@ -3801,9 +3808,16 @@ function computeExamCoverageRows(profileId) {
         THEN q.id_question END
       ) AS valid_with_answer,
       COUNT(DISTINCT CASE WHEN COALESCE(c.html_local, c.html, c.text, '') != '' THEN q.id_question END) AS comments,
-      COUNT(sa.id) AS attempts,
-      ROUND(CAST(COALESCE(AVG(qm.mastery_score), 0) AS NUMERIC), 4) AS mastery_score,
-      SUM(CASE WHEN qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now') THEN 1 ELSE 0 END) AS due_reviews,
+      COUNT(DISTINCT sa.id) AS attempts,
+      (
+        SELECT ROUND(CAST(COALESCE(AVG(qm2.mastery_score), 0) AS NUMERIC), 4)
+        FROM question_mastery qm2
+        JOIN question_exam_subjects qes2
+          ON qes2.question_id = qm2.question_id
+          AND qes2.profile_id = w.profile_id
+          AND qes2.subject_key = w.subject_key
+      ) AS mastery_score,
+      COUNT(DISTINCT CASE WHEN qm.next_due_at IS NOT NULL AND CAST(qm.next_due_at AS TEXT) != '' AND qm.next_due_at <= datetime('now') THEN q.id_question END) AS due_reviews,
       COUNT(DISTINCT CASE WHEN COALESCE(q.anulada, 0) = 1 THEN q.id_question END) AS canceled,
       COUNT(DISTINCT CASE WHEN COALESCE(q.desatualizada, 0) = 1 THEN q.id_question END) AS outdated
     FROM exam_subject_weights w
@@ -3816,6 +3830,7 @@ function computeExamCoverageRows(profileId) {
     LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
     WHERE w.profile_id = ?
     GROUP BY
+      w.profile_id,
       w.subject_key,
       w.subject_label,
       w.block_key,
@@ -4869,7 +4884,11 @@ function smartQueueV2Reasons(row, flags) {
 function getSessionPlan(searchParams) {
   const profileId = resolveProfileId(searchParams.get('profile'));
   const mode = String(searchParams.get('mode') || 'balanced');
-  const size = Math.min(120, Math.max(5, Number(searchParams.get('size') || 30)));
+  // O simulado pede o DOBRO de candidatos para depois filtrar só certo/errado;
+  // sem elevar o teto aqui, "size*2" da prova de 120 era cortado de volta a 120 e
+  // o buffer virava no-op (múltipla escolha vazava). Teto maior só no modo exam.
+  const maxSize = mode === 'exam' ? 300 : 120;
+  const size = Math.min(maxSize, Math.max(5, Number(searchParams.get('size') || 30)));
   const weights = db.prepare(`
     SELECT subject_key, subject_label, expected_pct, expected_items
     FROM exam_subject_weights
@@ -6203,11 +6222,11 @@ function startExamSimulation(body) {
         WHERE id_question IN (${plan.questionIds.map(() => '?').join(',')})
       `).all(...plan.questionIds).map((row) => [row.id_question, row.type_question])
     );
+    // Prova Cebraspe é 100% certo/errado: NUNCA completar com múltipla escolha.
+    // Se faltar item C/E, a prova sai mais curta (honesto) em vez de misturar MC
+    // pontuada ±1 num contexto certo/errado.
     const certoErrado = plan.questionIds.filter((id) => typeByQuestion.get(id) === 'CERTO_ERRADO');
-    const others = plan.questionIds.filter((id) => typeByQuestion.get(id) !== 'CERTO_ERRADO');
-    plan.questionIds = certoErrado.length >= size
-      ? certoErrado.slice(0, size)
-      : [...certoErrado, ...others].slice(0, size);
+    plan.questionIds = certoErrado.slice(0, size);
   } else {
     plan.questionIds = plan.questionIds.slice(0, size);
   }
@@ -9698,6 +9717,21 @@ async function getQuestion(questionId) {
     },
     lastAnswer
   };
+}
+
+// Atualiza o "tipo de erro" da ÚLTIMA resposta errada da questão. A UI mostra o
+// seletor só depois de errar (quando a resposta já foi salva com o valor padrão),
+// então a escolha do usuário precisa deste endpoint para não se perder.
+function setLastAnswerErrorType(questionId, errorType) {
+  const valid = ['other', 'content', 'interpretation', 'confusion', 'memory', 'outdated', 'misclick'];
+  const et = valid.includes(String(errorType)) ? String(errorType) : 'other';
+  const res = db.prepare(`
+    UPDATE study_answers SET error_type = ?
+    WHERE question_id = ? AND is_correct = 0
+      AND answered_at = (SELECT MAX(answered_at) FROM study_answers WHERE question_id = ? AND is_correct = 0)
+  `).run(et, questionId, questionId);
+  db.prepare('UPDATE question_mastery SET last_error_type = ? WHERE question_id = ?').run(et, questionId);
+  return { ok: true, errorType: et, updated: Number(res?.changes || 0) };
 }
 
 function saveAnswer(questionId, body) {

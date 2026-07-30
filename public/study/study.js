@@ -1356,6 +1356,18 @@ function bindEvents() {
 
   els.similarQuestions.addEventListener("click", () => showSimilarPanel());
 
+  // Salva o "tipo de erro" quando escolhido (o seletor só aparece após errar,
+  // depois de a resposta já ter sido gravada com o padrão — antes se perdia).
+  els.errorTypeSelect?.addEventListener("change", () => {
+    const qid = state.currentQuestion?.id ?? state.selectedId;
+    if (!qid || els.errorTypeWrapper?.hidden) return;
+    api(`/api/questions/${qid}/error-type`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ errorType: els.errorTypeSelect.value }),
+    }).catch(() => {});
+  });
+
   els.excludeFromStudy.addEventListener("click", () =>
     updateQuestionStudyStatus("excluded"),
   );
@@ -1404,11 +1416,14 @@ function bindEvents() {
       return;
     }
 
+    // Questão sendo respondida agora. Se o usuário navegar (Pular/seta) durante
+    // o await, não podemos aplicar o resultado desta na questão seguinte.
+    const answeredId = state.selectedId;
     els.submitAnswer.disabled = true;
     const elapsedMs = getQuestionElapsedMs();
     pauseQuestionTimer();
     try {
-      const result = await api(`/api/questions/${state.selectedId}/answer`, {
+      const result = await api(`/api/questions/${answeredId}/answer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1425,6 +1440,11 @@ function bindEvents() {
       // A resposta já está gravada aqui; avisa o painel antes de renderizar,
       // para que um erro de renderização não impeça a atualização dos contadores.
       document.dispatchEvent(new CustomEvent("study:progress"));
+      // Corrida: se navegou para outra questão durante o envio, a resposta foi
+      // salva (contadores atualizam), mas NÃO aplicar o resultado na questão atual.
+      if (state.selectedId !== answeredId) {
+        return;
+      }
       // Erro ao RENDERIZAR não é erro ao SALVAR: a resposta já foi persistida.
       // Isolar evita o falso "não foi possível registrar" que convidava a
       // responder de novo (resposta duplicada).
