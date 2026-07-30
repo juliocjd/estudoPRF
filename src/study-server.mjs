@@ -5129,6 +5129,14 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
         OR qm.last_result IS NOT NULL
       )
     )`);
+    // Não reservar de novo questão já respondida que ficou SEM agendamento
+    // (resposta não-pontuada: sem gabarito ou não-corrigível). Sem next_due_at ela
+    // escapava do filtro de futuro acima e voltava a aparecer como "respondida mas
+    // não vencida".
+    filters.push(`NOT (
+      answer_stats.question_id IS NOT NULL
+      AND (qm.next_due_at IS NULL OR CAST(qm.next_due_at AS TEXT) = '')
+    )`);
     if (hasNormativeTeachingTable()) {
       filters.push(`NOT EXISTS (
         SELECT 1
