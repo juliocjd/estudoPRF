@@ -74,14 +74,18 @@ function nextForgetStability(difficulty, stability, r, w) {
 
 /**
  * Converte o resultado de uma resposta do sistema em rating FSRS.
- * wrong → Again; correct+guess → Hard; correct+doubt → Good;
- * correct+sure → Good (ou Easy se recall rápido).
+ * wrong → Again; correct+guess → Hard; correct+doubt → Good; correct → Good.
+ *
+ * NÃO usar "Easy" por velocidade: a UI de confiança foi removida (toda resposta
+ * chega "sure"), então um clique rápido não é evidência de recall durável — o
+ * Easy empurrava o 1º intervalo de um cartão novo para ~17 dias, subrevisando
+ * material mal sabido. Easy só volta se um sinal explícito de facilidade existir.
  */
 export function gradeAnswer({ isCorrect, confidence, elapsedMs }, { fastAnswerMs = 15000 } = {}) {
+  void elapsedMs; void fastAnswerMs;
   if (isCorrect === 0) return Rating.Again;
   if (confidence === 'guess') return Rating.Hard;
-  if (confidence === 'doubt') return Rating.Good;
-  if (Number.isFinite(elapsedMs) && elapsedMs > 0 && elapsedMs <= fastAnswerMs) return Rating.Easy;
+  if (confidence === 'easy') return Rating.Easy;
   return Rating.Good;
 }
 

@@ -9924,8 +9924,11 @@ function updateQuestionMastery(database, question, answerResult, attemptMeta) {
       delta = 0.12;
       recommendation = 'review_soon';
     } else {
-      delta = 0.2;
-      recommendation = correctStreak >= 4 ? 'mastered' : 'advance';
+      // Sem sinal de confiança (tudo chega "sure"), um acerto vale menos:
+      // 0.2 levava a "dominada" (0.85) em ~4 acertos e tirava a questão de
+      // rotação cedo demais. 0.15 exige ~6 e casa com o rating Good do FSRS.
+      delta = 0.15;
+      recommendation = correctStreak >= 5 ? 'mastered' : 'advance';
     }
   }
 
