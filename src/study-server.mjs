@@ -6280,6 +6280,12 @@ function startExamSimulation(body) {
 
 function saveExamSimulationAnswer(simulationId, body) {
   const questionId = Number(body?.questionId || 0);
+  // Não aceitar resposta em simulado já finalizado (os totais agregados não são
+  // recomputados depois do finish; responder aqui dessincronizava o relatório).
+  const sim = db.prepare('SELECT finished_at FROM exam_simulations WHERE id = ?').get(simulationId);
+  if (sim && sim.finished_at != null && String(sim.finished_at) !== '') {
+    return { error: 'Simulado já finalizado.' };
+  }
   const item = db.prepare(`
     SELECT *
     FROM exam_simulation_items
@@ -8321,6 +8327,19 @@ function normalizeExpectedAnswerForScoring(question, alternatives = [], rawExpec
     }
 
     return { answer: '', reason: 'invalid_true_false_answer' };
+  }
+
+  // Múltipla escolha: se o gabarito for o TEXTO de uma alternativa, resolver por
+  // ele ANTES de interpretar como letra. normalizeAnswer colapsa "A conduta é
+  // atípica…" na letra "A" (artigo), o que invertia a correção quando um operador
+  // colava o texto da alternativa no campo de gabarito.
+  const asPlain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const rawPlain = asPlain(rawExpected);
+  if (rawPlain.length > 1) {
+    const byText = alternatives.find((item) => asPlain(item.text) === rawPlain);
+    if (byText) {
+      return { answer: normalizeAnswer(byText.letter), reason: '' };
+    }
   }
 
   if (/^[A-E]$/.test(normalized)) {
