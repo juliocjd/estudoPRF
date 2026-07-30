@@ -5212,12 +5212,12 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
     )`);
   }
   const finalWhere = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
-  // A query não tem ORDER BY (a priorização é toda no scorer em JS), então este
-  // é o tamanho do pool de candidatos que o scorer enxerga. *30 puxava 2.400
-  // linhas para servir 1 questão — payload e scoring caros no bridge síncrono.
-  // *15 corta pela metade mantendo pool amplo o bastante para revisões vencidas
-  // e inéditas aparecerem. Reduzir mais exigiria pré-ordenar no SQL.
-  const fetchLimit = Math.max(Number(limit || 50) * 15, 600);
+  // Tamanho do pool de candidatos que o scorer enxerga. Como agora há ORDER BY
+  // que joga vencidas (0) e inéditas (1) para a frente da janela, um pool grande
+  // deixou de ser necessário — *15 (≈1.200 linhas) era caro de serializar e
+  // pontuar no bridge síncrono para servir 1 questão. *5 (≈400) mantém o topo
+  // (vencidas + novas) e corta ~2/3 do payload/scoring por troca de questão.
+  const fetchLimit = Math.min(Math.max(Number(limit || 50) * 5, 300), 600);
   const coverage = new Map(getExamCoverageRows(resolvedProfile).map((row) => [row.subject_key, row]));
   const blockWeights = getPrfBlockWeights(resolvedProfile);
 
@@ -9884,10 +9884,10 @@ function saveAnswer(questionId, body) {
   setSetting('last_question_id', String(questionId));
   setSetting('last_answered_question_id', String(questionId));
   updateStudyFlowAnswered(questionId, attemptMeta);
-  // Zera o cache de cobertura para o relatório refletir esta resposta (tentativas,
-  // revisões vencidas, mastery) imediatamente. O hot path adaptativo usa só campos
-  // estáticos, então isso não afeta a próxima questão servida.
-  invalidateExamCoverageCache();
+  // NÃO invalidar o cache de cobertura aqui: a query de cobertura é pesada e o hot
+  // path adaptativo usa só campos estáticos dela. Invalidar a cada resposta fazia
+  // essa query recalcular todo ciclo de troca de questão (grande fonte de lentidão).
+  // O TTL de 20s (EXAM_COVERAGE_TTL_MS) mantém o relatório fresco o bastante.
 
   return {
     questionId,

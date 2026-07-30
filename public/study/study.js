@@ -5903,7 +5903,10 @@ function isAnswerFirstStudyMode() {
   // (coverage) e "Próxima não resolvida" (unanswered) caíam no layout de
   // navegação (Próxima questão + Ver explicação) — o botão saía diferente do
   // padrão. Só a navegação livre "Ver todas" (all) mostra explicação sem responder.
-  return !["all", "ver_todas"].includes(state.studyMode);
+  // Browse (navegação livre, explicação sem responder): "Ver todas" e "Prova
+  // selecionada" (examSource, paginada por loadQuestions). Mesma lista do
+  // BROWSE_MODES da pill metaDayProgress — mantê-las em sincronia.
+  return !["all", "ver_todas", "examSource"].includes(state.studyMode);
 }
 
 function hasAnsweredCurrentPrompt(question = state.currentQuestion) {
