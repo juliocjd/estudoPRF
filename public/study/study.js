@@ -5897,7 +5897,13 @@ function canRevealCurrentLawAnswer(question = state.currentQuestion) {
 }
 
 function isAnswerFirstStudyMode() {
-  return ["adaptive", "smart", "study"].includes(state.studyMode);
+  // TODO fluxo de estudo é "answer-first": [Responder | Pular] antes de responder
+  // e explicação travada até responder. Antes só adaptive/smart/study estavam na
+  // lista, então "Revisar" (review), "Revisar erros" (repair), "Varrer o banco"
+  // (coverage) e "Próxima não resolvida" (unanswered) caíam no layout de
+  // navegação (Próxima questão + Ver explicação) — o botão saía diferente do
+  // padrão. Só a navegação livre "Ver todas" (all) mostra explicação sem responder.
+  return !["all", "ver_todas"].includes(state.studyMode);
 }
 
 function hasAnsweredCurrentPrompt(question = state.currentQuestion) {
@@ -6039,7 +6045,10 @@ function updateAnswerActions() {
 
   if (hasPreviousAnswer) {
     if (isAnswerFirstStudyMode() && !canRevealSupport) {
-      els.answerHint.textContent = "";
+      // Revisão: já respondida antes, mas ainda não nesta sessão. Apresenta como
+      // respondível (Responder | Pular) para você se testar, com explicação
+      // travada até responder — igual a uma questão nova.
+      els.answerHint.textContent = "Escolha uma alternativa";
       els.submitAnswer.textContent = "Responder";
       els.submitAnswer.dataset.action = "respond";
       els.submitAnswer.disabled = true;
