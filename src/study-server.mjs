@@ -1365,13 +1365,13 @@ function getExamFilterOptions(searchParams = new URLSearchParams()) {
   const terms = q.split(/\s+/).map((term) => term.trim()).filter(Boolean).slice(0, 5);
   for (const term of terms) {
     where.push(`(
-      q.banca LIKE ?
+      LOWER(q.banca) LIKE ?
       OR CAST(q.concurso_ano AS TEXT) LIKE ?
-      OR COALESCE(q.orgao_sigla, '') LIKE ?
-      OR COALESCE(q.orgao_nome, '') LIKE ?
-      OR COALESCE(q.cargo, '') LIKE ?
+      OR LOWER(COALESCE(q.orgao_sigla, '')) LIKE ?
+      OR LOWER(COALESCE(q.orgao_nome, '')) LIKE ?
+      OR LOWER(COALESCE(q.cargo, '')) LIKE ?
     )`);
-    values.push(...Array(5).fill(`%${term}%`));
+    values.push(...Array(5).fill(`%${term.toLowerCase()}%`));
   }
 
   return db.prepare(`
@@ -1772,17 +1772,17 @@ function getLegalSearch(searchParams) {
   if (query.length < 2) {
     return { available: true, rows: [] };
   }
-  const like = `%${query}%`;
+  const like = `%${query.toLowerCase()}%`;
   const rows = db.prepare(`
     SELECT id, card_key, title, materia, assunto, microtema, answer_summary, verified_status
     FROM legal_topic_cards
-    WHERE title LIKE ?
-       OR materia LIKE ?
-       OR assunto LIKE ?
-       OR microtema LIKE ?
-       OR answer_summary LIKE ?
-       OR rule_summary LIKE ?
-       OR common_traps LIKE ?
+    WHERE LOWER(title) LIKE ?
+       OR LOWER(materia) LIKE ?
+       OR LOWER(assunto) LIKE ?
+       OR LOWER(microtema) LIKE ?
+       OR LOWER(answer_summary) LIKE ?
+       OR LOWER(rule_summary) LIKE ?
+       OR LOWER(common_traps) LIKE ?
     ORDER BY verified_status = 'reviewed' DESC, title
     LIMIT 30
   `).all(like, like, like, like, like, like, like);
@@ -3439,12 +3439,12 @@ function getNormativeTeachingComments(searchParams) {
   if (q) {
     where.push(`(
       CAST(qntc.question_id AS TEXT) LIKE ?
-      OR q.materia LIKE ?
-      OR q.assunto LIKE ?
-      OR qntc.title LIKE ?
-      OR qntc.teaching_comment_md LIKE ?
+      OR LOWER(q.materia) LIKE ?
+      OR LOWER(q.assunto) LIKE ?
+      OR LOWER(qntc.title) LIKE ?
+      OR LOWER(qntc.teaching_comment_md) LIKE ?
     )`);
-    values.push(...Array(5).fill(`%${q}%`));
+    values.push(...Array(5).fill(`%${q.toLowerCase()}%`));
   }
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -3554,13 +3554,13 @@ function getNormativeUpdates(searchParams) {
   if (q) {
     where.push(`(
       CAST(q.id_question AS TEXT) LIKE ?
-      OR q.statement_text LIKE ?
-      OR q.materia LIKE ?
-      OR q.assunto LIKE ?
-      OR qnu.por_que_desatualizada LIKE ?
-      OR qnu.fundamento_juridico_atual LIKE ?
+      OR LOWER(q.statement_text) LIKE ?
+      OR LOWER(q.materia) LIKE ?
+      OR LOWER(q.assunto) LIKE ?
+      OR LOWER(qnu.por_que_desatualizada) LIKE ?
+      OR LOWER(qnu.fundamento_juridico_atual) LIKE ?
     )`);
-    values.push(...Array(6).fill(`%${q}%`));
+    values.push(...Array(6).fill(`%${q.toLowerCase()}%`));
   }
   const includedMaterias = getIncludedMaterias(searchParams);
   if (includedMaterias.length) {
@@ -5707,25 +5707,28 @@ function selectAdaptiveSessionRows(rows, size) {
 
 function insertStudySessionItems(sessionId, rows, plan) {
   if (!rows.length) return;
-  const insert = db.prepare(`
-    INSERT INTO study_session_items (
-      session_id, question_id, cluster_id, plan_id, position, priority_score, reason_json, status
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'planned')
-  `);
+  // INSERT multi-linha (1 query) em vez de ~25 round-trips no Neon num GET.
+  const placeholders = rows.map(() => "(?, ?, ?, ?, ?, ?, ?, 'planned')").join(', ');
+  const values = [];
+  rows.forEach((row, index) => {
+    values.push(
+      sessionId,
+      row.id,
+      row.clusterId ?? null,
+      plan,
+      index + 1,
+      row.score,
+      JSON.stringify({ reasons: row.reasons, reasonText: row.reasonText })
+    );
+  });
   db.exec('BEGIN');
   try {
-    rows.forEach((row, index) => {
-      insert.run(
-        sessionId,
-        row.id,
-        row.clusterId,
-        plan,
-        index + 1,
-        row.score,
-        JSON.stringify({ reasons: row.reasons, reasonText: row.reasonText })
-      );
-    });
+    db.prepare(`
+      INSERT INTO study_session_items (
+        session_id, question_id, cluster_id, plan_id, position, priority_score, reason_json, status
+      )
+      VALUES ${placeholders}
+    `).run(...values);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');
@@ -6455,11 +6458,18 @@ function finishExamSimulation(simulationId) {
     blankCount: aggregate.blank_count || 0,
     correctCount: aggregate.correct_count || 0,
     wrongCount: aggregate.wrong_count || 0,
-    passedCutoffs: passed,
-    cutoffs: { block1: 15, block2: 10, block3: 10, total: 50 },
+    // Cortes por bloco só fazem sentido no simulado CHEIO (~120 itens). Nos de
+    // 30/60 os limiares fixos (15/10/10/50) são inalcançáveis e mostravam sempre
+    // "não passaria"; ali reportamos null (não aplicável).
+    passedCutoffs: totalItems >= 100 ? passed : null,
+    cutoffs: totalItems >= 100 ? { block1: 15, block2: 10, block3: 10, total: 50 } : null,
     reference2021: {
       lastCallScore: 73,
-      gapToLastCall: Number(aggregate.score_total || 0) - 73,
+      // Gap na MESMA escala da projeção (120 itens); senão o simulado de 30/60
+      // mostrava a projeção passando e o gap reprovando ao mesmo tempo.
+      gapToLastCall: totalItems > 0
+        ? Number(((((aggregate.score_total || 0) * 120) / totalItems) - 73).toFixed(1))
+        : Number((aggregate.score_total || 0) - 73),
       projectedScale: totalItems > 0 ? Number((((aggregate.score_total || 0) * 120) / totalItems).toFixed(1)) : null
     },
     durationMs,
@@ -8202,7 +8212,14 @@ function resolveCurrentLawCorrection(question, currentLawAnswer, alternatives = 
   if (currentLawAnswer?.exists
     && (currentLawAnswer.status || currentLawAnswer.currentLawStatus) === 'verified'
     && (currentLawAnswer.canAutoScore || currentLawAnswer.canAutoScoreCurrentLaw)
-    && currentLawAnswer.currentAnswer) {
+    && currentLawAnswer.currentAnswer
+    // Não pontuar se a auditoria marcou sem-alternativa-válida ou descarte (o
+    // gate estava inconsistente com currentLawVerifiedRowSql).
+    && !currentLawAnswer.noValidAlternative
+    && !currentLawAnswer.shouldDiscard
+    // A "lei atual" só substitui o gabarito quando a questão está DESATUALIZADA.
+    // Numa questão ainda vigente, o gabarito oficial é válido e deve prevalecer.
+    && Number(question.desatualizada)) {
     const currentExpected = normalizeExpectedAnswerForScoring(question, alternatives, currentLawAnswer.currentAnswer);
     const canScore = !isCanceled && Boolean(currentExpected.answer);
     return {
