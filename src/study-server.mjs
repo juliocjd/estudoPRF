@@ -7268,7 +7268,9 @@ function computeDueReviewGoal(reviewCap) {
   const reviewsTarget = Math.min(reviewsDone + overdue, reviewCap);
   return {
     reviewsTarget,
-    reviewsDone: Math.min(reviewsDone, reviewsTarget),
+    // Contador NÃO capado: o usuário quer ver passar da meta (ex.: 52/50), como
+    // já pediu para as novas. O teto só limita o ALVO (reviewsTarget), não o feito.
+    reviewsDone,
     reviewsRemaining: Math.max(0, reviewsTarget - reviewsDone),
     reviewsComplete: reviewsTarget > 0 ? reviewsDone >= reviewsTarget : true,
     reviewsBacklog: overdue
@@ -7500,7 +7502,9 @@ function getStudyPlan(searchParams) {
   const reviewsTarget = reviewGoal.reviewsTarget;
   const reviewsCounted = reviewGoal.reviewsDone;
   const totalGoal = newPerDay + reviewsTarget;
-  const totalDone = Math.min(newToday, newPerDay) + reviewsCounted;
+  // totalDone alimenta a barra de progresso (0–100%): capa cada parte no alvo.
+  // O contador exibido (reviewsDone abaixo) fica descapado para passar da meta.
+  const totalDone = Math.min(newToday, newPerDay) + Math.min(reviewsCounted, reviewsTarget);
 
   return {
     profileId,

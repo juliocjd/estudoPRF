@@ -11379,11 +11379,14 @@ function escapeAttr(value) {
 (function metaDayProgressModule() {
   const el = document.getElementById("metaDayProgress");
   if (!el) return;
-  const STUDY_MODES = new Set(["adaptive", "smart", "review", "repair", "coverage"]);
+  // Mostra a pill em TODO modo de estudo (inclui "study" inicial, "unanswered",
+  // "subject") — antes faltavam vários e a pill sumia no fluxo padrão. Só a
+  // navegação livre "Ver todas" (all) não tem meta do dia.
+  const BROWSE_MODES = new Set(["all", "ver_todas", "examSource"]);
   let last = null;
   let prevComplete = { news: null, reviews: null };
 
-  const inStudyMode = () => STUDY_MODES.has(state.studyMode);
+  const inStudyMode = () => !BROWSE_MODES.has(state.studyMode);
 
   function render() {
     if (!last || !inStudyMode()) { el.hidden = true; return; }
