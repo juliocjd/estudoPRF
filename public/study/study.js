@@ -1197,8 +1197,13 @@ function bindEvents() {
   els.supportOverlay.addEventListener("click", () => closeSupportPanel());
   // Avança para a próxima questão sem precisar fechar o painel antes (mobile).
   els.supportNextQuestion?.addEventListener("click", () => {
+    // Mesma guarda de toque-duplo do botão principal + runNav (trata erro de rede).
+    if (els.supportNextQuestion.dataset.navBusy === "1") return;
+    els.supportNextQuestion.dataset.navBusy = "1";
     closeSupportPanel();
-    goNext();
+    Promise.resolve(runNav(goNext)).finally(() => {
+      delete els.supportNextQuestion.dataset.navBusy;
+    });
   });
   els.supportTabs.forEach((button) => {
     button.addEventListener("click", () => {

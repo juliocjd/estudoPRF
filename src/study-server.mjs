@@ -4106,8 +4106,9 @@ function buildQuestionWhere(searchParams, extra = {}) {
     && (searchParams.get('hideStudyExcluded') === '1' || extra.hideStudyExcluded);
 
   if (q) {
-    where.push('(q.statement_text LIKE ? OR q.materia LIKE ? OR q.assunto LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
-    values.push(...Array(4).fill(`%${q}%`));
+    where.push('(LOWER(q.statement_text) LIKE ? OR LOWER(q.materia) LIKE ? OR LOWER(q.assunto) LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
+    const like = `%${q.toLowerCase()}%`;
+    values.push(like, like, like, `%${q}%`);
   }
   const combinedResolutionKey = getOfficialContranSubjectResolutionKey({ materia, name: assunto });
   if (combinedResolutionKey) {
@@ -6411,10 +6412,11 @@ function finishExamSimulation(simulationId) {
     { policy: 'guess_doubt_em_branco', label: 'Chutes e dúvidas em branco', score: actualScore - scoreOf(byConfidence.get('guess')) - scoreOf(byConfidence.get('doubt')) }
   ].sort((left, right) => right.score - left.score);
 
-  // SQLite devolve texto UTC sem timezone; Postgres devolve Date via driver pg.
+  // A ponte do Postgres devolve o timestamp como string ISO (não Date); o antigo
+  // replace(' ','T')+'Z' gerava "...ZZ" inválido em prod (duração sempre nula).
   const startedAt = simulation.started_at instanceof Date
     ? simulation.started_at
-    : simulation.started_at ? new Date(`${String(simulation.started_at).replace(' ', 'T')}Z`) : null;
+    : simulation.started_at ? new Date(normalizeSqlTimestampIso(simulation.started_at)) : null;
   const durationMs = startedAt && !Number.isNaN(startedAt.getTime())
     ? Math.max(0, Date.now() - startedAt.getTime())
     : null;
@@ -7263,7 +7265,7 @@ function getTodaySummary() {
     SELECT COUNT(*) AS total,
       SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS correct,
       COALESCE(SUM(CASE WHEN elapsed_ms IS NULL THEN 0
-        WHEN elapsed_ms > 600000 THEN 600000 ELSE elapsed_ms END), 0) AS time_ms
+        WHEN elapsed_ms > ${STUDY_TIME_MAX_ATTEMPT_MS} THEN ${STUDY_TIME_MAX_ATTEMPT_MS} ELSE elapsed_ms END), 0) AS time_ms
     FROM study_answers
     WHERE answered_at >= ?
   `).get(sp.startSql);
@@ -7805,8 +7807,11 @@ function getSubjectsRanking(searchParams) {
   const values = [];
 
   if (q) {
-    where.push('(q.statement_text LIKE ? OR q.materia LIKE ? OR q.assunto LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
-    values.push(...Array(4).fill(`%${q}%`));
+    // LOWER dos dois lados: LIKE do Postgres é case-sensitive (o do SQLite não).
+    // Sem isso, buscar "prf" não achava "PRF" em produção.
+    where.push('(LOWER(q.statement_text) LIKE ? OR LOWER(q.materia) LIKE ? OR LOWER(q.assunto) LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
+    const like = `%${q.toLowerCase()}%`;
+    values.push(like, like, like, `%${q}%`);
   }
   if (includedMaterias.length) {
     applyIncludedMateriasFilter(where, values, includedMaterias);
@@ -7936,8 +7941,8 @@ function getSubjectMasteryRanking(searchParams) {
   const values = [];
 
   if (q) {
-    where.push('(q.statement_text LIKE ? OR q.materia LIKE ? OR q.assunto LIKE ?)');
-    values.push(...Array(3).fill(`%${q}%`));
+    where.push('(LOWER(q.statement_text) LIKE ? OR LOWER(q.materia) LIKE ? OR LOWER(q.assunto) LIKE ?)');
+    values.push(...Array(3).fill(`%${q.toLowerCase()}%`));
   }
   if (includedMaterias.length) {
     applyIncludedMateriasFilter(where, values, includedMaterias);
@@ -11293,7 +11298,7 @@ function ensureColumn(database, tableName, columnName, definition) {
 function getStudyState() {
   const flow = getStudyFlowState();
   return {
-    resumeLast: getSetting('resume_last', '1') !== '0',
+    resumeLast: String(getSetting('resume_last', '1')) !== '0',
     lastQuestionId: Number(getSetting('last_question_id', '0')) || null,
     lastAnsweredQuestionId: Number(getSetting('last_answered_question_id', '0')) || null,
     flow: flow ? {
