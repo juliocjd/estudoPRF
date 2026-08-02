@@ -8891,6 +8891,13 @@ async function setQuestionGabarito(questionId, body) {
   params.push(questionId);
   db.prepare(`UPDATE questions SET ${sets.join(', ')} WHERE id_question = ?`).run(...params);
 
+  // Alinha o gabarito do COMENTÁRIO (extracted_answer, usado no display da
+  // explicação) ao oficial editado. Sem isso, o oficial mudava mas o comentário
+  // continuava mostrando o gabarito antigo — origem das telas contraditórias.
+  if (officialAnswer && db.prepare('SELECT 1 FROM comments WHERE question_id = ?').get(questionId)) {
+    db.prepare("UPDATE comments SET extracted_answer = ?, extracted_answer_source = 'operator_edit' WHERE question_id = ?").run(officialAnswer, questionId);
+  }
+
   if (hasCurrentLawAnswerTable()) {
     syncQuestionCurrentLawAnswerFromCoreEdit(question, officialAnswer);
   }
@@ -8970,6 +8977,11 @@ async function saveQuestionCoreEdit(questionId, body) {
     SET ${questionSets.join(', ')}
     WHERE id_question = ?
   `).run(...questionParams);
+
+  // Mantém o gabarito do comentário (extracted_answer) alinhado ao oficial.
+  if (officialAnswer && db.prepare('SELECT 1 FROM comments WHERE question_id = ?').get(questionId)) {
+    db.prepare("UPDATE comments SET extracted_answer = ?, extracted_answer_source = 'operator_edit' WHERE question_id = ?").run(officialAnswer, questionId);
+  }
 
   if (hasUnpublishedRow) {
     const contranSets = ['statement = ?', 'correct_answer = ?'];
