@@ -166,6 +166,26 @@ button:disabled {
   background: var(--surface-muted);
 }
 
+/* Stats clicáveis (revisar erros / revisar hoje / prontas → entra no modo). */
+button.stat.stat-action {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+}
+button.stat.stat-action:hover {
+  border-color: var(--primary);
+  background: var(--info-soft);
+}
+button.stat.stat-action:active { transform: translateY(1px); }
+
+.multi-materia-actions {
+  margin-top: 8px;
+}
+.multi-materia-actions .button {
+  width: 100%;
+}
+
 .stat strong {
   display: block;
   font-size: 16px;

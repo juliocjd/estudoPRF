@@ -184,6 +184,7 @@ const els = {
   excludedMatterList: document.querySelector("#excludedMatterList"),
   includedMatterList: document.querySelector("#includedMatterList"),
   multiMateriaCount: document.querySelector("#multiMateriaCount"),
+  studyDueInFilter: document.querySelector("#studyDueInFilter"),
   profileSelect: document.querySelector("#profileSelect"),
   commentedOnly: document.querySelector("#commentedOnly"),
   unansweredOnly: document.querySelector("#unansweredOnly"),
@@ -389,8 +390,24 @@ const inflightStats = { promise: null };
 
 boot().catch(handleBootError);
 
+function restoreIncludedMateriasFilter() {
+  // Recupera as matérias marcadas por último no filtro. Só define o estado (os
+  // checkboxes são pré-marcados por renderIncludedMatterOptions em loadFilters);
+  // NÃO abre o painel nem dispara um estudo — o boot segue retomando a última
+  // questão. Assim o filtro fica "lembrado" para você aplicar/ajustar quando quiser.
+  try {
+    const raw = localStorage.getItem("prf.includedMaterias");
+    if (!raw) return;
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr) && arr.length) {
+      state.filters.includedMaterias = arr.filter((x) => typeof x === "string" && x);
+    }
+  } catch { /* localStorage indisponível */ }
+}
+
 async function boot() {
   bindEvents();
+  restoreIncludedMateriasFilter();
   const [studyState] = await Promise.all([
     loadStudyState(),
     loadStats(),
@@ -569,6 +586,8 @@ function bindEvents() {
 
   els.includedMatterList?.addEventListener("change", () => {
     state.filters.includedMaterias = selectedIncludedMatterValues();
+    // Persiste a seleção para restaurar no próximo acesso (sem abrir automático).
+    try { localStorage.setItem("prf.includedMaterias", JSON.stringify(state.filters.includedMaterias)); } catch {}
     // Seleção múltipla tem precedência: zera o seletor único de matéria.
     if (state.filters.includedMaterias.length) {
       state.filters.materia = "";
@@ -587,6 +606,15 @@ function bindEvents() {
       if (state.normativeVisible) await loadNormativeReview();
     }, 350);
   });
+
+  // "Só revisões vencidas": estuda revisar_hoje escopado às matérias marcadas no
+  // filtro (state.filters.includedMaterias vai nos params via buildQuestionParams).
+  els.studyDueInFilter?.addEventListener("click", () => runNav(() => {
+    const field = document.getElementById("multiMateriaField");
+    if (field) field.open = false;
+    setStudyMode("review");
+    return loadAdaptiveTarget("revisar_hoje");
+  }));
 
   els.profileSelect.addEventListener("change", async () => {
     state.activeProfile = els.profileSelect.value;
@@ -753,6 +781,21 @@ function bindEvents() {
     setStudyMode("coverage");
     return loadAdaptiveTarget("prf_otimizado");
   }));
+
+  // Stats do topo clicáveis: "revisar erros" / "revisar hoje" / "prontas" entram
+  // direto no modo de estudo correspondente.
+  els.stats?.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-stat-action]");
+    if (!btn) return;
+    const action = btn.dataset.statAction;
+    runNav(() => {
+      closeAllDropdowns();
+      if (action === "repair") { setStudyMode("repair"); return loadAdaptiveTarget("revisar_erros"); }
+      if (action === "review") { setStudyMode("review"); return loadAdaptiveTarget("revisar_hoje"); }
+      setStudyMode("adaptive");
+      return loadAdaptiveTarget("prf_otimizado");
+    });
+  });
   els.toggleCoverage.addEventListener("click", async () => {
     closeAllDropdowns();
     await openReportPage("coverage");
@@ -1755,9 +1798,10 @@ async function loadStats() {
     statMarkup(
       stats.readyToStudy ?? stats.knownAnswers ?? 0,
       "prontas para estudar",
+      "adaptive",
     ),
-    statMarkup(stats.dueReviews || 0, "revisar hoje"),
-    statMarkup(stats.repairQuestions || 0, "revisar erros"),
+    statMarkup(stats.dueReviews || 0, "revisar hoje", "review"),
+    statMarkup(stats.repairQuestions || 0, "revisar erros", "repair"),
     statMarkup(stats.answered || 0, "resolvidas"),
     stats.contranPrfUnpublished
       ? statMarkup(stats.contranPrfUnpublished, "ineditas PRF/CONTRAN")
@@ -9232,11 +9276,15 @@ function renderPager() {
   els.nextPage.disabled = absoluteIndex >= state.total;
 }
 
-function statMarkup(value, label) {
+function statMarkup(value, label, action) {
   const displayValue =
     typeof value === "number"
       ? value.toLocaleString("pt-BR")
       : String(value || 0);
+  if (action) {
+    // Stat clicável: entra no modo de estudo correspondente (ex.: "revisar erros").
+    return `<button type="button" class="stat stat-action" data-stat-action="${action}" title="Estudar"><strong>${escapeHtml(displayValue)}</strong><span>${label}</span></button>`;
+  }
   return `<div class="stat"><strong>${escapeHtml(displayValue)}</strong><span>${label}</span></div>`;
 }
 
