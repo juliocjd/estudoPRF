@@ -185,6 +185,7 @@ const els = {
   includedMatterList: document.querySelector("#includedMatterList"),
   multiMateriaCount: document.querySelector("#multiMateriaCount"),
   studyDueInFilter: document.querySelector("#studyDueInFilter"),
+  studyUnansweredInFilter: document.querySelector("#studyUnansweredInFilter"),
   profileSelect: document.querySelector("#profileSelect"),
   commentedOnly: document.querySelector("#commentedOnly"),
   unansweredOnly: document.querySelector("#unansweredOnly"),
@@ -614,6 +615,16 @@ function bindEvents() {
     if (field) field.open = false;
     setStudyMode("review");
     return loadAdaptiveTarget("revisar_hoje");
+  }));
+
+  // "Somente não resolvidas": só questões novas (nunca respondidas) escopadas às
+  // matérias marcadas. Usa o modo coverage, que já força unanswered=1 em
+  // buildQuestionParams; includedMaterias vai junto via includeMateria.
+  els.studyUnansweredInFilter?.addEventListener("click", () => runNav(() => {
+    const field = document.getElementById("multiMateriaField");
+    if (field) field.open = false;
+    setStudyMode("coverage");
+    return loadAdaptiveTarget("prf_otimizado");
   }));
 
   els.profileSelect.addEventListener("change", async () => {

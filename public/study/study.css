@@ -181,6 +181,9 @@ button.stat.stat-action:active { transform: translateY(1px); }
 
 .multi-materia-actions {
   margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .multi-materia-actions .button {
   width: 100%;
