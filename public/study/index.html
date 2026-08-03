@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260803-adiar" />
+    <link rel="stylesheet" href="/study.css?v=20260803-adiar2" />
   </head>
   <body>
     <div class="app-shell">
@@ -626,15 +626,6 @@
               >
                 Ver semelhantes
               </button>
-              <button
-                id="postponeReview"
-                class="button button-secondary"
-                type="button"
-                title="Adia a próxima revisão desta questão (para quando errou por bobeira ou ela é fácil demais)"
-                hidden
-              >
-                Adiar revisão
-              </button>
             </div>
 
             <details class="study-status-control" id="studyStatusControl">
@@ -1020,6 +1011,16 @@
             Próxima questão
           </button>
           <button
+            id="postponeReview"
+            class="button button-secondary icon-button"
+            type="button"
+            title="Adiar revisão (para quando errou por bobeira ou a questão é fácil demais)"
+            aria-label="Adiar revisão"
+            hidden
+          >
+            ⏳
+          </button>
+          <button
             id="closeSupport"
             class="button button-ghost icon-button"
             type="button"
@@ -1164,6 +1165,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260803-adiar" type="module"></script>
+    <script src="/study.js?v=20260803-adiar2" type="module"></script>
   </body>
 </html>

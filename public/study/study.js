@@ -1446,11 +1446,12 @@ function bindEvents() {
       });
       if (res?.ok) {
         const br = String(res.nextDueAt || "").slice(0, 10).split("-").reverse().join("/");
-        els.answerHint.textContent = `Revisão adiada para ${br} (${res.intervalDays} dias)`;
-        els.postponeReview.textContent = "Revisão adiada ✓";
+        els.postponeReview.textContent = "✓";
+        els.postponeReview.title = `Revisão adiada para ${br} (${res.intervalDays} dias)`;
+        if (els.answerHint) els.answerHint.textContent = `Revisão adiada para ${br}`;
       } else {
         els.postponeReview.disabled = false;
-        els.answerHint.textContent = res?.reason || "Não foi possível adiar a revisão.";
+        if (els.answerHint) els.answerHint.textContent = res?.reason || "Não foi possível adiar a revisão.";
       }
     } catch {
       els.postponeReview.disabled = false;
@@ -6069,7 +6070,8 @@ function updateAnswerActions() {
   if (els.postponeReview) {
     els.postponeReview.hidden = true;
     els.postponeReview.disabled = false;
-    els.postponeReview.textContent = "Adiar revisão";
+    els.postponeReview.textContent = "⏳";
+    els.postponeReview.title = "Adiar revisão (para quando errou por bobeira ou a questão é fácil demais)";
   }
 
   // "Pular" aparece quando o avanço está travado (answer-first, ainda sem

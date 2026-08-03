@@ -4914,12 +4914,15 @@ body.is-report-page {
     padding-right: 38px;
   }
   .support-head-actions {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     flex: 1 1 100%;
     width: 100%;
   }
   .support-head .support-next-question {
-    width: 100%;
+    flex: 1;
+    width: auto;
     justify-content: center;
   }
   .support-head #closeSupport {
