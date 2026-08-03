@@ -490,8 +490,17 @@ async function collectPrfQuestions(config, args) {
   const page = await getFirstPage(context);
   page.setDefaultTimeout(config.defaultTimeoutMs);
   await page.goto('https://www.tecconcursos.com.br/', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(1000);
-  await ensureApiSession(page);
+  // A sessão/cookies às vezes demoram a valer após o goto (a 1ª chamada volta a
+  // shell da SPA e dava falso "não autenticada" com a sessão válida). Tenta
+  // algumas vezes com espera antes de desistir.
+  {
+    let sessionOk = false;
+    for (let attempt = 1; attempt <= 4 && !sessionOk; attempt += 1) {
+      await page.waitForTimeout(3000);
+      try { await ensureApiSession(page); sessionOk = true; }
+      catch (error) { if (attempt === 4) throw error; }
+    }
+  }
 
   let processed = 0;
   let indexed = 0;
@@ -789,8 +798,17 @@ async function collectPrfCommentAssets(config, args) {
   const page = await getFirstPage(context);
   page.setDefaultTimeout(config.defaultTimeoutMs);
   await page.goto('https://www.tecconcursos.com.br/', { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(1000);
-  await ensureApiSession(page);
+  // A sessão/cookies às vezes demoram a valer após o goto (a 1ª chamada volta a
+  // shell da SPA e dava falso "não autenticada" com a sessão válida). Tenta
+  // algumas vezes com espera antes de desistir.
+  {
+    let sessionOk = false;
+    for (let attempt = 1; attempt <= 4 && !sessionOk; attempt += 1) {
+      await page.waitForTimeout(3000);
+      try { await ensureApiSession(page); sessionOk = true; }
+      catch (error) { if (attempt === 4) throw error; }
+    }
+  }
 
   let processed = 0;
   for (const row of rows) {
