@@ -476,6 +476,11 @@ async function collectPrfQuestions(config, args) {
   const indexOnly = Boolean(args['index-only']);
   const refreshIndex = Boolean(args['refresh-index']);
   const manualOnBlock = Boolean(args['manual-on-block'] || config.prf?.manualOnBlock);
+  // Opt-in: abre a página real da questão antes de buscar o comentário. O fetch
+  // "seco" do comentário a partir da home era barrado como robô (HUMAN_VERIFICATION);
+  // feito do contexto da própria questão, passa. Sem o flag, comportamento original.
+  const navBeforeComment = Boolean(args['nav-before-comment']);
+  const navSettleMs = Number(args['nav-settle'] || 2000);
   const report = JSON.parse(await fs.readFile(reportFile, 'utf8'));
   const notebooks = getPrfNotebookRefs(report);
 
@@ -623,6 +628,10 @@ async function collectPrfQuestions(config, args) {
         replaceAlternatives(db, question);
 
         if (!skipComments) {
+          if (navBeforeComment && question.possuiComentario) {
+            await page.goto(`https://www.tecconcursos.com.br/questoes/${question.idQuestao}`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+            await page.waitForTimeout(navSettleMs);
+          }
           const comment = question.possuiComentario
             ? await runTecOperation(page, () => fetchQuestionComment(page, question.idQuestao), {
               manualOnBlock,
