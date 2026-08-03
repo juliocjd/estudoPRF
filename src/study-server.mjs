@@ -558,6 +558,12 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const postponeMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/postpone-review$/);
+  if (postponeMatch && request.method === 'POST') {
+    sendJson(response, 200, postponeReview(Number(postponeMatch[1])));
+    return;
+  }
+
   const studyStatusMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/study-status$/);
   if (studyStatusMatch && request.method === 'POST') {
     const body = await readJsonBody(request);
@@ -9784,6 +9790,34 @@ function setLastAnswerErrorType(questionId, errorType) {
   `).run(et, questionId, questionId);
   db.prepare('UPDATE question_mastery SET last_error_type = ? WHERE question_id = ?').run(et, questionId);
   return { ok: true, errorType: et, updated: Number(res?.changes || 0) };
+}
+
+// "Adiar revisão": empurra a próxima revisão para mais longe quando o usuário
+// errou por bobeira (mesmo sabendo) ou acha a questão fácil demais — evita
+// revisitar cedo demais. Dobra o intervalo atual (piso 14, teto 120 dias) e
+// atualiza a estabilidade FSRS para o agendamento seguir coerente.
+function postponeReview(questionId) {
+  const row = db.prepare(
+    'SELECT next_due_at, last_seen_at, fsrs_stability, stability FROM question_mastery WHERE question_id = ?'
+  ).get(questionId);
+  if (!row) {
+    return { ok: false, reason: 'Responda a questão antes de adiar a revisão.' };
+  }
+  const now = new Date();
+  let base = Number(row.fsrs_stability) || Number(row.stability) || 0;
+  if (!(base > 0) && row.last_seen_at && row.next_due_at) {
+    base = (new Date(row.next_due_at).getTime() - new Date(row.last_seen_at).getTime()) / 86400000;
+  }
+  if (!(base > 0)) base = 3;
+  const newInterval = Math.min(120, Math.max(14, Math.round(Math.max(base, 7) * 2)));
+  const nowSql = formatSqlDate(now);
+  const nextDueAt = formatSqlDate(addDays(now, newInterval));
+  db.prepare(`
+    UPDATE question_mastery
+    SET next_due_at = ?, stability = ?, fsrs_stability = ?, fsrs_last_review = ?, updated_at = ?
+    WHERE question_id = ?
+  `).run(nextDueAt, newInterval, newInterval, nowSql, nowSql, questionId);
+  return { ok: true, nextDueAt, intervalDays: newInterval };
 }
 
 function saveAnswer(questionId, body) {

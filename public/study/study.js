@@ -276,6 +276,7 @@ const els = {
   secondaryExplain: document.querySelector("#secondaryExplain"),
   skipQuestion: document.querySelector("#skipQuestion"),
   similarQuestions: document.querySelector("#similarQuestions"),
+  postponeReview: document.querySelector("#postponeReview"),
   toggleComment: document.querySelector("#toggleComment"),
   showSimilar: document.querySelector("#showSimilar"),
   supportOverlay: document.querySelector("#supportOverlay"),
@@ -1431,6 +1432,30 @@ function bindEvents() {
   els.restoreToStudy.addEventListener("click", () =>
     updateQuestionStudyStatus("active"),
   );
+
+  // "Adiar revisão": estende o prazo da próxima revisão desta questão.
+  els.postponeReview?.addEventListener("click", async () => {
+    const id = state.selectedId;
+    if (!id) return;
+    els.postponeReview.disabled = true;
+    try {
+      const res = await api(`/api/questions/${id}/postpone-review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (res?.ok) {
+        const br = String(res.nextDueAt || "").slice(0, 10).split("-").reverse().join("/");
+        els.answerHint.textContent = `Revisão adiada para ${br} (${res.intervalDays} dias)`;
+        els.postponeReview.textContent = "Revisão adiada ✓";
+      } else {
+        els.postponeReview.disabled = false;
+        els.answerHint.textContent = res?.reason || "Não foi possível adiar a revisão.";
+      }
+    } catch {
+      els.postponeReview.disabled = false;
+    }
+  });
   els.questionEditToggle?.addEventListener("click", () => {
     if (!state.currentQuestion) return;
     state.questionEditMode = !state.questionEditMode;
@@ -6039,6 +6064,14 @@ function updateAnswerActions() {
   els.secondaryExplain.hidden = false;
   els.errorTypeWrapper.hidden = true;
 
+  // "Adiar revisão": só aparece depois de responder uma questão pontuável
+  // (acerto/erro). Reseta o rótulo/estado a cada render de questão.
+  if (els.postponeReview) {
+    els.postponeReview.hidden = true;
+    els.postponeReview.disabled = false;
+    els.postponeReview.textContent = "Adiar revisão";
+  }
+
   // "Pular" aparece quando o avanço está travado (answer-first, ainda sem
   // resposta) — evita ter que rolar até a seta > do topo. Depois de responder,
   // o botão principal já vira "Próxima".
@@ -6057,6 +6090,7 @@ function updateAnswerActions() {
       els.secondaryExplain.textContent = "Ver explicação";
       els.secondaryExplain.dataset.action = "explain";
       els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
+      if (els.postponeReview) els.postponeReview.hidden = false;
       return;
     }
 
@@ -6072,6 +6106,7 @@ function updateAnswerActions() {
       els.secondaryExplain.textContent = "Ver explicação";
       els.secondaryExplain.dataset.action = "explain";
       els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
+      if (els.postponeReview) els.postponeReview.hidden = false;
       return;
     }
 
