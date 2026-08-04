@@ -454,6 +454,8 @@ async function collectPrfQuestions(config, args) {
   const blockRetries = Number(args['block-retries'] || config.prf?.blockRetries || 0);
   const blockPauseMs = Number(args['block-pause'] || config.prf?.blockPauseMs || 0);
   const startAt = Number(args['start-at'] || 1);
+  const explicitStartAt = args['start-at'] != null;
+  const noAutoResume = Boolean(args['no-auto-resume']);
   const skipQuestionMatterPatterns = getListOption(
     args['skip-matter'],
     config.prf?.skipQuestionMatterPatterns || []
@@ -619,8 +621,20 @@ async function collectPrfQuestions(config, args) {
       continue;
     }
 
+    // Auto-resume: sem --start-at explícito, começa direto na 1ª questão ainda
+    // não capturada deste caderno (não perde tempo iterando as já feitas). As já
+    // feitas depois desse ponto continuam sendo puladas pelo skip normal.
+    let effectiveStartAt = startAt;
+    if (!explicitStartAt && !noAutoResume) {
+      const resume = getResumePosition(db, notebook.id);
+      if (resume > 1) {
+        effectiveStartAt = resume;
+        console.log(`  retomada automática: começando na posição ${resume} (anteriores já feitas)`);
+      }
+    }
+
     for (const row of indexRows) {
-      if (row.posicaoCaderno < startAt) {
+      if (row.posicaoCaderno < effectiveStartAt) {
         continue;
       }
       if (limit > 0 && processed >= limit) {
@@ -1848,6 +1862,21 @@ function getQuestionStatus(db, questionId) {
     LEFT JOIN questions q ON q.id_question = x.id_question
     LEFT JOIN comments c ON c.question_id = x.id_question
   `).get(questionId);
+}
+
+// Retomada automática: 1ª posição do caderno que AINDA não está pronta (sem corpo
+// OU sem linha de comentário) — mesmo critério do skip do loop. Começar aqui pula
+// o bloco inicial já feito sem iterar questão por questão.
+function getResumePosition(db, notebookId) {
+  const row = db.prepare(`
+    SELECT MIN(nq.position) AS pos
+    FROM notebook_questions nq
+    LEFT JOIN questions q ON q.id_question = nq.question_id
+    LEFT JOIN comments c ON c.question_id = nq.question_id
+    WHERE nq.notebook_id = ?
+      AND (q.id_question IS NULL OR c.question_id IS NULL)
+  `).get(notebookId);
+  return Number(row?.pos || 1);
 }
 
 function upsertQuestion(db, question) {
