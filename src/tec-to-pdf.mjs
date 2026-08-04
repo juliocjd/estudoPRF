@@ -636,14 +636,24 @@ async function collectPrfQuestions(config, args) {
       }
 
       try {
-        const question = await runTecOperation(page, () => fetchQuestionByPosition(page, notebook.id, row.posicaoCaderno), {
-          manualOnBlock,
-          blockRetries,
-          blockPauseMs,
-          label: `baixar questao #${row.idQuestao}`
-        });
-        upsertQuestion(db, question);
-        replaceAlternatives(db, question);
+        let question;
+        if (existing?.question_collected) {
+          // Corpo já baixado numa sessão anterior: NÃO re-baixa. O endpoint de
+          // questão do tec às vezes devolve HTTP 500 no re-fetch e abortava ANTES
+          // do comentário (deixando a questão sem comentário pra sempre). Vai
+          // direto ao comentário usando o possui_comentario já salvo.
+          const dbq = db.prepare('SELECT id_question, possui_comentario FROM questions WHERE id_question = ?').get(row.idQuestao);
+          question = { idQuestao: dbq.id_question, possuiComentario: dbq.possui_comentario == 1 };
+        } else {
+          question = await runTecOperation(page, () => fetchQuestionByPosition(page, notebook.id, row.posicaoCaderno), {
+            manualOnBlock,
+            blockRetries,
+            blockPauseMs,
+            label: `baixar questao #${row.idQuestao}`
+          });
+          upsertQuestion(db, question);
+          replaceAlternatives(db, question);
+        }
 
         if (!skipComments) {
           if (navBeforeComment && question.possuiComentario) {
