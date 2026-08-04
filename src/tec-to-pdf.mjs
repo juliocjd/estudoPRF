@@ -473,6 +473,7 @@ async function collectPrfQuestions(config, args) {
     config.prf?.onlyQuestionNotebookIds || []
   );
   const skipComments = Boolean(args['skip-comments']);
+  const skipInedita = Boolean(args['skip-inedita']);
   const skipAssets = Boolean(args['skip-assets']);
   const commentsOnly = Boolean(args['comments-only']);
   const indexOnly = Boolean(args['index-only']);
@@ -530,6 +531,7 @@ async function collectPrfQuestions(config, args) {
   let processed = 0;
   let indexed = 0;
   let indexedAnswers = 0;
+  let skippedInedita = 0;
 
   if (commentsOnly) {
     processed = await collectMissingQuestionComments(db, page, {
@@ -656,7 +658,10 @@ async function collectPrfQuestions(config, args) {
           // questão do tec às vezes devolve HTTP 500 no re-fetch e abortava ANTES
           // do comentário (deixando a questão sem comentário pra sempre). Vai
           // direto ao comentário usando o possui_comentario já salvo.
-          const dbq = db.prepare('SELECT id_question, possui_comentario FROM questions WHERE id_question = ?').get(row.idQuestao);
+          const dbq = db.prepare('SELECT id_question, possui_comentario, raw_json FROM questions WHERE id_question = ?').get(row.idQuestao);
+          // Inéditas (premium) ficam fora do plano do usuário: sem acesso ao
+          // comentário. Pula pra não gastar reCAPTCHA/tempo nelas.
+          if (skipInedita && isIneditaRaw(dbq.raw_json)) { skippedInedita += 1; continue; }
           question = { idQuestao: dbq.id_question, possuiComentario: dbq.possui_comentario == 1 };
         } else {
           question = await runTecOperation(page, () => fetchQuestionByPosition(page, notebook.id, row.posicaoCaderno), {
@@ -667,6 +672,7 @@ async function collectPrfQuestions(config, args) {
           });
           upsertQuestion(db, question);
           replaceAlternatives(db, question);
+          if (skipInedita && question.questaoAdaptadaOuInedita) { skippedInedita += 1; continue; }
         }
 
         if (!skipComments) {
@@ -732,7 +738,7 @@ async function collectPrfQuestions(config, args) {
     return;
   }
 
-  console.log(`Coleta concluida. Banco: ${path.resolve(dbPath)}. Questões processadas nesta execucao: ${processed}.`);
+  console.log(`Coleta concluida. Banco: ${path.resolve(dbPath)}. Questões processadas nesta execucao: ${processed}.${skipInedita ? ` Inéditas puladas (fora do plano): ${skippedInedita}.` : ''}`);
 }
 
 async function collectMissingQuestionComments(db, page, {
@@ -1867,6 +1873,11 @@ function getQuestionStatus(db, questionId) {
 // Retomada automática: 1ª posição do caderno que AINDA não está pronta (sem corpo
 // OU sem linha de comentário) — mesmo critério do skip do loop. Começar aqui pula
 // o bloco inicial já feito sem iterar questão por questão.
+function isIneditaRaw(rawJson) {
+  if (!rawJson) return false;
+  try { return Boolean(JSON.parse(rawJson).questaoAdaptadaOuInedita); } catch { return false; }
+}
+
 function getResumePosition(db, notebookId) {
   const row = db.prepare(`
     SELECT MIN(nq.position) AS pos
