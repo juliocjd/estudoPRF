@@ -494,6 +494,16 @@ async function collectPrfQuestions(config, args) {
   const context = await launchContext(config);
   const page = await getFirstPage(context);
   page.setDefaultTimeout(config.defaultTimeoutMs);
+  if (navBeforeComment) {
+    // Coleta leve: aborta imagens/fontes/mídia nas navegações da página da questão
+    // (mantém HTML/JS/XHR, que estabelecem o contexto humano). Corta a maioria das
+    // requisições por questão → estoura o rate limit de volume bem mais devagar.
+    await page.route('**/*', (route) => {
+      const type = route.request().resourceType();
+      if (type === 'image' || type === 'font' || type === 'media') return route.abort();
+      return route.continue();
+    });
+  }
   await page.goto('https://www.tecconcursos.com.br/', { waitUntil: 'domcontentloaded' });
   // A sessão/cookies às vezes demoram a valer após o goto (a 1ª chamada volta a
   // shell da SPA e dava falso "não autenticada" com a sessão válida). Tenta
