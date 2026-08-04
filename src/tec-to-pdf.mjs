@@ -499,7 +499,15 @@ async function collectPrfQuestions(config, args) {
     // (mantém HTML/JS/XHR, que estabelecem o contexto humano). Corta a maioria das
     // requisições por questão → estoura o rate limit de volume bem mais devagar.
     await page.route('**/*', (route) => {
-      const type = route.request().resourceType();
+      const req = route.request();
+      const url = req.url();
+      // NUNCA bloqueia recursos do reCAPTCHA/Google — senão o desafio de imagens
+      // do "human" não carrega e fica impossível resolver. Só corta imagem/fonte/
+      // mídia do resto (o peso do tec).
+      if (/google\.com|gstatic\.com|googleapis\.com|recaptcha|hcaptcha|cloudflare/i.test(url)) {
+        return route.continue();
+      }
+      const type = req.resourceType();
       if (type === 'image' || type === 'font' || type === 'media') return route.abort();
       return route.continue();
     });
