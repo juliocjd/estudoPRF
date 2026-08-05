@@ -5775,6 +5775,9 @@ function renderQuickTheoryPanel(question) {
 
   const card = legalStudy.primaryCard;
   const articles = legalStudy.officialText?.articles || [];
+  const desatWarn = legalStudy.desatualizadaWarning
+    ? `<p class="quick-theory-warning is-danger">${escapeHtml(legalStudy.desatualizadaWarning)}</p>`
+    : "";
   const isPanorama =
     legalStudy.mode === "panorama" ||
     card.displayKind === "panorama" ||
@@ -5789,6 +5792,7 @@ function renderQuickTheoryPanel(question) {
   if (isPanorama) {
     els.supportQuickTheoryBody.innerHTML = `
       <div class="quick-theory-card is-panorama">
+        ${desatWarn}
         <strong class="quick-theory-title">Panorama do assunto</strong>
         <p class="quick-theory-warning">${escapeHtml(legalStudy.warning || "Este e um panorama geral. Ainda nao ha microcard especifico validado para esta questao.")}</p>
         <details class="quick-theory-details">
@@ -5809,6 +5813,7 @@ function renderQuickTheoryPanel(question) {
 
   els.supportQuickTheoryBody.innerHTML = `
     <div class="quick-theory-card">
+      ${desatWarn}
       <strong class="quick-theory-title">${escapeHtml(card.title || "Teoria rápida")}</strong>
       ${quickTheorySection("Regra que resolve esta questão", card.answerSummary || card.ruleSummary)}
       ${quickTheorySection("Fundamento", quickTheoryFoundation(card, articles))}

@@ -1580,6 +1580,60 @@ function getQuestionAppliedTheoryCard(questionId) {
   };
 }
 
+// Precedência da legislação atual sobre a "teoria aplicada" (card individual).
+// Numa questão DESATUALIZADA nunca apresentamos a regra histórica como se fosse
+// vigente: ou trocamos pela resposta verificada pela lei atual, ou rebaixamos o
+// card para "auditoria pendente" (o front esconde o trecho velho e mostra aviso).
+function applyCurrentLawPrecedenceToAppliedCard(card, question, currentLawAnswer) {
+  if (!card?.available || !Number(question?.desatualizada)) return card;
+  const c = currentLawAnswer;
+  const verifiedScorable = Boolean(
+    c?.exists && (c.status || c.currentLawStatus) === 'verified'
+      && (c.canAutoScore || c.canAutoScoreCurrentLaw) && c.currentAnswer
+      && !c.noValidAlternative && !c.shouldDiscard
+  );
+  if (verifiedScorable) {
+    const src = c.sourceVersion || c.legalBasis || 'legislação vigente';
+    return {
+      ...card,
+      currentAnswer: c.currentAnswer,
+      answerForStudy: c.currentAnswer,
+      answerChanged: true,
+      showWarning: `Regra atualizada conforme ${src}: a resposta pela legislação vigente é ${c.currentAnswer}. O gabarito histórico não vale mais.`
+    };
+  }
+  const extra = c?.exists ? (c.teacherExplanation || c.studyConclusion || '') : '';
+  const warn = (c?.exists && c.noValidAlternative)
+    ? `Questão desatualizada: pela legislação vigente nenhuma alternativa fica correta.${extra ? ' ' + extra : ''}`
+    : `Questão desatualizada — a regra pode ter mudado. Não estude o gabarito histórico como se fosse a regra atual; registre a regra vigente em "Resposta pela legislação atual".${extra ? ' ' + extra : ''}`;
+  return {
+    ...card,
+    cardStatus: 'needs_current_law_audit',
+    showWarning: warn,
+    studyConclusion: extra || card.studyConclusion
+  };
+}
+
+// Mesma precedência para a "teoria rápida" (legalStudy, casada por termo). Como
+// esse card não tem gabarito próprio, aqui só injetamos um aviso forte para não
+// deixar o aluno estudar a regra antiga como vigente.
+function applyDesatualizadaToLegalStudy(legalStudy, question, currentLawAnswer) {
+  if (!legalStudy?.available || !Number(question?.desatualizada)) return legalStudy;
+  const c = currentLawAnswer;
+  let msg;
+  if (c?.exists && (c.status || c.currentLawStatus) === 'verified'
+    && (c.canAutoScore || c.canAutoScoreCurrentLaw) && c.currentAnswer
+    && !c.noValidAlternative && !c.shouldDiscard) {
+    const src = c.sourceVersion || c.legalBasis || 'legislação vigente';
+    msg = `Atenção: questão desatualizada. Pela ${src}, a resposta atual é ${c.currentAnswer}. A teoria abaixo pode refletir a regra ANTIGA — confira "Resposta pela legislação atual".`;
+  } else if (c?.exists && c.noValidAlternative) {
+    msg = `Atenção: questão desatualizada. Pela legislação vigente nenhuma alternativa fica correta${c.sourceVersion ? ` (${c.sourceVersion})` : ''}. A teoria abaixo reflete a regra ANTIGA.`;
+  } else {
+    msg = 'Atenção: questão marcada como desatualizada. A regra pode ter mudado — não estude a teoria abaixo como se fosse a regra vigente. Registre a regra atual em "Resposta pela legislação atual".';
+  }
+  return { ...legalStudy, desatualizada: true, desatualizadaWarning: msg };
+}
+
 function isExactAppliedTheoryRow(row = {}) {
   const status = row.publish_status || row.card_status || '';
   if (status !== 'published') return false;
@@ -9687,8 +9741,12 @@ async function getQuestion(questionId) {
     currentLawAnswer,
     Boolean(question.desatualizada)
   );
-  const legalStudy = getQuestionLegalStudy(questionId);
-  const appliedTheoryCard = getQuestionAppliedTheoryCard(questionId);
+  const legalStudy = applyDesatualizadaToLegalStudy(
+    getQuestionLegalStudy(questionId), question, currentLawAnswer
+  );
+  const appliedTheoryCard = applyCurrentLawPrecedenceToAppliedCard(
+    getQuestionAppliedTheoryCard(questionId), question, currentLawAnswer
+  );
   const adaptive = getQuestionAdaptiveSummary(questionId);
   const studyStatus = getQuestionStudyStatus(questionId);
   const contranPrf2021Matches = getQuestionContranPrf2021Matches(question);

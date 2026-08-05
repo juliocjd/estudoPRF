@@ -3566,6 +3566,13 @@ body.is-report-page {
   font-weight: 700;
 }
 
+.quick-theory-warning.is-danger {
+  border-color: var(--danger-border, #fecaca);
+  background: var(--danger-soft, #fef2f2);
+  color: var(--danger-strong, #b91c1c);
+  margin-bottom: 12px;
+}
+
 .quick-theory-details {
   border: 1px solid var(--border);
   border-radius: 8px;
