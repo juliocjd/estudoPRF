@@ -103,6 +103,7 @@ if (!skipStartupSchemaMaintenance) {
   initTheoryPagesSchema(db);
   initNormativeTeachingStudentEditsSchema(db);
   initQuestionCurrentLawAnswersSchema(db, activeDbClient);
+  initAlternativeTextEditsSchema(db, activeDbClient);
   initLegalKnowledgeSchema(db, activeDbClient);
   initQuestionAppliedTheorySchema(db, activeDbClient);
   initLawCompendiumSchemaShared(db, activeDbClient);
@@ -568,6 +569,22 @@ async function routeRequest(request, response) {
   if (studyStatusMatch && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, saveQuestionStudyStatus(Number(studyStatusMatch[1]), body));
+    return;
+  }
+
+  const altEditMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/alternative-edit$/);
+  if (altEditMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const result = saveAlternativeTextEdit(Number(altEditMatch[1]), body);
+    sendJson(response, result?.error ? 400 : 200, result);
+    return;
+  }
+
+  const altResetMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/alternative-reset$/);
+  if (altResetMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const result = resetAlternativeTextEdits(Number(altResetMatch[1]), body);
+    sendJson(response, result?.error ? 400 : 200, result);
     return;
   }
 
@@ -9363,6 +9380,77 @@ function saveQuestionStudyStatus(questionId, body) {
   return { ok: true, studyStatus: getQuestionStudyStatus(questionId) };
 }
 
+function hasAlternativeEditsTable() {
+  return Boolean(tableExists('alternative_text_edits'));
+}
+
+function getEditedAlternativeMap(questionId) {
+  const map = new Map();
+  if (!hasAlternativeEditsTable()) return map;
+  try {
+    for (const r of db.prepare('SELECT letter, original_text FROM alternative_text_edits WHERE question_id = ?').all(questionId)) {
+      map.set(String(r.letter), r.original_text || '');
+    }
+  } catch {}
+  return map;
+}
+
+function getQuestionAlternativesPayload(questionId) {
+  const edited = getEditedAlternativeMap(questionId);
+  const alternatives = db.prepare('SELECT letter, position, html, text FROM alternatives WHERE question_id = ? ORDER BY position')
+    .all(questionId)
+    .map((a) => ({
+      ...a,
+      html: sanitizeStoredHtml(a.html),
+      edited: edited.has(String(a.letter)),
+      originalText: edited.get(String(a.letter)) || ''
+    }));
+  return { alternatives, alternativesEdited: edited.size > 0 };
+}
+
+function saveAlternativeTextEdit(questionId, body) {
+  if (!hasAlternativeEditsTable()) return { error: 'Tabela de edições de alternativa ainda não existe.' };
+  if (!db.prepare('SELECT 1 FROM questions WHERE id_question = ?').get(questionId)) {
+    return { error: 'Questão não encontrada.' };
+  }
+  const edits = Array.isArray(body?.edits) ? body.edits : [{ letter: body?.letter, text: body?.text }];
+  let applied = 0;
+  for (const e of edits) {
+    const letter = String(e?.letter || '').trim().toUpperCase();
+    const newText = String(e?.text ?? '').replace(/\s+$/,'').slice(0, 6000);
+    if (!letter) continue;
+    const alt = db.prepare('SELECT letter, text FROM alternatives WHERE question_id = ? AND UPPER(letter) = ?').get(questionId, letter);
+    if (!alt) continue;
+    if (!newText.trim()) return { error: `A alternativa ${alt.letter} não pode ficar vazia.` };
+    if ((alt.text || '') === newText) continue; // sem mudança
+    const existing = db.prepare('SELECT 1 FROM alternative_text_edits WHERE question_id = ? AND letter = ?').get(questionId, alt.letter);
+    if (existing) {
+      db.prepare('UPDATE alternative_text_edits SET edited_text = ?, edited_at = CURRENT_TIMESTAMP WHERE question_id = ? AND letter = ?').run(newText, questionId, alt.letter);
+    } else {
+      db.prepare('INSERT INTO alternative_text_edits (question_id, letter, original_text, edited_text, edited_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)').run(questionId, alt.letter, alt.text || '', newText);
+    }
+    db.prepare('UPDATE alternatives SET text = ? WHERE question_id = ? AND letter = ?').run(newText, questionId, alt.letter);
+    applied += 1;
+  }
+  if (body?.markNotOutdated) {
+    db.prepare('UPDATE questions SET desatualizada = ?, updated_at = CURRENT_TIMESTAMP WHERE id_question = ?').run(0, questionId);
+  }
+  return { ok: true, applied, ...getQuestionAlternativesPayload(questionId) };
+}
+
+function resetAlternativeTextEdits(questionId, body = {}) {
+  if (!hasAlternativeEditsTable()) return { error: 'Tabela de edições de alternativa ainda não existe.' };
+  const letter = body?.letter ? String(body.letter).trim().toUpperCase() : '';
+  const rows = letter
+    ? db.prepare('SELECT letter, original_text FROM alternative_text_edits WHERE question_id = ? AND UPPER(letter) = ?').all(questionId, letter)
+    : db.prepare('SELECT letter, original_text FROM alternative_text_edits WHERE question_id = ?').all(questionId);
+  for (const r of rows) {
+    db.prepare('UPDATE alternatives SET text = ? WHERE question_id = ? AND letter = ?').run(r.original_text || '', questionId, r.letter);
+    db.prepare('DELETE FROM alternative_text_edits WHERE question_id = ? AND letter = ?').run(questionId, r.letter);
+  }
+  return { ok: true, restored: rows.length, ...getQuestionAlternativesPayload(questionId) };
+}
+
 function saveHistoricalCommentEdit(questionId, body) {
   if (!db.prepare('SELECT 1 FROM questions WHERE id_question = ?').get(questionId)) {
     return { error: 'Questao nao encontrada' };
@@ -9814,6 +9902,7 @@ async function getQuestion(questionId) {
     return { error: 'Questao nao encontrada' };
   }
 
+  const editedAltMap = getEditedAlternativeMap(questionId);
   const alternatives = db.prepare(`
     SELECT letter, position, html, text
     FROM alternatives
@@ -9821,7 +9910,9 @@ async function getQuestion(questionId) {
     ORDER BY position
   `).all(questionId).map((alternative) => ({
     ...alternative,
-    html: sanitizeStoredHtml(alternative.html)
+    html: sanitizeStoredHtml(alternative.html),
+    edited: editedAltMap.has(String(alternative.letter)),
+    originalText: editedAltMap.get(String(alternative.letter)) || ''
   }));
 
   const lastAnswer = db.prepare(`
@@ -10549,6 +10640,24 @@ function initQuestionCurrentLawAnswersSchema(database, client = 'sqlite') {
     CREATE INDEX IF NOT EXISTS idx_qcla_changed ON question_current_law_answers(answer_changed);
     CREATE INDEX IF NOT EXISTS idx_qcla_hide ON question_current_law_answers(hide_from_main_study_until_verified);
     CREATE INDEX IF NOT EXISTS idx_qcla_discard ON question_current_law_answers(should_discard_from_current_law_study);
+  `);
+}
+
+// Edições manuais do texto das alternativas (ex.: atualizar o texto para a lei
+// vigente). Guarda o original para permitir reverter. A alternatives.text é
+// atualizada in-place; esta tabela é o backup + o marcador "editado".
+function initAlternativeTextEditsSchema(database, client = 'sqlite') {
+  const pk = client === 'postgres' ? 'BIGINT' : 'INTEGER';
+  const ts = client === 'postgres' ? 'TIMESTAMPTZ' : 'TEXT';
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS alternative_text_edits (
+      question_id ${pk} NOT NULL,
+      letter TEXT NOT NULL,
+      original_text TEXT,
+      edited_text TEXT,
+      edited_at ${ts} DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (question_id, letter)
+    );
   `);
 }
 

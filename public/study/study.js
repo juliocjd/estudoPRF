@@ -261,6 +261,9 @@ const els = {
   answerForm: document.querySelector("#answerForm"),
   answerHint: document.querySelector("#answerHint"),
   alternatives: document.querySelector("#alternatives"),
+  altEdit: document.querySelector("#altEdit"),
+  editAlternatives: document.querySelector("#editAlternatives"),
+  alternativeEditPanel: document.querySelector("#alternativeEditPanel"),
   answerStatus: document.querySelector("#answerStatus"),
   answerDetails: document.querySelector("#answerDetails"),
   answerResult: document.querySelector("#answerResult"),
@@ -1556,6 +1559,29 @@ function bindEvents() {
       updateAnswerActions();
     }
   });
+
+  if (els.editAlternatives) {
+    els.editAlternatives.addEventListener("click", () => {
+      state.altEditMode = !state.altEditMode;
+      renderAlternativeEditPanel(state.currentQuestion);
+    });
+  }
+  if (els.alternativeEditPanel) {
+    els.alternativeEditPanel.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-alt-action]");
+      if (!button) return;
+      event.preventDefault();
+      const action = button.dataset.altAction;
+      if (action === "cancel") {
+        state.altEditMode = false;
+        renderAlternativeEditPanel(state.currentQuestion);
+      } else if (action === "save") {
+        saveAlternativeEdits();
+      } else if (action === "reset") {
+        resetAlternativeEdits(button.dataset.letter || "");
+      }
+    });
+  }
 }
 
 function syncMobileStudyStatusDisclosure() {
@@ -3692,6 +3718,9 @@ function renderQuestion(question, options = {}) {
     )
     .join("");
 
+  state.altEditMode = false;
+  renderAlternativeEditPanel(question);
+
   if (options.selectedAnswer) {
     const selectedInput = els.alternatives.querySelector(
       `input[name="answer"][value="${cssEscape(options.selectedAnswer)}"]`,
@@ -5292,6 +5321,86 @@ function syncCurrentLawAutoScoreControl(target) {
   return true;
 }
 
+function renderAlternativeEditPanel(question) {
+  if (!els.altEdit || !els.alternativeEditPanel || !els.editAlternatives) return;
+  const isMC = String(question?.metadata?.tipo || "").toUpperCase() === "MULTIPLA_ESCOLHA";
+  if (!isMC || !question) {
+    els.altEdit.hidden = true;
+    els.alternativeEditPanel.hidden = true;
+    els.alternativeEditPanel.innerHTML = "";
+    return;
+  }
+  els.altEdit.hidden = false;
+  if (!state.altEditMode) {
+    els.editAlternatives.textContent = "✎ Editar alternativas";
+    els.alternativeEditPanel.hidden = true;
+    els.alternativeEditPanel.innerHTML = "";
+    return;
+  }
+  els.editAlternatives.textContent = "✕ Fechar edição";
+  const alts = question.alternatives || [];
+  const rows = alts
+    .map(
+      (a) => `
+    <div class="alt-edit-row">
+      <span class="alt-edit-letter">${escapeHtml(a.displayLetter || a.letter)}${a.edited ? ' <em>editada</em>' : ""}</span>
+      <textarea data-alt-letter="${escapeAttr(a.letter)}" rows="2">${escapeHtml(a.text || "")}</textarea>
+      ${a.edited ? `<button type="button" class="button button-ghost button-small" data-alt-action="reset" data-letter="${escapeAttr(a.letter)}">Restaurar original</button>` : ""}
+    </div>`,
+    )
+    .join("");
+  els.alternativeEditPanel.hidden = false;
+  els.alternativeEditPanel.innerHTML = `
+    <p class="alt-edit-hint">Edite o texto para refletir a legislação vigente. O original fica guardado — dá para restaurar.</p>
+    ${rows}
+    <label class="alt-edit-checkline"><input type="checkbox" data-alt-mark-updated> Marcar a questão como não-desatualizada ao salvar</label>
+    <div class="alt-edit-actions">
+      <button type="button" class="button button-primary button-small" data-alt-action="save">Salvar alternativas</button>
+      <button type="button" class="button button-secondary button-small" data-alt-action="cancel">Cancelar</button>
+    </div>
+    <p class="alt-edit-status" data-alt-status></p>
+  `;
+}
+
+async function saveAlternativeEdits() {
+  if (!state.selectedId || !els.alternativeEditPanel) return;
+  const edits = [...els.alternativeEditPanel.querySelectorAll("textarea[data-alt-letter]")].map((t) => ({
+    letter: t.dataset.altLetter,
+    text: t.value,
+  }));
+  const markNotOutdated = Boolean(els.alternativeEditPanel.querySelector("[data-alt-mark-updated]")?.checked);
+  const statusEl = els.alternativeEditPanel.querySelector("[data-alt-status]");
+  if (statusEl) statusEl.textContent = "Salvando...";
+  try {
+    const result = await api(`/api/questions/${state.selectedId}/alternative-edit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ edits, markNotOutdated }),
+    });
+    if (result.error) throw new Error(result.error);
+    state.altEditMode = false;
+    await openQuestionDirect(state.selectedId, { scrollToStatement: false });
+  } catch (e) {
+    if (statusEl) statusEl.textContent = "Erro: " + (e?.message || e);
+  }
+}
+
+async function resetAlternativeEdits(letter) {
+  if (!state.selectedId) return;
+  try {
+    const result = await api(`/api/questions/${state.selectedId}/alternative-reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(letter ? { letter } : {}),
+    });
+    if (result.error) throw new Error(result.error);
+    await openQuestionDirect(state.selectedId, { scrollToStatement: false });
+  } catch (e) {
+    const statusEl = els.alternativeEditPanel?.querySelector("[data-alt-status]");
+    if (statusEl) statusEl.textContent = "Erro: " + (e?.message || e);
+  }
+}
+
 async function saveCurrentLawAnswerEdit() {
   if (!state.selectedId) return;
   const form = els.supportTeachingBody.querySelector(
@@ -6663,16 +6772,19 @@ function looksLikeListItem(value) {
 
 function renderAlternativeText(question, alternative) {
   const text = alternative.text || "";
+  const editedTag = alternative.edited
+    ? ' <span class="alt-edited-tag" title="Texto editado para a legislação vigente">editada</span>'
+    : "";
   if (String(question.metadata?.tipo || "").toUpperCase() === "CERTO_ERRADO") {
     return `
       <span class="alternative-badge" aria-hidden="true"></span>
-      <span class="alternative-text">${escapeHtml(text)}</span>
+      <span class="alternative-text">${escapeHtml(text)}${editedTag}</span>
     `;
   }
 
   return `
     <span class="alternative-badge">${escapeHtml(alternative.displayLetter || alternative.letter)}</span>
-    <span class="alternative-text">${escapeHtml(text)}</span>
+    <span class="alternative-text">${escapeHtml(text)}${editedTag}</span>
   `;
 }
 

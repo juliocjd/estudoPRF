@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260804-desatualizada1" />
+    <link rel="stylesheet" href="/study.css?v=20260804-alt-edit" />
   </head>
   <body>
     <div class="app-shell">
@@ -577,6 +577,11 @@
             <input id="confidenceSelect" type="hidden" value="sure" />
 
             <div class="alternatives" id="alternatives"></div>
+
+            <div class="alt-edit" id="altEdit" hidden>
+              <button id="editAlternatives" type="button" class="button button-ghost button-small">✎ Editar alternativas</button>
+              <div class="alt-edit-panel" id="alternativeEditPanel" hidden></div>
+            </div>
 
             <div id="answerResult" class="answer-result" hidden></div>
 
@@ -1165,6 +1170,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260804-desatualizada1" type="module"></script>
+    <script src="/study.js?v=20260804-alt-edit" type="module"></script>
   </body>
 </html>
