@@ -10004,17 +10004,24 @@ async function getQuestion(questionId) {
     return { error: 'Questao nao encontrada' };
   }
 
-  const editedAltMap = getEditedAlternativeMap(questionId);
+  // Traz o marcador de "editada" no MESMO SELECT (LEFT JOIN) para não gastar um
+  // round-trip extra por troca de questão no prod (ponte Postgres).
   const alternatives = db.prepare(`
-    SELECT letter, position, html, text
-    FROM alternatives
-    WHERE question_id = ?
-    ORDER BY position
+    SELECT a.letter, a.position, a.html, a.text,
+      CASE WHEN e.question_id IS NOT NULL THEN 1 ELSE 0 END AS is_edited,
+      e.original_text AS edited_original
+    FROM alternatives a
+    LEFT JOIN alternative_text_edits e
+      ON e.question_id = a.question_id AND e.letter = a.letter
+    WHERE a.question_id = ?
+    ORDER BY a.position
   `).all(questionId).map((alternative) => ({
-    ...alternative,
+    letter: alternative.letter,
+    position: alternative.position,
     html: sanitizeStoredHtml(alternative.html),
-    edited: editedAltMap.has(String(alternative.letter)),
-    originalText: editedAltMap.get(String(alternative.letter)) || ''
+    text: alternative.text,
+    edited: Boolean(Number(alternative.is_edited)),
+    originalText: alternative.edited_original || ''
   }));
 
   const lastAnswer = db.prepare(`
