@@ -655,7 +655,9 @@ async function routeRequest(request, response) {
       // useMap é agressivo (pega resolução antiga citada só para explicá-la);
       // só liga quando pedido explicitamente. Padrão: só as chaves informadas.
       useMap: Boolean(body?.useMap),
-      dryRun: Boolean(body?.dryRun)
+      // Segurança: grava só quando o curador manda dryRun:false explicitamente.
+      // Sem isso, retorna apenas a PRÉVIA (quais correções seriam rebaixadas).
+      dryRun: body?.dryRun !== false
     }));
     return;
   }
@@ -2180,13 +2182,16 @@ async function runContranCurrencyCheck({ force = false } = {}) {
     };
   }
   // Gancho automático: se a checagem oficial apontou resoluções "atuais" que
-  // sumiram da lista (= foram superadas), revalida as correções que se baseavam
-  // nelas (voltam para needs_audit). Só quando a leitura foi confiável.
+  // sumiram da lista, apenas CALCULA quantas correções se baseavam nelas — NÃO
+  // grava. O scrape do índice oficial é frágil (paginação/layout podem esconder
+  // uma resolução ainda vigente), então nunca rebaixamos correções curadas de
+  // forma automática/não supervisionada. O curador aplica de propósito via o
+  // endpoint /api/current-law/revalidate ({dryRun:false}) ou o script.
   if (result.ok && Array.isArray(result.flagged) && result.flagged.length) {
     try {
-      const rev = revalidateCurrentLawCorrections({ supersededKeys: result.flagged.map((f) => f.resolution) });
-      result.reauditedCount = rev.count;
-      result.reaudited = rev.flipped;
+      const rev = revalidateCurrentLawCorrections({ supersededKeys: result.flagged.map((f) => f.resolution), dryRun: true });
+      result.reauditCandidates = rev.count;
+      result.reauditCandidateList = rev.flipped;
     } catch (e) { result.reauditError = String(e?.message || e); }
   }
   try { setSetting(CONTRAN_CHECK_SETTING_KEY, JSON.stringify(result)); } catch {}
@@ -8411,18 +8416,21 @@ function getCurrentLawAnswer(questionId) {
 // checagem de vigência do CONTRAN, pelo mapa, ou informado pelo curador), a
 // correção volta para "needs_audit" — evita que o aluno estude uma regra que
 // mudou de novo. É o gancho "à prova de futuro" que substitui a curadoria do TEC.
+// Aceita separador de milhar (ex.: "14.071/2020" -> "14071/2020") para não
+// confundir com uma resolução de 3 dígitos.
+const RESOLUTION_REF_RE = /(\d[\d.]{0,6})\s*\/\s*((?:19|20)\d{2})/;
 function parseResolutionRef(text) {
-  const m = String(text || '').match(/(\d{1,4})\s*\/\s*((?:19|20)\d{2})/);
-  return m ? `${Number(m[1])}/${m[2]}` : '';
+  const m = String(text || '').match(RESOLUTION_REF_RE);
+  return m ? `${Number(String(m[1]).replace(/\./g, ''))}/${m[2]}` : '';
 }
 
 function extractResolutionRefs(...texts) {
   const out = new Set();
-  const re = /(\d{1,4})\s*\/\s*((?:19|20)\d{2})/g;
+  const re = new RegExp(RESOLUTION_REF_RE, 'g');
   for (const t of texts) {
     const s = String(t || '');
     let m;
-    while ((m = re.exec(s))) out.add(`${Number(m[1])}/${m[2]}`);
+    while ((m = re.exec(s))) out.add(`${Number(String(m[1]).replace(/\./g, ''))}/${m[2]}`);
   }
   return out;
 }
@@ -8470,7 +8478,10 @@ function revalidateCurrentLawCorrections({ supersededKeys = [], useMap = false, 
   const isPg = activeDbClient === 'postgres';
   const flipped = [];
   for (const r of rows) {
-    const refs = extractResolutionRefs(r.source_version, r.legal_basis, r.article_reference);
+    // IMPORTANTE: só a base efetiva da correção (source_version/article_reference).
+    // NUNCA legal_basis — ela cita a lei ANTIGA só para explicar a mudança, o que
+    // rebaixaria correções corretas quando a resolução antiga fosse superada.
+    const refs = extractResolutionRefs(r.source_version, r.article_reference);
     const hit = [...refs].find((k) => superseded.has(k));
     if (!hit) continue;
     const rawObj = typeof r.raw_json === 'string' ? safeJsonParse(r.raw_json, {}) : (r.raw_json || {});
@@ -9498,15 +9509,22 @@ function saveAlternativeTextEdit(questionId, body) {
     return { error: 'Questão não encontrada.' };
   }
   const edits = Array.isArray(body?.edits) ? body.edits : [{ letter: body?.letter, text: body?.text }];
-  let applied = 0;
+  // 1º passo: validar TUDO (alternativa existe, texto não-vazio). Só aplica se
+  // todas passarem — evita gravação parcial quando uma alternativa está inválida.
+  const pending = [];
   for (const e of edits) {
     const letter = String(e?.letter || '').trim().toUpperCase();
-    const newText = String(e?.text ?? '').replace(/\s+$/,'').slice(0, 6000);
+    const newText = String(e?.text ?? '').replace(/\s+$/, '').slice(0, 6000);
     if (!letter) continue;
     const alt = db.prepare('SELECT letter, text FROM alternatives WHERE question_id = ? AND UPPER(letter) = ?').get(questionId, letter);
-    if (!alt) continue;
+    if (!alt) return { error: `Alternativa ${letter} não encontrada.` };
     if (!newText.trim()) return { error: `A alternativa ${alt.letter} não pode ficar vazia.` };
     if ((alt.text || '') === newText) continue; // sem mudança
+    pending.push({ alt, newText });
+  }
+  // 2º passo: aplicar (todas já validadas).
+  let applied = 0;
+  for (const { alt, newText } of pending) {
     const existing = db.prepare('SELECT 1 FROM alternative_text_edits WHERE question_id = ? AND letter = ?').get(questionId, alt.letter);
     if (existing) {
       db.prepare('UPDATE alternative_text_edits SET edited_text = ?, edited_at = CURRENT_TIMESTAMP WHERE question_id = ? AND letter = ?').run(newText, questionId, alt.letter);

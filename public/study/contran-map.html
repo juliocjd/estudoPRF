@@ -89,7 +89,7 @@
           ? '<span class="badge sub">substituída</span>'
           : '<span class="badge vig">vigente</span>';
         return `
-        <div class="card" data-id="${row.id}">
+        <div class="card" data-id="${esc(row.id)}">
           <div class="src">Origem (edital): <strong>Res. ${esc(row.source_number)}/${esc(row.source_year)}</strong> — ${esc(row.source_title_hint || "")} ${badge}</div>
           <div class="grid">
             <label class="f">Alvo — número<input data-k="targetNumber" value="${esc(row.target_number)}"></label>
@@ -102,7 +102,7 @@
             <label class="f checkline"><input type="checkbox" data-k="showInCurrentStudyFilter" ${row.show_in_current_study_filter ? "checked" : ""}> Mostrar no filtro de estudo atual</label>
           </div>
           <div class="row-actions">
-            <button class="save" data-id="${row.id}">Salvar</button>
+            <button class="save" data-id="${esc(row.id)}">Salvar</button>
             <span class="status" data-status></span>
           </div>
         </div>`;
@@ -124,7 +124,7 @@
         statusEl.className = "status";
         statusEl.textContent = "Salvando...";
         try {
-          const r = await fetch(`/api/contran-map/${id}`, {
+          const r = await fetch(`/api/contran-map/${encodeURIComponent(id)}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),

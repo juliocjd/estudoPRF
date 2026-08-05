@@ -17,6 +17,7 @@ const state = {
   selectedId: null,
   currentQuestion: null,
   answerResult: null,
+  altEditMode: false,
   adaptiveTarget: null,
   eliminatedAnswers: new Set(),
   activeProfile: "",
@@ -5344,7 +5345,7 @@ function renderAlternativeEditPanel(question) {
       (a) => `
     <div class="alt-edit-row">
       <span class="alt-edit-letter">${escapeHtml(a.displayLetter || a.letter)}${a.edited ? ' <em>editada</em>' : ""}</span>
-      <textarea data-alt-letter="${escapeAttr(a.letter)}" rows="2">${escapeHtml(a.text || "")}</textarea>
+      <textarea data-alt-letter="${escapeAttr(a.letter)}" rows="2" aria-label="Texto da alternativa ${escapeAttr(a.displayLetter || a.letter)}">${escapeHtml(a.text || "")}</textarea>
       ${a.edited ? `<button type="button" class="button button-ghost button-small" data-alt-action="reset" data-letter="${escapeAttr(a.letter)}">Restaurar original</button>` : ""}
     </div>`,
     )
@@ -5378,8 +5379,13 @@ async function saveAlternativeEdits() {
       body: JSON.stringify({ edits, markNotOutdated }),
     });
     if (result.error) throw new Error(result.error);
-    state.altEditMode = false;
+    // Recarrega a questão (badges/alternativas atualizadas) e reabre o painel
+    // com feedback claro de sucesso — em vez de fechar sem sinal.
     await openQuestionDirect(state.selectedId, { scrollToStatement: false });
+    state.altEditMode = true;
+    renderAlternativeEditPanel(state.currentQuestion);
+    const okEl = els.alternativeEditPanel?.querySelector("[data-alt-status]");
+    if (okEl) okEl.textContent = result.applied ? "Salvo ✓" : "Nada a salvar (sem mudança).";
   } catch (e) {
     if (statusEl) statusEl.textContent = "Erro: " + (e?.message || e);
   }
@@ -5387,6 +5393,7 @@ async function saveAlternativeEdits() {
 
 async function resetAlternativeEdits(letter) {
   if (!state.selectedId) return;
+  if (!confirm("Restaurar o texto original desta alternativa? A edição salva será perdida.")) return;
   try {
     const result = await api(`/api/questions/${state.selectedId}/alternative-reset`, {
       method: "POST",
@@ -5395,6 +5402,10 @@ async function resetAlternativeEdits(letter) {
     });
     if (result.error) throw new Error(result.error);
     await openQuestionDirect(state.selectedId, { scrollToStatement: false });
+    state.altEditMode = true;
+    renderAlternativeEditPanel(state.currentQuestion);
+    const okEl = els.alternativeEditPanel?.querySelector("[data-alt-status]");
+    if (okEl) okEl.textContent = "Original restaurado ✓";
   } catch (e) {
     const statusEl = els.alternativeEditPanel?.querySelector("[data-alt-status]");
     if (statusEl) statusEl.textContent = "Erro: " + (e?.message || e);

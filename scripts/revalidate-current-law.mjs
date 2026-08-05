@@ -15,14 +15,15 @@ const useMap = argv.includes('--from-map');
 const idx = argv.indexOf('--superseded');
 const cliKeys = idx >= 0 && argv[idx + 1] ? argv[idx + 1].split(',').map((s) => s.trim()).filter(Boolean) : [];
 
+const REF_RE = /(\d[\d.]{0,6})\s*\/\s*((?:19|20)\d{2})/;
 const parseRef = (t) => {
-  const m = String(t || '').match(/(\d{1,4})\s*\/\s*((?:19|20)\d{2})/);
-  return m ? `${Number(m[1])}/${m[2]}` : '';
+  const m = String(t || '').match(REF_RE);
+  return m ? `${Number(String(m[1]).replace(/\./g, ''))}/${m[2]}` : '';
 };
 const extractRefs = (...texts) => {
   const out = new Set();
-  const re = /(\d{1,4})\s*\/\s*((?:19|20)\d{2})/g;
-  for (const t of texts) { const s = String(t || ''); let m; while ((m = re.exec(s))) out.add(`${Number(m[1])}/${m[2]}`); }
+  const re = new RegExp(REF_RE, 'g');
+  for (const t of texts) { const s = String(t || ''); let m; while ((m = re.exec(s))) out.add(`${Number(String(m[1]).replace(/\./g, ''))}/${m[2]}`); }
   return out;
 };
 
@@ -55,7 +56,9 @@ try {
     FROM question_current_law_answers`;
   const flips = [];
   for (const r of corrections) {
-    const refs = extractRefs(r.source_version, r.legal_basis, r.article_reference);
+    // Só a base efetiva (source_version/article_reference), nunca legal_basis
+    // (que cita a lei antiga só para explicar — geraria falso-positivo).
+    const refs = extractRefs(r.source_version, r.article_reference);
     const hit = [...refs].find((k) => superseded.has(k));
     if (!hit) continue;
     const raw = (r.raw_json && typeof r.raw_json === 'object') ? r.raw_json : {};
