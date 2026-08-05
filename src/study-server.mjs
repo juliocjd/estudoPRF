@@ -608,6 +608,24 @@ async function routeRequest(request, response) {
     return;
   }
 
+  // Revalida correções cuja resolução-base foi superada. supersededKeys: lista
+  // "989/2022,960/2022" (o curador informa ao saber de mudança). useMap!=false
+  // também usa as substituições já registradas no mapa CONTRAN. dryRun p/ prévia.
+  if (url.pathname === '/api/current-law/revalidate' && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const keys = Array.isArray(body?.supersededKeys)
+      ? body.supersededKeys
+      : String(body?.supersededKeys || '').split(',').map((s) => s.trim()).filter(Boolean);
+    sendJson(response, 200, revalidateCurrentLawCorrections({
+      supersededKeys: keys,
+      // useMap é agressivo (pega resolução antiga citada só para explicá-la);
+      // só liga quando pedido explicitamente. Padrão: só as chaves informadas.
+      useMap: Boolean(body?.useMap),
+      dryRun: Boolean(body?.dryRun)
+    }));
+    return;
+  }
+
   if (url.pathname === '/api/exam-simulations/start' && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, startExamSimulation(body));
@@ -1603,9 +1621,10 @@ function applyCurrentLawPrecedenceToAppliedCard(card, question, currentLawAnswer
     };
   }
   const extra = c?.exists ? (c.teacherExplanation || c.studyConclusion || '') : '';
+  const reaudit = c?.revalidationNote ? c.revalidationNote + ' ' : '';
   const warn = (c?.exists && c.noValidAlternative)
-    ? `Questão desatualizada: pela legislação vigente nenhuma alternativa fica correta.${extra ? ' ' + extra : ''}`
-    : `Questão desatualizada — a regra pode ter mudado. Não estude o gabarito histórico como se fosse a regra atual; registre a regra vigente em "Resposta pela legislação atual".${extra ? ' ' + extra : ''}`;
+    ? `${reaudit}Questão desatualizada: pela legislação vigente nenhuma alternativa fica correta.${extra ? ' ' + extra : ''}`
+    : `${reaudit}Questão desatualizada — a regra pode ter mudado. Não estude o gabarito histórico como se fosse a regra atual; registre a regra vigente em "Resposta pela legislação atual".${extra ? ' ' + extra : ''}`;
   return {
     ...card,
     cardStatus: 'needs_current_law_audit',
@@ -1631,6 +1650,7 @@ function applyDesatualizadaToLegalStudy(legalStudy, question, currentLawAnswer) 
   } else {
     msg = 'Atenção: questão marcada como desatualizada. A regra pode ter mudado — não estude a teoria abaixo como se fosse a regra vigente. Registre a regra atual em "Resposta pela legislação atual".';
   }
+  if (c?.revalidationNote) msg = `${c.revalidationNote} ${msg}`;
   return { ...legalStudy, desatualizada: true, desatualizadaWarning: msg };
 }
 
@@ -2057,6 +2077,16 @@ async function runContranCurrencyCheck({ force = false } = {}) {
       checkedAt: new Date().toISOString(),
       error: String(error?.message || error)
     };
+  }
+  // Gancho automático: se a checagem oficial apontou resoluções "atuais" que
+  // sumiram da lista (= foram superadas), revalida as correções que se baseavam
+  // nelas (voltam para needs_audit). Só quando a leitura foi confiável.
+  if (result.ok && Array.isArray(result.flagged) && result.flagged.length) {
+    try {
+      const rev = revalidateCurrentLawCorrections({ supersededKeys: result.flagged.map((f) => f.resolution) });
+      result.reauditedCount = rev.count;
+      result.reaudited = rev.flipped;
+    } catch (e) { result.reauditError = String(e?.message || e); }
   }
   try { setSetting(CONTRAN_CHECK_SETTING_KEY, JSON.stringify(result)); } catch {}
   return result;
@@ -8217,6 +8247,7 @@ function getCurrentLawAnswer(questionId) {
       teaching_comment_md,
       source_url,
       source_version,
+      raw_json,
       imported_at,
       updated_at
     FROM question_current_law_answers
@@ -8238,10 +8269,14 @@ function getCurrentLawAnswer(questionId) {
   const canAutoScore = dbBoolean(row.can_auto_score_current_law);
   const noValidAlternative = dbBoolean(row.no_valid_alternative) || status === 'no_valid_alternative';
   const shouldDiscard = dbBoolean(row.should_discard_from_current_law_study) || status === 'discard';
+  const rawObj = typeof row.raw_json === 'string' ? safeJsonParse(row.raw_json, {}) : (row.raw_json || {});
+  const revalidation = rawObj?.revalidation || null;
 
   return {
     exists: true,
     questionId: row.question_id,
+    revalidation,
+    revalidationNote: buildRevalidationNote(revalidation),
     historicalAnswer: row.historical_answer || '',
     currentAnswer: row.current_answer || '',
     status,
@@ -8268,6 +8303,90 @@ function getCurrentLawAnswer(questionId) {
     importedAt: row.imported_at || '',
     updatedAt: row.updated_at || ''
   };
+}
+
+// ===== Revalidação automática das correções pela legislação atual =====
+// Quando uma resolução em que uma correção se baseou é SUPERADA (detectado pela
+// checagem de vigência do CONTRAN, pelo mapa, ou informado pelo curador), a
+// correção volta para "needs_audit" — evita que o aluno estude uma regra que
+// mudou de novo. É o gancho "à prova de futuro" que substitui a curadoria do TEC.
+function parseResolutionRef(text) {
+  const m = String(text || '').match(/(\d{1,4})\s*\/\s*((?:19|20)\d{2})/);
+  return m ? `${Number(m[1])}/${m[2]}` : '';
+}
+
+function extractResolutionRefs(...texts) {
+  const out = new Set();
+  const re = /(\d{1,4})\s*\/\s*((?:19|20)\d{2})/g;
+  for (const t of texts) {
+    const s = String(t || '');
+    let m;
+    while ((m = re.exec(s))) out.add(`${Number(m[1])}/${m[2]}`);
+  }
+  return out;
+}
+
+function buildRevalidationNote(rev) {
+  if (!rev || !rev.supersededFrom) return '';
+  const to = rev.supersededTo ? ` pela Res. ${rev.supersededTo}` : '';
+  return `Reauditar: a base desta correção (Res. ${rev.supersededFrom}) foi superada${to}. Confirme a regra vigente antes de estudar.`;
+}
+
+// Resoluções que o mapa marca como já substituídas (source != target) — inclui aliases.
+function getMapSupersededSourceKeys() {
+  const keys = new Set();
+  if (!hasContranPrf2021MapTable()) return keys;
+  let rows;
+  try {
+    rows = db.prepare(`
+      SELECT source_number, source_year, source_aliases
+      FROM contran_prf_2021_current_map
+      WHERE COALESCE(target_number::text, '') <> ''
+        AND (target_number::text <> source_number::text OR target_year::text <> source_year::text)
+    `).all();
+  } catch { return keys; }
+  for (const r of rows) {
+    const k = parseResolutionRef(`${r.source_number}/${r.source_year}`);
+    if (k) keys.add(k);
+    let aliases = r.source_aliases;
+    if (typeof aliases === 'string') aliases = safeJsonParse(aliases, []);
+    if (Array.isArray(aliases)) for (const a of aliases) { const ak = parseResolutionRef(a); if (ak) keys.add(ak); }
+  }
+  return keys;
+}
+
+function revalidateCurrentLawCorrections({ supersededKeys = [], useMap = false, dryRun = false } = {}) {
+  if (!hasCurrentLawAnswerTable()) return { available: false, flipped: [], count: 0 };
+  const superseded = new Set();
+  for (const k of supersededKeys) { const kk = parseResolutionRef(k); if (kk) superseded.add(kk); }
+  if (useMap) for (const k of getMapSupersededSourceKeys()) superseded.add(k);
+  if (!superseded.size) return { available: true, flipped: [], count: 0, supersededKeys: [] };
+
+  const rows = db.prepare(`
+    SELECT question_id, source_version, legal_basis, article_reference, current_law_status, raw_json
+    FROM question_current_law_answers
+  `).all();
+  const isPg = activeDbClient === 'postgres';
+  const flipped = [];
+  for (const r of rows) {
+    const refs = extractResolutionRefs(r.source_version, r.legal_basis, r.article_reference);
+    const hit = [...refs].find((k) => superseded.has(k));
+    if (!hit) continue;
+    const rawObj = typeof r.raw_json === 'string' ? safeJsonParse(r.raw_json, {}) : (r.raw_json || {});
+    if (rawObj?.revalidation?.supersededFrom === hit) continue; // idempotente
+    flipped.push({ questionId: r.question_id, supersededFrom: hit, previousStatus: r.current_law_status });
+    if (dryRun) continue;
+    const nextRaw = JSON.stringify({
+      ...(rawObj || {}),
+      revalidation: { supersededFrom: hit, supersededTo: '', at: new Date().toISOString(), previousStatus: r.current_law_status }
+    });
+    if (isPg) {
+      db.prepare(`UPDATE question_current_law_answers SET current_law_status = 'needs_audit', can_auto_score_current_law = FALSE, raw_json = ?::jsonb, updated_at = CURRENT_TIMESTAMP WHERE question_id = ?`).run(nextRaw, r.question_id);
+    } else {
+      db.prepare(`UPDATE question_current_law_answers SET current_law_status = 'needs_audit', can_auto_score_current_law = 0, raw_json = ?, updated_at = CURRENT_TIMESTAMP WHERE question_id = ?`).run(nextRaw, r.question_id);
+    }
+  }
+  return { available: true, flipped, count: flipped.length, supersededKeys: [...superseded] };
 }
 
 function resolveCurrentLawCorrection(question, currentLawAnswer, alternatives = []) {
