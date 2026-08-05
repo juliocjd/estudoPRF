@@ -9,7 +9,10 @@ import { DatabaseSync } from 'node:sqlite';
 import postgres from 'postgres';
 
 const apply = process.argv.includes('--apply');
-const NB = [99926580, 99926560];
+const nbArg = process.argv.indexOf('--notebooks');
+const NB = nbArg >= 0 && process.argv[nbArg + 1]
+  ? process.argv[nbArg + 1].split(',').map((x) => Number(x.trim()))
+  : [99926580, 99926560];
 const TS_COLS = new Set(['collected_at', 'updated_at', 'ai_answer_generated_at', 'checked_at', 'ai_generated_at', 'user_edited_at']);
 
 const Q_COLS = ['id_question','url','statement_html','statement_text','statement_hash','content_hash','type_question','format_question','banca','banca_url','orgao_sigla','orgao_nome','orgao_url','cargo','concurso_id','concurso_ano','concurso_url','materia_id','materia','assunto_id','assunto','assunto_url','capitulo','anulada','desatualizada','possui_comentario','possui_comentario_video','possui_comentario_ia','possui_resolucao_banca','raw_json','collected_at','updated_at','official_answer','official_answer_source','ai_answer','ai_answer_model','ai_answer_generated_at'];
