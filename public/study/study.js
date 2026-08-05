@@ -11782,6 +11782,7 @@ function escapeAttr(value) {
         }
         <p class="ccm-note">Verificação automática contra a lista oficial do SENATRAN. As ${data.supersededCount} substituições já mapeadas (norma antiga → atual):</p>
         <ul class="ccm-list">${supersededHtml}</ul>
+        <p class="ccm-note"><a href="/study/contran-map.html">✎ Editar o mapa de vigência completo →</a></p>
       </details>`;
     panel.hidden = false;
   }

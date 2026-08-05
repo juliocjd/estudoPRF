@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Editor do mapa CONTRAN</title>
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; padding: 24px;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: #f7f8fa; color: #1f2937;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0f1115; color: #e5e7eb; }
+        .card { background: #1a1d24 !important; border-color: #2b2f3a !important; }
+        input, select, textarea { background: #12141a !important; color: #e5e7eb !important; border-color: #2b2f3a !important; }
+        .src { color: #9ca3af !important; }
+      }
+      header { max-width: 1100px; margin: 0 auto 18px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      .sub { color: #6b7280; font-size: 14px; margin: 0; }
+      .bar { max-width: 1100px; margin: 0 auto 14px; display: flex; gap: 10px; align-items: center; }
+      .bar input { flex: 1; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; }
+      .list { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+      .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; }
+      .src { font-size: 13px; color: #6b7280; margin-bottom: 10px; }
+      .src strong { color: inherit; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+      label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #6b7280; }
+      label.f input, label.f select, label.f textarea { padding: 7px 9px; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; font-size: 14px; color: #1f2937; background: #fff; }
+      .checkline { flex-direction: row; align-items: center; gap: 8px; font-size: 13px; }
+      .full { grid-column: 1 / -1; }
+      .row-actions { margin-top: 10px; display: flex; gap: 10px; align-items: center; }
+      button.save { padding: 8px 16px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+      button.save:disabled { opacity: .5; cursor: default; }
+      .status { font-size: 13px; color: #6b7280; }
+      .status.ok { color: #16a34a; }
+      .status.err { color: #dc2626; }
+      .badge { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+      .badge.sub { background: #fef2f2; color: #b91c1c; }
+      .badge.vig { background: #ecfdf5; color: #047857; }
+      .empty { max-width: 1100px; margin: 40px auto; text-align: center; color: #6b7280; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Editor do mapa de vigência CONTRAN</h1>
+      <p class="sub">Cada linha diz qual resolução vigente estudar no lugar de uma resolução do edital. Ao <strong>trocar o alvo</strong>, o sistema revalida automaticamente as correções pela lei atual que se baseavam no alvo anterior. <a href="/study/index.html">← voltar ao estudo</a></p>
+    </header>
+    <div class="bar">
+      <input id="search" type="search" placeholder="Filtrar por número, ano ou título..." />
+      <span class="status" id="count"></span>
+    </div>
+    <div class="list" id="list"></div>
+    <div class="empty" id="empty" hidden></div>
+
+    <script>
+      const RELATIONS = [
+        ["substituida_ou_consolidada", "substituída/consolidada"],
+        ["permanece_vigente", "permanece vigente"],
+      ];
+      let ROWS = [];
+      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+      async function load() {
+        const r = await fetch("/api/contran-map");
+        const data = await r.json();
+        if (!data.available) {
+          document.getElementById("empty").hidden = false;
+          document.getElementById("empty").textContent = data.reason || "Mapa indisponível.";
+          return;
+        }
+        ROWS = data.rows || [];
+        document.getElementById("count").textContent = ROWS.length + " resoluções no mapa";
+        render();
+      }
+
+      function render() {
+        const q = document.getElementById("search").value.trim().toLowerCase();
+        const filtered = ROWS.filter((row) => !q || [row.source_number, row.source_year, row.source_title_hint, row.target_number, row.target_title].join(" ").toLowerCase().includes(q));
+        document.getElementById("list").innerHTML = filtered.map(cardHtml).join("");
+      }
+
+      function cardHtml(row) {
+        const relOpts = RELATIONS.map(([v, l]) => `<option value="${v}" ${row.relation === v ? "selected" : ""}>${l}</option>`).join("");
+        const badge = row.relation === "substituida_ou_consolidada"
+          ? '<span class="badge sub">substituída</span>'
+          : '<span class="badge vig">vigente</span>';
+        return `
+        <div class="card" data-id="${row.id}">
+          <div class="src">Origem (edital): <strong>Res. ${esc(row.source_number)}/${esc(row.source_year)}</strong> — ${esc(row.source_title_hint || "")} ${badge}</div>
+          <div class="grid">
+            <label class="f">Alvo — número<input data-k="targetNumber" value="${esc(row.target_number)}"></label>
+            <label class="f">Alvo — ano<input data-k="targetYear" value="${esc(row.target_year)}"></label>
+            <label class="f">Relação<select data-k="relation">${relOpts}</select></label>
+            <label class="f">Complementada por<input data-k="complementedBy" value="${esc(row.complemented_by)}" placeholder="ex.: 989/2022"></label>
+            <label class="f full">Título do alvo<input data-k="targetTitle" value="${esc(row.target_title)}"></label>
+            <label class="f full">URL oficial<input data-k="targetUrl" value="${esc(row.target_official_url)}"></label>
+            <label class="f full">Notas<textarea data-k="notes" rows="2">${esc(row.notes)}</textarea></label>
+            <label class="f checkline"><input type="checkbox" data-k="showInCurrentStudyFilter" ${row.show_in_current_study_filter ? "checked" : ""}> Mostrar no filtro de estudo atual</label>
+          </div>
+          <div class="row-actions">
+            <button class="save" data-id="${row.id}">Salvar</button>
+            <span class="status" data-status></span>
+          </div>
+        </div>`;
+      }
+
+      document.getElementById("search").addEventListener("input", render);
+
+      document.getElementById("list").addEventListener("click", async (e) => {
+        const btn = e.target.closest("button.save");
+        if (!btn) return;
+        const card = btn.closest(".card");
+        const id = btn.dataset.id;
+        const statusEl = card.querySelector("[data-status]");
+        const payload = {};
+        card.querySelectorAll("[data-k]").forEach((el) => {
+          payload[el.dataset.k] = el.type === "checkbox" ? el.checked : el.value;
+        });
+        btn.disabled = true;
+        statusEl.className = "status";
+        statusEl.textContent = "Salvando...";
+        try {
+          const r = await fetch(`/api/contran-map/${id}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await r.json();
+          if (data.error) throw new Error(data.error);
+          if (data.rows) ROWS = data.rows;
+          statusEl.className = "status ok";
+          statusEl.textContent = data.targetChanged
+            ? `Salvo. Alvo alterado → ${data.reaudited} correção(ões) marcada(s) para reauditar.`
+            : "Salvo.";
+        } catch (err) {
+          statusEl.className = "status err";
+          statusEl.textContent = "Erro: " + (err?.message || err);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      load();
+    </script>
+  </body>
+</html>

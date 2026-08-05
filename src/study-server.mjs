@@ -108,6 +108,11 @@ if (!skipStartupSchemaMaintenance) {
   initQuestionAppliedTheorySchema(db, activeDbClient);
   initLawCompendiumSchemaShared(db, activeDbClient);
   initGranCursosLessonProgressSchema(db, activeDbClient);
+  // Coluna para o editor do mapa: "complementada por" (ex.: 960/2022 complementada
+  // pela 989/2022). O mapa só existe no Postgres (importado por script à parte).
+  if (activeDbClient === 'postgres') {
+    try { db.exec('ALTER TABLE IF EXISTS contran_prf_2021_current_map ADD COLUMN IF NOT EXISTS complemented_by TEXT'); } catch {}
+  }
 }
 
 export async function handleStudyRequest(request, response) {
@@ -281,6 +286,18 @@ async function routeRequest(request, response) {
   if (url.pathname === '/api/contran-prf-2021/resolve-batch' && request.method === 'POST') {
     const body = await readJsonBody(request);
     sendJson(response, 200, getContranPrf2021ResolutionBatch(body));
+    return;
+  }
+
+  if (url.pathname === '/api/contran-map' && request.method === 'GET') {
+    sendJson(response, 200, getContranMapAdminRows());
+    return;
+  }
+  const contranMapUpdateMatch = url.pathname.match(/^\/api\/contran-map\/(\d+)$/);
+  if (contranMapUpdateMatch && request.method === 'POST') {
+    const body = await readJsonBody(request);
+    const result = updateContranMapRow(Number(contranMapUpdateMatch[1]), body);
+    sendJson(response, result?.error ? 400 : 200, result);
     return;
   }
 
@@ -1987,6 +2004,73 @@ function getContranPrf2021Map() {
     total: rows.length,
     rows: rows.map((row) => normalizeContranPrf2021Row(row, aliasMap, questionCounts))
   };
+}
+
+// Linhas do mapa para o EDITOR (inclui id + campos editáveis). Só Postgres.
+function getContranMapAdminRows() {
+  if (!hasContranPrf2021MapTable()) {
+    return { available: false, reason: 'Mapa CONTRAN indisponível (só no ambiente de produção/Postgres).', rows: [] };
+  }
+  const rows = db.prepare(`
+    SELECT id,
+      source_organ,
+      source_number::text AS source_number,
+      source_year::text AS source_year,
+      source_title_hint,
+      target_number::text AS target_number,
+      target_year::text AS target_year,
+      target_title,
+      target_official_url,
+      relation,
+      COALESCE(complemented_by, '') AS complemented_by,
+      show_in_current_study_filter,
+      COALESCE(notes, '') AS notes
+    FROM contran_prf_2021_current_map
+    ORDER BY source_year::int, regexp_replace(source_number, '\\.', '', 'g')::int
+  `).all();
+  return { available: true, total: rows.length, rows };
+}
+
+function updateContranMapRow(id, body) {
+  if (!hasContranPrf2021MapTable()) return { error: 'Mapa CONTRAN indisponível neste ambiente.' };
+  const row = db.prepare(`
+    SELECT id,
+      target_number::text AS target_number, target_year::text AS target_year,
+      target_title, target_official_url, relation,
+      COALESCE(complemented_by, '') AS complemented_by,
+      COALESCE(notes, '') AS notes, show_in_current_study_filter
+    FROM contran_prf_2021_current_map WHERE id = ?
+  `).get(id);
+  if (!row) return { error: 'Linha do mapa não encontrada.' };
+
+  // Fallback ao valor atual quando o campo não vem no payload (update parcial seguro).
+  const targetNumber = String(body?.targetNumber ?? row.target_number ?? '').trim();
+  const targetYear = String(body?.targetYear ?? row.target_year ?? '').trim();
+  const targetTitle = String(body?.targetTitle ?? row.target_title ?? '').slice(0, 500);
+  const targetUrl = String(body?.targetUrl ?? row.target_official_url ?? '').slice(0, 1000);
+  const relation = validChoice(body?.relation ?? row.relation, ['permanece_vigente', 'substituida_ou_consolidada'], 'substituida_ou_consolidada');
+  const complementedBy = String(body?.complementedBy ?? row.complemented_by ?? '').slice(0, 200);
+  const notes = String(body?.notes ?? row.notes ?? '').slice(0, 4000);
+  const showRaw = body?.showInCurrentStudyFilter ?? row.show_in_current_study_filter;
+  const showInStudy = activeDbClient === 'postgres' ? Boolean(showRaw) : (showRaw ? 1 : 0);
+  const targetChanged = targetNumber !== String(row.target_number || '') || targetYear !== String(row.target_year || '');
+
+  db.prepare(`
+    UPDATE contran_prf_2021_current_map
+    SET target_number = ?, target_year = ?, target_title = ?, target_official_url = ?,
+        relation = ?, complemented_by = ?, notes = ?, show_in_current_study_filter = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(targetNumber, targetYear, targetTitle, targetUrl, relation, complementedBy, notes, showInStudy, id);
+
+  // Gatilho: se o ALVO mudou, a resolução antiga (o target anterior) foi superada
+  // -> revalida as correções pela lei atual que se baseavam nela.
+  let reaudited = 0;
+  if (targetChanged && row.target_number) {
+    const oldKey = `${Number(String(row.target_number).replace(/\./g, ''))}/${row.target_year}`;
+    try { reaudited = revalidateCurrentLawCorrections({ supersededKeys: [oldKey] }).count; } catch {}
+  }
+  return { ok: true, targetChanged, reaudited, ...getContranMapAdminRows() };
 }
 
 const CONTRAN_MAP_STALE_DAYS = 120;
