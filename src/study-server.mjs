@@ -7566,6 +7566,12 @@ const STUDY_PLAN_MASTERY_THRESHOLD = 0.6;
 // empurra o cartão semanas à frente). Assim o dia é sempre completável.
 const STUDY_PLAN_DEFAULT_REVIEW_CAP = 50;
 
+// Teto de revisão AUTOMÁTICO: escala com o ritmo (~3x novas/dia) para não
+// estrangular a revisão numa meta grande, com piso 60 e teto 300 de segurança.
+function computeAutoReviewCap(newPerDay) {
+  return Math.max(60, Math.min(300, Math.ceil((Number(newPerDay) || 0) * 3)));
+}
+
 function resolveStudyPlanSettings() {
   const targetTotal = Math.max(200, Number(getSetting('study_plan_target_total', '')) || STUDY_PLAN_DEFAULT_TARGET);
   const daysPerWeek = Math.min(7, Math.max(1, Number(getSetting('study_plan_days_per_week', '')) || STUDY_PLAN_DEFAULT_DAYS_PER_WEEK));
@@ -7664,10 +7670,8 @@ function getStudyPlan(searchParams) {
   const studyDaysLeft = Math.max(1, Math.floor(daysLeft * (daysPerWeek / 7)));
   const newPerDay = Math.min(STUDY_PLAN_MAX_NEW_PER_DAY, Math.max(0, Math.ceil(remaining / studyDaysLeft)));
 
-  // Teto de revisão AUTOMÁTICO: escala com o ritmo de novas/dia (~3x) para não
-  // estrangular a revisão numa meta grande, com piso e teto de segurança. Assim
-  // o usuário não precisa acertar esse número na mão. Override manual opcional.
-  const autoReviewCap = Math.max(60, Math.min(300, Math.ceil(newPerDay * 3)));
+  // Teto de revisão automático (override manual opcional).
+  const autoReviewCap = computeAutoReviewCap(newPerDay);
   const reviewCap = reviewCapManual ?? autoReviewCap;
   const reviewCapMode = reviewCapManual == null ? 'auto' : 'manual';
 
@@ -7756,7 +7760,7 @@ function getStudyPlan(searchParams) {
 // cada resposta, então evita as consultas pesadas do plano completo.
 function getStudyPlanProgress(searchParams) {
   const profileId = resolveProfileId(searchParams?.get?.('profile'));
-  const { targetTotal, daysPerWeek, reviewCap, targetDate } = resolveStudyPlanSettings();
+  const { targetTotal, daysPerWeek, reviewCapManual, targetDate } = resolveStudyPlanSettings();
 
   const coverage = getExamCoverageRows(profileId);
   const seenBySubject = new Map(db.prepare(`
@@ -7780,6 +7784,7 @@ function getStudyPlanProgress(searchParams) {
   const daysLeft = Math.max(0, Math.ceil((new Date(`${targetDate}T12:00:00`).getTime() - Date.now()) / 86400000));
   const studyDaysLeft = Math.max(1, Math.floor(daysLeft * (daysPerWeek / 7)));
   const newQuota = Math.min(STUDY_PLAN_MAX_NEW_PER_DAY, Math.max(0, Math.ceil(remaining / studyDaysLeft)));
+  const reviewCap = reviewCapManual ?? computeAutoReviewCap(newQuota);
 
   const spStart = saoPauloToday().startSql; // meia-noite de Brasília (em UTC)
   // NOVA = a 1ª resposta da questão foi hoje. REVISÃO = respondida hoje E já
