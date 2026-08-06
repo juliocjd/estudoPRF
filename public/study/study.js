@@ -282,6 +282,7 @@ const els = {
   skipQuestion: document.querySelector("#skipQuestion"),
   similarQuestions: document.querySelector("#similarQuestions"),
   postponeReview: document.querySelector("#postponeReview"),
+  postponeReviewMain: document.querySelector("#postponeReviewMain"),
   toggleComment: document.querySelector("#toggleComment"),
   showSimilar: document.querySelector("#showSimilar"),
   supportOverlay: document.querySelector("#supportOverlay"),
@@ -1444,29 +1445,10 @@ function bindEvents() {
   );
 
   // "Adiar revisão": estende o prazo da próxima revisão desta questão.
-  els.postponeReview?.addEventListener("click", async () => {
-    const id = state.selectedId;
-    if (!id) return;
-    els.postponeReview.disabled = true;
-    try {
-      const res = await api(`/api/questions/${id}/postpone-review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      if (res?.ok) {
-        const br = String(res.nextDueAt || "").slice(0, 10).split("-").reverse().join("/");
-        els.postponeReview.textContent = "✓";
-        els.postponeReview.title = `Revisão adiada para ${br} (${res.intervalDays} dias)`;
-        if (els.answerHint) els.answerHint.textContent = `Revisão adiada para ${br}`;
-      } else {
-        els.postponeReview.disabled = false;
-        if (els.answerHint) els.answerHint.textContent = res?.reason || "Não foi possível adiar a revisão.";
-      }
-    } catch {
-      els.postponeReview.disabled = false;
-    }
-  });
+  // Adiar revisão — botão existe em dois lugares (ícone no cabeçalho do apoio e
+  // texto na área principal, visível no desktop). Ambos chamam o mesmo helper.
+  els.postponeReview?.addEventListener("click", () => doPostponeReview(els.postponeReview, "✓"));
+  els.postponeReviewMain?.addEventListener("click", () => doPostponeReview(els.postponeReviewMain, "✓ adiada"));
   els.questionEditToggle?.addEventListener("click", () => {
     if (!state.currentQuestion) return;
     state.questionEditMode = !state.questionEditMode;
@@ -2374,6 +2356,32 @@ function buildQuestionParams() {
   if (state.filters.contranDifficulty)
     params.set("difficulty", state.filters.contranDifficulty);
   return params;
+}
+
+async function doPostponeReview(button, successLabel = "✓") {
+  const id = state.selectedId;
+  if (!id || !button) return;
+  button.disabled = true;
+  try {
+    const res = await api(`/api/questions/${id}/postpone-review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (res?.ok) {
+      const br = String(res.nextDueAt || "").slice(0, 10).split("-").reverse().join("/");
+      button.textContent = successLabel;
+      button.title = `Revisão adiada para ${br} (${res.intervalDays} dias)`;
+      if (els.answerHint) els.answerHint.textContent = `Revisão adiada para ${br}`;
+      // Mesma ação nos dois botões: trava ambos após adiar.
+      [els.postponeReview, els.postponeReviewMain].forEach((b) => { if (b) b.disabled = true; });
+    } else {
+      button.disabled = false;
+      if (els.answerHint) els.answerHint.textContent = res?.reason || "Não foi possível adiar a revisão.";
+    }
+  } catch {
+    button.disabled = false;
+  }
 }
 
 function renderEmptyQuestion(message = "") {
@@ -6236,6 +6244,12 @@ function updateAnswerActions() {
     els.postponeReview.textContent = "⏳";
     els.postponeReview.title = "Adiar revisão (para quando errou por bobeira ou a questão é fácil demais)";
   }
+  if (els.postponeReviewMain) {
+    els.postponeReviewMain.hidden = true;
+    els.postponeReviewMain.disabled = false;
+    els.postponeReviewMain.textContent = "⏳ Adiar revisão";
+    els.postponeReviewMain.title = "Adiar revisão (para quando errou por bobeira ou a questão é fácil demais)";
+  }
 
   // "Pular" aparece quando o avanço está travado (answer-first, ainda sem
   // resposta) — evita ter que rolar até a seta > do topo. Depois de responder,
@@ -6256,6 +6270,7 @@ function updateAnswerActions() {
       els.secondaryExplain.dataset.action = "explain";
       els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
       if (els.postponeReview) els.postponeReview.hidden = false;
+      if (els.postponeReviewMain) els.postponeReviewMain.hidden = false;
       return;
     }
 
@@ -6272,6 +6287,7 @@ function updateAnswerActions() {
       els.secondaryExplain.dataset.action = "explain";
       els.secondaryExplain.disabled = !hasExplanation || !canRevealSupport;
       if (els.postponeReview) els.postponeReview.hidden = false;
+      if (els.postponeReviewMain) els.postponeReviewMain.hidden = false;
       return;
     }
 
