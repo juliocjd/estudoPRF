@@ -180,6 +180,7 @@ const els = {
   searchInput: document.querySelector("#searchInput"),
   matterSelect: document.querySelector("#matterSelect"),
   subjectSelect: document.querySelector("#subjectSelect"),
+  subjectOptions: document.querySelector("#subjectOptions"),
   examInput: document.querySelector("#examInput"),
   examOptions: document.querySelector("#examOptions"),
   excludedMatterList: document.querySelector("#excludedMatterList"),
@@ -532,7 +533,10 @@ function bindEvents() {
 
   els.subjectSelect.addEventListener("change", async () => {
     activateManualQuestionListMode();
-    state.filters.assunto = els.subjectSelect.value;
+    const val = (els.subjectSelect.value || "").trim();
+    // Só aplica um assunto que exista no escopo atual (matéria(s) selecionada(s));
+    // texto parcial/sem correspondência = sem filtro de assunto.
+    state.filters.assunto = val && state.subjectNamesInScope?.has(val) ? val : "";
     state.page = 1;
     updateAdvancedFiltersSummary();
     await loadCurrentModeTarget();
@@ -599,6 +603,8 @@ function bindEvents() {
       state.filters.materia = "";
       if (els.matterSelect) els.matterSelect.value = "";
     }
+    // Restringe a lista de assuntos às matérias marcadas.
+    renderSubjectOptions();
     updateMultiMateriaCount();
     state.page = 1;
     updateAdvancedFiltersSummary();
@@ -2054,22 +2060,43 @@ function renderStudyPlanLabel() {
   els.studyPlanLabel.title = label;
 }
 
-function renderSubjectOptions() {
-  const filtered = state.filters.materia
-    ? state.subjects.filter(
-        (subject) => subject.materia === state.filters.materia,
-      )
-    : state.subjects;
+// Assuntos no escopo das matérias escolhidas: várias matérias (checkboxes) têm
+// precedência; senão, a matéria única; senão, todas.
+function subjectsInScope() {
+  const included = state.filters.includedMaterias || [];
+  if (included.length) {
+    const set = new Set(included);
+    return state.subjects.filter((s) => set.has(s.materia));
+  }
+  if (state.filters.materia) {
+    return state.subjects.filter((s) => s.materia === state.filters.materia);
+  }
+  return state.subjects;
+}
 
-  els.subjectSelect.innerHTML =
-    '<option value="">Todos</option>' +
-    filtered
+function renderSubjectOptions() {
+  // Agrega por nome — o mesmo assunto pode existir em mais de uma matéria selecionada.
+  const byName = new Map();
+  for (const s of subjectsInScope()) {
+    byName.set(s.name, (byName.get(s.name) || 0) + (Number(s.count) || 0));
+  }
+  const names = [...byName.keys()].sort((a, b) => a.localeCompare(b, "pt"));
+  state.subjectNamesInScope = new Set(names);
+
+  if (els.subjectOptions) {
+    els.subjectOptions.innerHTML = names
       .map(
-        (subject) =>
-          `<option value="${escapeAttr(subject.name)}">${escapeHtml(subject.name)} (${subject.count})</option>`,
+        (name) =>
+          `<option value="${escapeAttr(name)}">(${byName.get(name)})</option>`,
       )
       .join("");
-  els.subjectSelect.value = state.filters.assunto;
+  }
+
+  // Se o assunto atual saiu do escopo (troca de matéria), limpa o filtro.
+  if (state.filters.assunto && !state.subjectNamesInScope.has(state.filters.assunto)) {
+    state.filters.assunto = "";
+  }
+  if (els.subjectSelect) els.subjectSelect.value = state.filters.assunto;
 }
 
 async function loadExamOptions(query = "") {

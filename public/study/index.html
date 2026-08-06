@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260804-audit-fixes" />
+    <link rel="stylesheet" href="/study.css?v=20260806-assunto-scoped" />
   </head>
   <body>
     <div class="app-shell">
@@ -131,9 +131,14 @@
         </details>
         <label class="field">
           <span>Assunto</span>
-          <select id="subjectSelect">
-            <option value="">Todos</option>
-          </select>
+          <input
+            id="subjectSelect"
+            type="search"
+            list="subjectOptions"
+            placeholder="Todos — digite para buscar"
+            autocomplete="off"
+          />
+          <datalist id="subjectOptions"></datalist>
         </label>
         <label class="field">
           <span>Prova</span>
@@ -1170,6 +1175,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260804-audit-fixes" type="module"></script>
+    <script src="/study.js?v=20260806-assunto-scoped" type="module"></script>
   </body>
 </html>
