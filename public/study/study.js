@@ -2561,6 +2561,17 @@ async function loadAdaptiveTarget(plan = "prf_otimizado") {
   const target = await api(`/api/adaptive-study/next?${params}`);
   if (!isCurrentQuestionRequest(requestToken)) return false;
   if (!target?.questionId) {
+    // Modos só-revisão / só-erros NÃO podem cair na lista geral: isso traria
+    // questões NOVAS, quebrando o contrato do "Só revisões vencidas". Quando não
+    // há o que revisar no escopo, mostra estado vazio claro.
+    if (plan === "revisar_hoje" || plan === "revisar_erros") {
+      renderEmptyQuestion(
+        plan === "revisar_hoje"
+          ? "🎉 Nenhuma revisão vencida agora nas matérias selecionadas. Volte mais tarde ou troque de modo (ex.: “Estudar agora”)."
+          : "Nenhum erro recente para revisar nas matérias selecionadas.",
+      );
+      return false;
+    }
     els.answerStatus.textContent = target.error || "Nada encontrado";
     return loadQuestions({ requestToken });
   }
