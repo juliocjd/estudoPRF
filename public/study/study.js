@@ -11590,10 +11590,13 @@ function escapeAttr(value) {
           </label>
           <label>Alvo total <input type="number" name="targetTotal" value="${data.targetTotal}" min="200" max="8000" step="100"></label>
           <label>Dias/semana <input type="number" name="daysPerWeek" value="${data.daysPerWeek}" min="1" max="7"></label>
-          <label>Revisões/dia <input type="number" name="reviewCap" value="${data.reviewCap}" min="10" max="400" step="5"></label>
+          <label>Teto de revisões/dia
+            <input type="number" name="reviewCap" value="${data.reviewCapMode === 'manual' ? data.reviewCap : ''}" min="10" max="400" step="5" placeholder="Auto (${data.autoReviewCap})">
+            <small class="plan-hint">${data.reviewCapMode === 'auto' ? `Automático: ${data.reviewCap}/dia (escala com o ritmo).` : `Manual: ${data.reviewCap}/dia. Apague para voltar ao automático (${data.autoReviewCap}).`}</small>
+          </label>
           <button class="button button-secondary" type="submit">Salvar</button>
         </form>
-        <p class="plan-note">O alvo é ponderado pelo peso da prova e limitado pela quantidade de questões — “banco -N” marca onde o banco não cobre o peso da matéria. A cota de novas se recalcula sozinha (pular um dia só reajusta o ritmo). O teto de revisões/dia deixa a meta completável mesmo com backlog: revisão certa empurra o cartão semanas à frente, então a pilha de atrasadas drena em poucos dias.</p>
+        <p class="plan-note">O alvo é ponderado pelo peso da prova e limitado pela quantidade de questões — “banco -N” marca onde o banco não cobre o peso da matéria. A cota de novas se recalcula sozinha (pular um dia só reajusta o ritmo). <strong>A revisão é agendada automaticamente</strong> (repetição espaçada): o “teto/dia” é só um limite de conforto para o dia não estourar quando há backlog — em branco, escala sozinho com o ritmo. Revisão certa empurra o cartão semanas à frente, então a pilha de atrasadas drena em poucos dias.</p>
       </div>`);
 
     const form = el.querySelector("#planSettingsForm");
@@ -11611,7 +11614,8 @@ function escapeAttr(value) {
               targetDate: String(fd.get("targetDate") || ""),
               targetTotal: Number(fd.get("targetTotal")) || undefined,
               daysPerWeek: Number(fd.get("daysPerWeek")) || undefined,
-              reviewCap: Number(fd.get("reviewCap")) || undefined
+              // String crua: "" = automático; número = teto manual.
+              reviewCap: String(fd.get("reviewCap") ?? "")
             })
           });
           if (updated?.error) throw new Error(updated.error);

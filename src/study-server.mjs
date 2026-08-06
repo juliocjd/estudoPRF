@@ -7569,7 +7569,12 @@ const STUDY_PLAN_DEFAULT_REVIEW_CAP = 50;
 function resolveStudyPlanSettings() {
   const targetTotal = Math.max(200, Number(getSetting('study_plan_target_total', '')) || STUDY_PLAN_DEFAULT_TARGET);
   const daysPerWeek = Math.min(7, Math.max(1, Number(getSetting('study_plan_days_per_week', '')) || STUDY_PLAN_DEFAULT_DAYS_PER_WEEK));
-  const reviewCap = Math.max(10, Math.min(400, Number(getSetting('study_plan_review_cap', '')) || STUDY_PLAN_DEFAULT_REVIEW_CAP));
+  // Teto de revisão: vazio = AUTOMÁTICO (dimensionado pelo ritmo em computeStudyPlan).
+  // Um número = override manual do usuário.
+  const rawReviewCap = String(getSetting('study_plan_review_cap', '') || '').trim();
+  const reviewCapManual = rawReviewCap && Number.isFinite(Number(rawReviewCap))
+    ? Math.max(10, Math.min(400, Number(rawReviewCap)))
+    : null;
   let targetDate = String(getSetting('study_plan_target_date', '') || '').trim();
   let dateSource = 'plan';
   if (!targetDate) {
@@ -7580,7 +7585,7 @@ function resolveStudyPlanSettings() {
     targetDate = new Date(Date.now() + STUDY_PLAN_DEFAULT_HORIZON_DAYS * 86400000).toISOString().slice(0, 10);
     dateSource = 'default';
   }
-  return { targetTotal, daysPerWeek, reviewCap, targetDate, dateSource };
+  return { targetTotal, daysPerWeek, reviewCapManual, targetDate, dateSource };
 }
 
 // Distribui o alvo total pelo peso de cada matéria, com teto na disponibilidade.
@@ -7595,7 +7600,7 @@ function allocateCoverageTargets(subjects, targetTotal) {
 
 function getStudyPlan(searchParams) {
   const profileId = resolveProfileId(searchParams?.get?.('profile'));
-  const { targetTotal, daysPerWeek, reviewCap, targetDate, dateSource } = resolveStudyPlanSettings();
+  const { targetTotal, daysPerWeek, reviewCapManual, targetDate, dateSource } = resolveStudyPlanSettings();
 
   // Peso + disponibilidade por matéria (getExamCoverageRows é cacheado).
   const coverage = getExamCoverageRows(profileId);
@@ -7659,6 +7664,13 @@ function getStudyPlan(searchParams) {
   const studyDaysLeft = Math.max(1, Math.floor(daysLeft * (daysPerWeek / 7)));
   const newPerDay = Math.min(STUDY_PLAN_MAX_NEW_PER_DAY, Math.max(0, Math.ceil(remaining / studyDaysLeft)));
 
+  // Teto de revisão AUTOMÁTICO: escala com o ritmo de novas/dia (~3x) para não
+  // estrangular a revisão numa meta grande, com piso e teto de segurança. Assim
+  // o usuário não precisa acertar esse número na mão. Override manual opcional.
+  const autoReviewCap = Math.max(60, Math.min(300, Math.ceil(newPerDay * 3)));
+  const reviewCap = reviewCapManual ?? autoReviewCap;
+  const reviewCapMode = reviewCapManual == null ? 'auto' : 'manual';
+
   // Burn-down: distintas cobertas por dia (1ª vez que a questão foi respondida).
   // 1ª resposta de cada questão; o dia é agrupado no fuso de Brasília (em JS),
   // para o burndown e o "hoje" não usarem meia-noite UTC.
@@ -7709,6 +7721,8 @@ function getStudyPlan(searchParams) {
     daysLeft,
     daysPerWeek,
     reviewCap,
+    reviewCapMode,
+    autoReviewCap,
     studyDaysLeft,
     targetTotal,
     achievableTarget,
@@ -7813,9 +7827,15 @@ function setStudyPlan(body) {
     const dpw = Math.min(7, Math.max(1, Number(body.daysPerWeek) || STUDY_PLAN_DEFAULT_DAYS_PER_WEEK));
     setSetting('study_plan_days_per_week', String(dpw));
   }
-  if (body?.reviewCap != null) {
-    const cap = Math.max(10, Math.min(400, Number(body.reviewCap) || STUDY_PLAN_DEFAULT_REVIEW_CAP));
-    setSetting('study_plan_review_cap', String(cap));
+  if (body?.reviewCap !== undefined) {
+    // Vazio/'auto' = teto automático (limpa o setting). Número = override manual.
+    const raw = String(body.reviewCap ?? '').trim();
+    if (raw === '' || raw.toLowerCase() === 'auto') {
+      setSetting('study_plan_review_cap', '');
+    } else {
+      const cap = Math.max(10, Math.min(400, Number(raw) || STUDY_PLAN_DEFAULT_REVIEW_CAP));
+      setSetting('study_plan_review_cap', String(cap));
+    }
   }
   return getStudyPlan(new URLSearchParams());
 }
