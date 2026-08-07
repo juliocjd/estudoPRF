@@ -1297,19 +1297,27 @@ function parseSqlDate(value) {
 function getFilters() {
   const matters = db.prepare(`
     SELECT materia AS name, COUNT(*) AS count
-    FROM questions
-    WHERE COALESCE(materia, '') != ''
-    GROUP BY materia
-    ORDER BY materia
+    FROM questions q
+    WHERE COALESCE(q.materia, '') != ''
+      AND NOT EXISTS (
+        SELECT 1 FROM question_study_status s
+        WHERE s.question_id = q.id_question AND s.status = 'excluded'
+      )
+    GROUP BY q.materia
+    ORDER BY q.materia
   `).all();
 
   const unpublishedResolutionCounts = getContranPrfUnpublishedResolutionCountMap();
   const subjects = db.prepare(`
-    SELECT materia, assunto AS name, COUNT(*) AS count
-    FROM questions
-    WHERE COALESCE(assunto, '') != ''
-    GROUP BY materia, assunto
-    ORDER BY materia, assunto
+    SELECT q.materia, q.assunto AS name, COUNT(*) AS count
+    FROM questions q
+    WHERE COALESCE(q.assunto, '') != ''
+      AND NOT EXISTS (
+        SELECT 1 FROM question_study_status s
+        WHERE s.question_id = q.id_question AND s.status = 'excluded'
+      )
+    GROUP BY q.materia, q.assunto
+    ORDER BY q.materia, q.assunto
   `).all().map((subject) => {
     const resolutionKey = getOfficialContranSubjectResolutionKey(subject);
     if (!resolutionKey) return subject;
@@ -4315,6 +4323,9 @@ function buildQuestionWhere(searchParams, extra = {}) {
   const onlyChangedAnswer = searchParams.get('onlyChangedAnswer') === '1' || extra.onlyChangedAnswer;
   const hideStudyExcluded = !extra.skipStudyFilters
     && (searchParams.get('hideStudyExcluded') === '1' || extra.hideStudyExcluded);
+  // "Só resoluções CONTRAN": restringe às questões cujo assunto cita CONTRAN
+  // (resoluções nomeadas + "Demais Resoluções CONTRAN"), deixando o CTB de fora.
+  const contranOnly = searchParams.get('contranOnly') === '1' || extra.contranOnly;
 
   if (q) {
     where.push('(LOWER(q.statement_text) LIKE ? OR LOWER(q.materia) LIKE ? OR LOWER(q.assunto) LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
@@ -4337,6 +4348,10 @@ function buildQuestionWhere(searchParams, extra = {}) {
   if (assunto && !combinedResolutionKey) {
     where.push('q.assunto = ?');
     values.push(assunto);
+  }
+  if (contranOnly) {
+    where.push('LOWER(q.assunto) LIKE ?');
+    values.push('%contran%');
   }
   applyExamFilter(where, values, examKey);
   if (commented) {
