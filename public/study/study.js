@@ -6069,7 +6069,7 @@ function quickTheorySection(title, text) {
   return `
     <section class="quick-theory-section">
       <span>${escapeHtml(title)}</span>
-      <p>${escapeHtml(text)}</p>
+      <p>${escapeHtml(cleanMathNotation(text))}</p>
     </section>
   `;
 }
@@ -10242,7 +10242,42 @@ function markdownLiteToHtml(markdown) {
 }
 
 function inlineMarkdown(value) {
-  return escapeHtml(value).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  return escapeHtml(cleanMathNotation(value)).replace(
+    /\*\*(.+?)\*\*/g,
+    "<strong>$1</strong>",
+  );
+}
+
+// O NotebookLM às vezes devolve notação LaTeX (ex.: \(\rightarrow\), \times,
+// \leq). O front não renderiza LaTeX, então aparecia cru. Aqui convertemos os
+// comandos comuns para Unicode e removemos os delimitadores de fórmula.
+const MATH_TOKEN_MAP = {
+  rightarrow: "→", longrightarrow: "→", to: "→", implies: "⇒", Rightarrow: "⇒",
+  leftarrow: "←", longleftarrow: "←", gets: "←", Leftarrow: "⇐",
+  leftrightarrow: "↔", Leftrightarrow: "⇔", uparrow: "↑", downarrow: "↓",
+  times: "×", div: "÷", cdot: "·", ast: "*", star: "★", bullet: "•",
+  leq: "≤", le: "≤", geq: "≥", ge: "≥", neq: "≠", ne: "≠",
+  approx: "≈", equiv: "≡", cong: "≅", sim: "~", propto: "∝",
+  pm: "±", mp: "∓", infty: "∞", degree: "°", circ: "°",
+  ldots: "…", dots: "…", cdots: "…", vdots: "⋮",
+  alpha: "α", beta: "β", gamma: "γ", delta: "δ", mu: "µ", pi: "π",
+  Delta: "Δ", Sigma: "Σ", Omega: "Ω", lambda: "λ", theta: "θ",
+  percent: "%", left: "", right: "", displaystyle: "", quad: " ", qquad: "  ",
+};
+function cleanMathNotation(value) {
+  let s = String(value ?? "");
+  if (!s.includes("\\")) return s; // atalho: sem LaTeX (preserva "R$ 100" etc.)
+  s = s.replace(/\\[()[\]]/g, ""); // delimitadores \( \) \[ \]
+  // $$...$$ e $...$ só quando há comando LaTeX dentro (protege cifrão de moeda)
+  s = s.replace(/\$\$([\s\S]*?\\[\s\S]*?)\$\$/g, "$1");
+  s = s.replace(/\$([^$\n]*\\[^$\n]*)\$/g, "$1");
+  s = s.replace(/\\(?:text|mathrm|mathbf|mathit|operatorname)\s*\{([^{}]*)\}/g, "$1");
+  s = s.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "$1/$2");
+  s = s.replace(/\\([a-zA-Z]+)/g, (m, cmd) =>
+    Object.prototype.hasOwnProperty.call(MATH_TOKEN_MAP, cmd) ? MATH_TOKEN_MAP[cmd] : m,
+  );
+  s = s.replace(/\\([%_&#{}$])/g, "$1"); // pontuação escapada \% \_ \& ...
+  return s.replace(/[ \t]{2,}/g, " ");
 }
 
 async function api(url, options) {
