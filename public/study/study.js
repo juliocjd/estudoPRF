@@ -45,6 +45,7 @@ const state = {
     examKey: "",
     excludedMaterias: [],
     includedMaterias: [],
+    contranOnly: false,
     commented: false,
     unanswered: false,
     lastWrong: false,
@@ -188,6 +189,7 @@ const els = {
   multiMateriaCount: document.querySelector("#multiMateriaCount"),
   studyDueInFilter: document.querySelector("#studyDueInFilter"),
   studyUnansweredInFilter: document.querySelector("#studyUnansweredInFilter"),
+  studyContranInFilter: document.querySelector("#studyContranInFilter"),
   profileSelect: document.querySelector("#profileSelect"),
   commentedOnly: document.querySelector("#commentedOnly"),
   unansweredOnly: document.querySelector("#unansweredOnly"),
@@ -411,6 +413,18 @@ function restoreIncludedMateriasFilter() {
       state.filters.includedMaterias = arr.filter((x) => typeof x === "string" && x);
     }
   } catch { /* localStorage indisponível */ }
+  try {
+    state.filters.contranOnly = localStorage.getItem("prf.contranOnly") === "1";
+  } catch { /* localStorage indisponível */ }
+  renderContranToggle();
+}
+
+// Reflete o estado do filtro "Só resoluções CONTRAN" no botão (destaque + aria).
+function renderContranToggle() {
+  if (!els.studyContranInFilter) return;
+  const on = Boolean(state.filters.contranOnly);
+  els.studyContranInFilter.setAttribute("aria-pressed", on ? "true" : "false");
+  els.studyContranInFilter.classList.toggle("is-active", on);
 }
 
 async function boot() {
@@ -637,6 +651,30 @@ function bindEvents() {
     if (field) field.open = false;
     setStudyMode("coverage");
     return loadAdaptiveTarget("prf_otimizado");
+  }));
+
+  // "Só resoluções CONTRAN": toggle. Como CONTRAN só existe em "Legislação de
+  // Trânsito", ligar limpa a matéria selecionada (evita resultado vazio).
+  els.studyContranInFilter?.addEventListener("click", () => runNav(() => {
+    state.filters.contranOnly = !state.filters.contranOnly;
+    if (state.filters.contranOnly) {
+      state.filters.materia = "";
+      if (els.matterSelect) els.matterSelect.value = "";
+      if (state.filters.includedMaterias?.length) {
+        state.filters.includedMaterias = [];
+        try { localStorage.setItem("prf.includedMaterias", "[]"); } catch {}
+        renderIncludedMatterOptions();
+        updateMultiMateriaCount();
+      }
+      renderSubjectOptions();
+    }
+    try { localStorage.setItem("prf.contranOnly", state.filters.contranOnly ? "1" : "0"); } catch {}
+    renderContranToggle();
+    state.page = 1;
+    updateAdvancedFiltersSummary();
+    const field = document.getElementById("multiMateriaField");
+    if (field) field.open = false;
+    return loadCurrentModeTarget();
   }));
 
   els.profileSelect.addEventListener("change", async () => {
@@ -1644,6 +1682,7 @@ function clearFilters() {
     examKey: "",
     excludedMaterias: [],
     includedMaterias: [],
+    contranOnly: false,
     commented: false,
     unanswered: false,
     lastWrong: false,
@@ -1664,6 +1703,8 @@ function clearFilters() {
   state.page = 1;
   els.searchInput.value = "";
   els.matterSelect.value = "";
+  try { localStorage.setItem("prf.contranOnly", "0"); } catch {}
+  renderContranToggle();
   renderSubjectOptions();
   els.subjectSelect.value = "";
   if (els.examInput) els.examInput.value = "";
@@ -2328,6 +2369,7 @@ function buildQuestionParams() {
   for (const materia of state.filters.excludedMaterias)
     params.append("excludeMateria", materia);
   if (state.filters.assunto) params.set("assunto", state.filters.assunto);
+  if (state.filters.contranOnly) params.set("contranOnly", "1");
   if (state.filters.examKey) params.set("examKey", state.filters.examKey);
   if (state.filters.commented) params.set("commented", "1");
   if (state.filters.unanswered) params.set("unanswered", "1");

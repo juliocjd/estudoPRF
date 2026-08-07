@@ -188,6 +188,15 @@ button.stat.stat-action:active { transform: translateY(1px); }
 .multi-materia-actions .button {
   width: 100%;
 }
+.multi-materia-actions .button.is-active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+.multi-materia-actions .button.is-active:hover:not(:disabled) {
+  background: #1e40af;
+  border-color: #1e40af;
+}
 
 .stat strong {
   display: block;
