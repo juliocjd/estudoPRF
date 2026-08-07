@@ -6613,7 +6613,18 @@ function renderQuestionBadges(question) {
 
 function renderQuestionSituationTone(question) {
   const isCanceled = Boolean(question?.metadata?.anulada);
-  const isOutdated = Boolean(question?.metadata?.desatualizada);
+  // Questão desatualizada que já foi corrigida pela lei atual E volta a pontuar
+  // (correção verificada + pontuação automática) não é mais "inservível":
+  // perde o amarelo de desatualizada (o banner azul segue explicando a correção).
+  // As sem alternativa válida hoje / sem curadoria continuam amarelas.
+  const currentLaw = question?.currentLawAnswer;
+  const rescuedByCurrentLaw = Boolean(
+    currentLaw?.exists &&
+      (currentLaw.status || currentLaw.currentLawStatus) === "verified" &&
+      (currentLaw.canAutoScore ?? currentLaw.canAutoScoreCurrentLaw),
+  );
+  const isOutdated =
+    Boolean(question?.metadata?.desatualizada) && !rescuedByCurrentLaw;
   els.studyLayout?.classList.toggle("is-canceled-question", isCanceled);
   els.studyLayout?.classList.toggle(
     "is-outdated-question",
