@@ -4326,6 +4326,10 @@ function buildQuestionWhere(searchParams, extra = {}) {
   // "Só resoluções CONTRAN": restringe às questões cujo assunto cita CONTRAN
   // (resoluções nomeadas + "Demais Resoluções CONTRAN"), deixando o CTB de fora.
   const contranOnly = searchParams.get('contranOnly') === '1' || extra.contranOnly;
+  // "Só desatualizadas s/ gabarito vigente": backlog de curadoria — questões
+  // desatualizadas que ainda NÃO têm correção verificada que pontue pela lei
+  // atual (mesmo conjunto que o estudo normal esconde). Serve p/ corrigir à mão.
+  const outdatedNoCurrent = searchParams.get('outdatedNoCurrent') === '1' || extra.outdatedNoCurrent;
 
   if (q) {
     where.push('(LOWER(q.statement_text) LIKE ? OR LOWER(q.materia) LIKE ? OR LOWER(q.assunto) LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
@@ -4352,6 +4356,25 @@ function buildQuestionWhere(searchParams, extra = {}) {
   if (contranOnly) {
     where.push('LOWER(q.assunto) LIKE ?');
     values.push('%contran%');
+  }
+  if (outdatedNoCurrent) {
+    if (!hasCurrentLawAnswerTable()) {
+      where.push('COALESCE(q.desatualizada, 0) = 1');
+    } else {
+      where.push(`(
+        COALESCE(q.desatualizada, 0) = 1
+        AND NOT EXISTS (
+          SELECT 1
+          FROM question_current_law_answers qcla_todo
+          WHERE qcla_todo.question_id = q.id_question
+            AND qcla_todo.current_law_status = 'verified'
+            AND qcla_todo.can_auto_score_current_law IS TRUE
+            AND COALESCE(qcla_todo.current_answer, '') != ''
+            AND qcla_todo.should_discard_from_current_law_study IS NOT TRUE
+            AND qcla_todo.hide_from_main_study_until_verified IS NOT TRUE
+        )
+      )`);
+    }
   }
   applyExamFilter(where, values, examKey);
   if (commented) {

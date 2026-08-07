@@ -53,6 +53,7 @@ const state = {
     hideStudyExcluded: true,
     hideDuplicates: false,
     representative: false,
+    outdatedNoCurrent: false,
     normative: "",
     contranUnpublished: false,
     contranCurrentResolution: "",
@@ -198,6 +199,7 @@ const els = {
   hideStudyExcluded: document.querySelector("#hideStudyExcluded"),
   hideDuplicates: document.querySelector("#hideDuplicates"),
   representativeOnly: document.querySelector("#representativeOnly"),
+  outdatedNoCurrentOnly: document.querySelector("#outdatedNoCurrentOnly"),
   normativeFilter: document.querySelector("#normativeFilter"),
   contranUnpublishedOnly: document.querySelector("#contranUnpublishedOnly"),
   contranCurrentResolutionSelect: document.querySelector(
@@ -746,6 +748,22 @@ function bindEvents() {
 
   els.representativeOnly.addEventListener("change", () => {
     state.filters.representative = els.representativeOnly.checked;
+    state.page = 1;
+    updateAdvancedFiltersSummary();
+    loadQuestions();
+  });
+
+  // "Só desatualizadas s/ gabarito vigente": backlog de curadoria manual.
+  // Como "Ocultar desatualizadas" e "Ocultar fora do estudo" escondem justamente
+  // esse conjunto, ligar o filtro desmarca os dois (senão viria vazio).
+  els.outdatedNoCurrentOnly?.addEventListener("change", () => {
+    state.filters.outdatedNoCurrent = els.outdatedNoCurrentOnly.checked;
+    if (state.filters.outdatedNoCurrent) {
+      state.filters.hideOutdated = false;
+      if (els.hideOutdated) els.hideOutdated.checked = false;
+      state.filters.hideStudyExcluded = false;
+      if (els.hideStudyExcluded) els.hideStudyExcluded.checked = false;
+    }
     state.page = 1;
     updateAdvancedFiltersSummary();
     loadQuestions();
@@ -1690,6 +1708,7 @@ function clearFilters() {
     hideStudyExcluded: state.studyMode !== "all",
     hideDuplicates: false,
     representative: false,
+    outdatedNoCurrent: false,
     normative: "",
     contranUnpublished: false,
     contranCurrentResolution: "",
@@ -1716,6 +1735,7 @@ function clearFilters() {
   els.hideStudyExcluded.checked = state.filters.hideStudyExcluded;
   els.hideDuplicates.checked = false;
   els.representativeOnly.checked = false;
+  if (els.outdatedNoCurrentOnly) els.outdatedNoCurrentOnly.checked = false;
   els.normativeFilter.value = "";
   if (els.contranUnpublishedOnly) els.contranUnpublishedOnly.checked = false;
   if (els.contranCurrentResolutionSelect)
@@ -1744,6 +1764,7 @@ function updateAdvancedFiltersSummary() {
     state.filters.hideStudyExcluded,
     state.filters.hideDuplicates,
     state.filters.representative,
+    state.filters.outdatedNoCurrent,
     state.filters.normative,
     state.filters.contranUnpublished,
     state.filters.contranCurrentResolution,
@@ -2378,6 +2399,7 @@ function buildQuestionParams() {
   if (state.filters.hideStudyExcluded) params.set("hideStudyExcluded", "1");
   if (state.filters.hideDuplicates) params.set("hideDuplicates", "1");
   if (state.filters.representative) params.set("representative", "1");
+  if (state.filters.outdatedNoCurrent) params.set("outdatedNoCurrent", "1");
   if (state.filters.normative) params.set("normative", state.filters.normative);
   if (state.filters.contranUnpublished)
     params.set("unpublished", "contran-prf");
