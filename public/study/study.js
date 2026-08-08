@@ -429,6 +429,16 @@ function renderContranToggle() {
   els.studyContranInFilter.classList.toggle("is-active", on);
 }
 
+// Desliga o "Só resoluções CONTRAN" (toggle persistente). Chamado quando o
+// usuário escopa por matéria específica — combinar os dois zera o resultado
+// (CONTRAN só existe em trânsito), o que confundia ("nenhuma revisão vencida").
+function clearContranOnly() {
+  if (!state.filters.contranOnly) return;
+  state.filters.contranOnly = false;
+  try { localStorage.setItem("prf.contranOnly", "0"); } catch {}
+  renderContranToggle();
+}
+
 async function boot() {
   bindEvents();
   restoreIncludedMateriasFilter();
@@ -541,6 +551,7 @@ function bindEvents() {
       state.filters.includedMaterias = [];
       renderIncludedMatterOptions();
     }
+    if (els.matterSelect.value) clearContranOnly(); // escopo por matéria desliga o "Só CONTRAN"
     state.page = 1;
     renderSubjectOptions();
     updateAdvancedFiltersSummary();
@@ -619,6 +630,7 @@ function bindEvents() {
     if (state.filters.includedMaterias.length) {
       state.filters.materia = "";
       if (els.matterSelect) els.matterSelect.value = "";
+      clearContranOnly(); // escopo por matéria desliga o "Só CONTRAN" grudado
     }
     // Restringe a lista de assuntos às matérias marcadas.
     renderSubjectOptions();
@@ -641,6 +653,7 @@ function bindEvents() {
   els.studyDueInFilter?.addEventListener("click", () => runNav(() => {
     const field = document.getElementById("multiMateriaField");
     if (field) field.open = false;
+    clearContranOnly(); // opera nas matérias marcadas; não pode ficar preso ao CONTRAN
     setStudyMode("review");
     return loadAdaptiveTarget("revisar_hoje");
   }));
@@ -651,6 +664,7 @@ function bindEvents() {
   els.studyUnansweredInFilter?.addEventListener("click", () => runNav(() => {
     const field = document.getElementById("multiMateriaField");
     if (field) field.open = false;
+    clearContranOnly(); // idem: escopo por matéria, não pode ficar preso ao CONTRAN
     setStudyMode("coverage");
     return loadAdaptiveTarget("prf_otimizado");
   }));
@@ -2637,10 +2651,13 @@ async function loadAdaptiveTarget(plan = "prf_otimizado") {
     // questões NOVAS, quebrando o contrato do "Só revisões vencidas". Quando não
     // há o que revisar no escopo, mostra estado vazio claro.
     if (plan === "revisar_hoje" || plan === "revisar_erros") {
+      const contranHint = state.filters.contranOnly
+        ? " Obs.: o filtro “Só resoluções CONTRAN” está ativo — desligue-o para ver estas matérias."
+        : "";
       renderEmptyQuestion(
-        plan === "revisar_hoje"
+        (plan === "revisar_hoje"
           ? "🎉 Nenhuma revisão vencida agora nas matérias selecionadas. Volte mais tarde ou troque de modo (ex.: “Estudar agora”)."
-          : "Nenhum erro recente para revisar nas matérias selecionadas.",
+          : "Nenhum erro recente para revisar nas matérias selecionadas.") + contranHint,
       );
       return false;
     }
