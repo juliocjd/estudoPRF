@@ -4264,10 +4264,15 @@ function renderHistoricalCommentPanel(question) {
         ${
           question.metadata?.desatualizada
             ? `
-          <label class="historical-comment-option">
+          <label class="historical-comment-option${hasVerifiedCurrentLaw(question) ? " is-danger" : ""}">
             <input type="checkbox" data-historical-comment-clear-outdated>
             <span>Esta questão não está mais desatualizada</span>
           </label>
+          ${
+            hasVerifiedCurrentLaw(question)
+              ? `<p class="normative-warning is-warning">⚠ Esta questão já está corrigida pela legislação atual. Marcar isto vai <strong>reverter para o gabarito histórico</strong> (a correção só vale enquanto a questão está desatualizada). Só marque se o gabarito original voltar a valer.</p>`
+              : ""
+          }
         `
             : ""
         }
@@ -5487,6 +5492,11 @@ function renderAlternativeEditPanel(question) {
     <p class="alt-edit-hint">Edite o texto para refletir a legislação vigente. O original fica guardado — dá para restaurar.</p>
     ${rows}
     <label class="alt-edit-checkline"><input type="checkbox" data-alt-mark-updated> Marcar a questão como não-desatualizada ao salvar</label>
+    ${
+      hasVerifiedCurrentLaw(question)
+        ? `<p class="normative-warning is-warning">⚠ Esta questão já está corrigida pela legislação atual. Marcar isto vai <strong>reverter para o gabarito histórico</strong> — a correção só vale enquanto a questão está desatualizada.</p>`
+        : ""
+    }
     <div class="alt-edit-actions">
       <button type="button" class="button button-primary button-small" data-alt-action="save">Salvar alternativas</button>
       <button type="button" class="button button-secondary button-small" data-alt-action="cancel">Cancelar</button>
@@ -6644,20 +6654,26 @@ function renderQuestionBadges(question) {
   els.questionBadges.hidden = badges.length === 0;
 }
 
+// Questão tem correção pela lei atual verificada e que pontua? (o gate que faz
+// o gabarito novo valer — só enquanto desatualizada=1). Usado no tom da questão
+// e no aviso do checkbox "não está mais desatualizada".
+function hasVerifiedCurrentLaw(question) {
+  const c = question?.currentLawAnswer;
+  return Boolean(
+    c?.exists &&
+      (c.status || c.currentLawStatus) === "verified" &&
+      (c.canAutoScore ?? c.canAutoScoreCurrentLaw),
+  );
+}
+
 function renderQuestionSituationTone(question) {
   const isCanceled = Boolean(question?.metadata?.anulada);
   // Questão desatualizada que já foi corrigida pela lei atual E volta a pontuar
   // (correção verificada + pontuação automática) não é mais "inservível":
   // perde o amarelo de desatualizada (o banner azul segue explicando a correção).
   // As sem alternativa válida hoje / sem curadoria continuam amarelas.
-  const currentLaw = question?.currentLawAnswer;
-  const rescuedByCurrentLaw = Boolean(
-    currentLaw?.exists &&
-      (currentLaw.status || currentLaw.currentLawStatus) === "verified" &&
-      (currentLaw.canAutoScore ?? currentLaw.canAutoScoreCurrentLaw),
-  );
   const isOutdated =
-    Boolean(question?.metadata?.desatualizada) && !rescuedByCurrentLaw;
+    Boolean(question?.metadata?.desatualizada) && !hasVerifiedCurrentLaw(question);
   els.studyLayout?.classList.toggle("is-canceled-question", isCanceled);
   els.studyLayout?.classList.toggle(
     "is-outdated-question",
