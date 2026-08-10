@@ -5957,20 +5957,9 @@ function renderAppliedTheoryPanel(question) {
     return;
   }
 
-  const answerTitle = card.noValidAlternative
-    ? "Sem alternativa compativel pela legislacao vigente"
-    : card.currentAnswer
-      ? `Gabarito atual: ${currentAnswerLabel(card.currentAnswer)}`
-      : card.historicalAnswer
-        ? `Gabarito historico: ${currentAnswerLabel(card.historicalAnswer)}`
-        : "";
-
   els.supportAppliedTheoryBody.innerHTML = `
     <div class="quick-theory-card applied-theory-card">
       <strong class="quick-theory-title">${escapeHtml(card.title || "Teoria aplicada a questao")}</strong>
-      ${card.showWarning ? `<p class="quick-theory-warning">${escapeHtml(card.showWarning)}</p>` : ""}
-      ${quickTheorySection("O que a questao cobra", card.questionFocus)}
-      ${answerTitle ? quickTheorySection("Gabarito pela regra de estudo", answerTitle) : ""}
       ${quickTheorySection("Dispositivo que resolve", card.primaryLegalLocator || card.legalBasis)}
       ${quickTheoryNormExcerpt(card.primaryExactExcerpt || card.articleExcerpt)}
       ${quickTheorySection("Aplicacao ao enunciado", card.appliedExplanation)}
@@ -7369,7 +7358,6 @@ function inlineSupportTabs() {
     ["teaching", "Resposta atual", els.supportTabTeaching],
     ["appliedTheory", "Teoria aplicada", els.supportTabAppliedTheory],
     ["quickTheory", "Teoria rápida", els.supportTabQuickTheory],
-    ["normative", "Atualização normativa", els.supportTabNormative],
     ["comment", commentLabel, null],
     ["theory", "PDF", null],
     ["history", "Histórico", null],

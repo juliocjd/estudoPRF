@@ -3654,7 +3654,7 @@ body.is-report-page {
 
 .quick-theory-card {
   display: grid;
-  gap: 14px;
+  gap: 8px;
 }
 
 .quick-theory-warning {
@@ -3689,31 +3689,36 @@ body.is-report-page {
 
 .quick-theory-details > div {
   display: grid;
-  gap: 14px;
+  gap: 8px;
   border-top: 1px solid var(--border);
-  padding: 12px;
+  padding: 10px;
   background: var(--surface);
 }
 
 .quick-theory-title {
-  font-size: 18px;
-  line-height: 1.25;
+  font-size: 15px;
+  line-height: 1.2;
+  margin: 0;
 }
 
 .quick-theory-section {
   display: grid;
-  gap: 6px;
+  gap: 3px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 7px 10px;
   background: var(--surface-muted);
 }
 
 .quick-theory-section span {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.quick-theory-section p {
+  line-height: 1.35;
 }
 
 .quick-theory-section p,
