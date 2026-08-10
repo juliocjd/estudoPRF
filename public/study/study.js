@@ -4011,6 +4011,10 @@ function renderQuestionEditPanel(question) {
           ${questionCoreAnswerOptions(question, currentAnswer)}
         </select>
       </label>
+      <label class="checkline">
+        <input type="checkbox" name="anulada" ${question?.metadata?.anulada ? "checked" : ""} />
+        <span>Questão anulada (não pontua ±1 nem entra no estudo)</span>
+      </label>
       <div class="question-edit-actions">
         <button class="button button-secondary" type="button" data-action="question-edit-cancel">Cancelar</button>
         <button class="button button-primary" type="submit">Salvar</button>
@@ -4077,6 +4081,7 @@ async function saveQuestionCoreEdit(form) {
       body: JSON.stringify({
         statementText: formData.get("statementText"),
         officialAnswer: formData.get("officialAnswer"),
+        anulada: formData.get("anulada") === "on",
       }),
     });
     if (result.error) throw new Error(result.error);

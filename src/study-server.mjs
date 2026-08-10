@@ -9322,6 +9322,12 @@ async function saveQuestionCoreEdit(questionId, body) {
     questionSets.push('content_hash = ?');
     questionParams.push('');
   }
+  // Curadoria manual da flag "anulada" (marcar/desmarcar). Só altera quando o
+  // corpo traz o campo explicitamente booleano, para não mexer em outras edições.
+  if (typeof body?.anulada === 'boolean' && tableColumnExists('questions', 'anulada')) {
+    questionSets.push('anulada = ?');
+    questionParams.push(body.anulada ? 1 : 0);
+  }
   if (tableColumnExists('questions', 'updated_at')) {
     questionSets.push('updated_at = CURRENT_TIMESTAMP');
   }
