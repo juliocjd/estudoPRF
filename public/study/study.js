@@ -253,6 +253,7 @@ const els = {
   questionMeta: document.querySelector("#questionMeta"),
   questionQuickStatus: document.querySelector("#questionQuickStatus"),
   questionEditToggle: document.querySelector("#questionEditToggle"),
+  copyQuestion: document.querySelector("#copyQuestion"),
   questionEditStatus: document.querySelector("#questionEditStatus"),
   questionEditPanel: document.querySelector("#questionEditPanel"),
   questionBadges: document.querySelector("#questionBadges"),
@@ -1525,6 +1526,7 @@ function bindEvents() {
     state.questionEditStatus = "";
     renderQuestionEditPanel(state.currentQuestion);
   });
+  els.copyQuestion?.addEventListener("click", () => copyQuestionText());
   els.questionEditPanel?.addEventListener("click", (event) => {
     const action = event.target.closest("[data-action]")?.dataset.action;
     if (action !== "question-edit-cancel") return;
@@ -3975,6 +3977,55 @@ function renderQuestion(question, options = {}) {
     options.scrollToStatement !== false
   ) {
     scrollToStatementStart();
+  }
+}
+
+// Monta o texto para copiar: enunciado + alternativas (A) ..., B) ...).
+function buildQuestionCopyText(question) {
+  const parts = [];
+  const stmt = String(question?.statementText || "").trim();
+  if (stmt) parts.push(stmt);
+  const alts = question?.alternatives || [];
+  if (alts.length) {
+    parts.push("");
+    for (const a of alts) {
+      const letter = a.displayLetter || a.letter || "";
+      const text = String(a.text || "").trim();
+      parts.push(letter ? `${letter}) ${text}` : text);
+    }
+  }
+  return parts.join("\n").trim();
+}
+
+async function copyQuestionText() {
+  const text = buildQuestionCopyText(state.currentQuestion);
+  if (!text) return;
+  let ok = false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }
+  } catch { ok = false; }
+  if (!ok) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch { ok = false; }
+  }
+  if (els.copyQuestion) {
+    const prev = els.copyQuestion.dataset.label || els.copyQuestion.textContent;
+    els.copyQuestion.dataset.label = prev;
+    els.copyQuestion.textContent = ok ? "✓" : "✕";
+    setTimeout(() => {
+      els.copyQuestion.textContent = els.copyQuestion.dataset.label || "📋";
+    }, 1200);
   }
 }
 
