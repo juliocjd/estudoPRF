@@ -5712,6 +5712,26 @@ function recentServedAssuntoCounts(window = ASSUNTO_RECENT_WINDOW) {
   return counts;
 }
 
+// Contagens de matéria E assunto das últimas servidas em UMA consulta só
+// (evita 2 idas ao banco por troca de questão).
+function recentServedMateriaAssunto() {
+  const window = Math.max(MATERIA_RECENT_WINDOW, ASSUNTO_RECENT_WINDOW);
+  const rows = db.prepare(`
+    SELECT COALESCE(q.materia, '') AS materia, COALESCE(q.assunto, '') AS assunto
+    FROM study_served_questions ss
+    JOIN questions q ON q.id_question = ss.question_id
+    ORDER BY ss.served_at DESC, ss.id DESC
+    LIMIT ?
+  `).all(window);
+  const materias = new Map();
+  const assuntos = new Map();
+  rows.forEach((row, i) => {
+    if (i < MATERIA_RECENT_WINDOW) materias.set(row.materia, (materias.get(row.materia) || 0) + 1);
+    if (i < ASSUNTO_RECENT_WINDOW) assuntos.set(row.assunto, (assuntos.get(row.assunto) || 0) + 1);
+  });
+  return { materias, assuntos };
+}
+
 // Fração de novas nos últimos serviços marcados. null = sem histórico marcado.
 function recentNewQuestionRatio(window = NEW_QUESTION_WINDOW) {
   const recent = db.prepare(`
@@ -5773,8 +5793,7 @@ function getAdaptiveTargetRow(searchParams, opts) {
   }
   const queue = getAdaptiveQueueRows(searchParams, opts);
   if (!queue.length) return null;
-  const recentMaterias = recentServedMateriaCounts();
-  const recentAssuntos = recentServedAssuntoCounts();
+  const { materias: recentMaterias, assuntos: recentAssuntos } = recentServedMateriaAssunto();
   // Planos de revisão/reparo: o pool já vem filtrado (só vencidas / só erros),
   // então serve o melhor sem aplicar a cota de novas — senão o "Revisar" tenta
   // intercalar questões novas.
@@ -11824,6 +11843,7 @@ function initAdaptiveStudySchema(database) {
       served_context_json TEXT
     );
 
+    CREATE INDEX IF NOT EXISTS idx_study_served_questions_served ON study_served_questions(served_at DESC, id DESC);
     CREATE INDEX IF NOT EXISTS idx_question_clusters_key ON question_clusters(cluster_key);
     CREATE INDEX IF NOT EXISTS idx_question_clusters_type ON question_clusters(cluster_type, status);
     CREATE INDEX IF NOT EXISTS idx_question_clusters_profile ON question_clusters(profile_id, subject_key);
