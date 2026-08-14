@@ -43,6 +43,7 @@ const state = {
     materia: "",
     assunto: "",
     examKey: "",
+    ano: "",
     excludedMaterias: [],
     includedMaterias: [],
     contranOnly: false,
@@ -185,6 +186,7 @@ const els = {
   subjectOptions: document.querySelector("#subjectOptions"),
   examInput: document.querySelector("#examInput"),
   examOptions: document.querySelector("#examOptions"),
+  yearSelect: document.querySelector("#yearSelect"),
   excludedMatterList: document.querySelector("#excludedMatterList"),
   includedMatterList: document.querySelector("#includedMatterList"),
   multiMateriaCount: document.querySelector("#multiMateriaCount"),
@@ -574,6 +576,15 @@ function bindEvents() {
 
   els.examInput?.addEventListener("focus", () => {
     if (!state.exams.length) loadExamOptions("").catch(() => {});
+  });
+
+  els.yearSelect?.addEventListener("change", () => {
+    activateManualQuestionListMode();
+    state.filters.ano = els.yearSelect.value;
+    state.page = 1;
+    updateAdvancedFiltersSummary();
+    loadCurrentModeTarget();
+    if (state.normativeVisible) loadNormativeReview();
   });
 
   els.examInput?.addEventListener("input", () => {
@@ -1687,6 +1698,7 @@ function activateContranUnpublishedMode() {
   renderSubjectOptions();
   if (els.subjectSelect) els.subjectSelect.value = "";
   if (els.examInput) els.examInput.value = "";
+  if (els.yearSelect) els.yearSelect.value = "";
   renderExcludedMatterOptions();
   if (els.normativeFilter) els.normativeFilter.value = "";
 }
@@ -1714,6 +1726,7 @@ function clearFilters() {
     materia: "",
     assunto: "",
     examKey: "",
+    ano: "",
     excludedMaterias: [],
     includedMaterias: [],
     contranOnly: false,
@@ -1743,6 +1756,7 @@ function clearFilters() {
   renderSubjectOptions();
   els.subjectSelect.value = "";
   if (els.examInput) els.examInput.value = "";
+  if (els.yearSelect) els.yearSelect.value = "";
   renderExcludedMatterOptions();
   els.commentedOnly.checked = false;
   els.unansweredOnly.checked = false;
@@ -1772,6 +1786,7 @@ function updateAdvancedFiltersSummary() {
     state.filters.materia,
     state.filters.assunto,
     state.filters.examKey,
+    state.filters.ano,
     state.filters.excludedMaterias.length,
     state.filters.commented,
     state.filters.unanswered,
@@ -1955,6 +1970,18 @@ async function loadFilters() {
       .join("");
   renderExcludedMatterOptions(filters.matters || []);
   renderIncludedMatterOptions(filters.matters || []);
+
+  if (els.yearSelect) {
+    const current = state.filters.ano || "";
+    els.yearSelect.innerHTML =
+      '<option value="">Todos</option>' +
+      (filters.years || [])
+        .map(
+          (y) =>
+            `<option value="${escapeAttr(y.ano)}"${String(y.ano) === current ? " selected" : ""}>${escapeHtml(y.ano)} (${y.count})</option>`,
+        )
+        .join("");
+  }
 
   renderSubjectOptions();
   renderContranUnpublishedFilterOptions(filters.contranUnpublished || {});
@@ -2408,6 +2435,7 @@ function buildQuestionParams() {
   if (state.filters.assunto) params.set("assunto", state.filters.assunto);
   if (state.filters.contranOnly) params.set("contranOnly", "1");
   if (state.filters.examKey) params.set("examKey", state.filters.examKey);
+  if (state.filters.ano) params.set("ano", state.filters.ano);
   if (state.filters.commented) params.set("commented", "1");
   if (state.filters.unanswered) params.set("unanswered", "1");
   if (state.filters.lastWrong) params.set("lastWrong", "1");

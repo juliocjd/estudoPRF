@@ -1327,9 +1327,18 @@ function getFilters() {
     };
   });
 
+  const years = db.prepare(`
+    SELECT concurso_ano AS ano, COUNT(*) AS count
+    FROM questions
+    WHERE concurso_ano IS NOT NULL AND concurso_ano > 0
+    GROUP BY concurso_ano
+    ORDER BY concurso_ano DESC
+  `).all();
+
   return {
     matters,
     subjects,
+    years,
     contranUnpublished: getContranPrfUnpublishedFilters()
   };
 }
@@ -4303,6 +4312,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
   const includedMaterias = getIncludedMaterias(searchParams, extra);
   const assunto = String(searchParams.get('assunto') || '').trim();
   const examKey = String(searchParams.get('examKey') || extra.examKey || '').trim();
+  const ano = String(searchParams.get('ano') || extra.ano || '').trim();
   const commented = searchParams.get('commented') === '1';
   const unanswered = searchParams.get('unanswered') === '1' || extra.unanswered;
   const lastWrong = searchParams.get('lastWrong') === '1' || extra.lastWrong;
@@ -4377,6 +4387,10 @@ function buildQuestionWhere(searchParams, extra = {}) {
     }
   }
   applyExamFilter(where, values, examKey);
+  if (ano && /^\d{4}$/.test(ano)) {
+    where.push('q.concurso_ano = ?');
+    values.push(Number(ano));
+  }
   if (commented) {
     where.push("COALESCE(c.html_local, c.html, c.text, '') != ''");
   }
