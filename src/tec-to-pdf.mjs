@@ -779,6 +779,7 @@ async function collectMissingQuestionComments(db, page, {
   }
 
   let processed = 0;
+  let consecErrors = 0;
   for (const row of rows) {
     if (limit > 0 && processed >= limit) {
       break;
@@ -800,8 +801,9 @@ async function collectMissingQuestionComments(db, page, {
         });
       }
       processed += 1;
+      consecErrors = 0;
 
-      if (processed % 25 === 0) {
+      if (processed % 10 === 0) {
         console.log(`  comentários coletados ${processed}; última #${row.id_question}`);
       }
       if (shouldPauseBatch(processed, batchSize, batchPauseMs, limit)) {
@@ -817,11 +819,30 @@ async function collectMissingQuestionComments(db, page, {
         break;
       }
 
+      const msg = String(error?.message || error);
+      // HTTP 5xx = comentário indisponível/quebrado no TEC p/ ESTA questão.
+      // Não trava a fila e não conta como "página morta": só pula e segue.
+      if (/HTTP 5\d\d/.test(msg)) {
+        console.error(`Comentário indisponível (5xx) em #${row.id_question} — pulando.`);
+        insertCollectionError(db, { questionId: row.id_question, stage: 'comment', error: error.message });
+        consecErrors = 0;
+        if (delayMs) await page.waitForTimeout(delayMs);
+        continue;
+      }
+      // Outros erros (provável navegador/página fechada): mostra e para após 3
+      // seguidos, para não "queimar" a fila em silêncio (fica retomável).
+      console.error(`Erro (não-bloqueio) em #${row.id_question}: ${error?.name || 'Error'}: ${msg.slice(0, 200)}`);
       insertCollectionError(db, {
         questionId: row.id_question,
         stage: 'comment',
         error: error.message
       });
+      consecErrors += 1;
+      if (consecErrors >= 3) {
+        console.error(`3 erros seguidos (provável navegador/página fechada) — pausando p/ reabrir e retomar. Última: #${row.id_question}.`);
+        process.exitCode = 2;
+        break;
+      }
     }
   }
 
@@ -1612,7 +1633,7 @@ async function fetchApiJson(page, apiPath) {
 }
 
 function isTemporaryTecBlockError(error) {
-  return /HUMAN_VERIFICATION|Human Verification|RATE_LIMIT|HTTP 429|Too Many Requests/i.test(String(error?.message || error));
+  return /HUMAN_VERIFICATION|Human Verification|RATE_LIMIT|HTTP 429|Too Many Requests|Failed to fetch|NetworkError|Load failed|net::ERR|ERR_NETWORK/i.test(String(error?.message || error));
 }
 
 async function runTecOperation(page, operation, { manualOnBlock, blockRetries = 0, blockPauseMs = 0, label }) {
