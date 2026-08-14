@@ -5640,20 +5640,28 @@ function getRoundRobinAdaptiveTarget(searchParams, opts, included) {
   // backlog de revisões trava o avanço no conteúdo novo dentro de cada matéria
   // — a mesma cota nova/revisão que o modo de matéria única aplica via
   // NEW_QUESTION_TARGET_RATIO, agora também no rodízio.
+  // Melhor por matéria, com uma variante "fresh" que evita o assunto recém-servido
+  // (prática intercalada — não esgota "transporte escolar" antes de trocar).
+  const recentAssuntos = recentServedAssuntoCounts();
+  const assuntoOk = (row) => (recentAssuntos.get(row.assunto || '') || 0) < ASSUNTO_RECENT_CAP;
   const bestNewByMateria = new Map();
   const bestReviewByMateria = new Map();
+  const freshNewByMateria = new Map();
+  const freshReviewByMateria = new Map();
   for (const row of pool) {
     if (row.neverAnswered) {
       if (!bestNewByMateria.has(row.materia)) bestNewByMateria.set(row.materia, row);
-    } else if (!bestReviewByMateria.has(row.materia)) {
-      bestReviewByMateria.set(row.materia, row);
+      if (assuntoOk(row) && !freshNewByMateria.has(row.materia)) freshNewByMateria.set(row.materia, row);
+    } else {
+      if (!bestReviewByMateria.has(row.materia)) bestReviewByMateria.set(row.materia, row);
+      if (assuntoOk(row) && !freshReviewByMateria.has(row.materia)) freshReviewByMateria.set(row.materia, row);
     }
   }
   const ratio = recentNewQuestionRatio();
   const wantNew = ratio === null || ratio < NEW_QUESTION_TARGET_RATIO;
   const pickForMateria = (materia) => (wantNew
-    ? (bestNewByMateria.get(materia) || bestReviewByMateria.get(materia))
-    : (bestReviewByMateria.get(materia) || bestNewByMateria.get(materia))) || null;
+    ? (freshNewByMateria.get(materia) || bestNewByMateria.get(materia) || freshReviewByMateria.get(materia) || bestReviewByMateria.get(materia))
+    : (freshReviewByMateria.get(materia) || bestReviewByMateria.get(materia) || freshNewByMateria.get(materia) || bestNewByMateria.get(materia))) || null;
   const last = getLastServedMateriaAmong(cycle);
   const lastIdx = cycle.indexOf(last);
   const start = lastIdx >= 0 ? (lastIdx + 1) % cycle.length : 0;
@@ -5683,6 +5691,26 @@ const NEW_QUESTION_WINDOW = 6;
 // monopolizar a sessão (ex.: 46% de Redação), sem impedir foco moderado.
 const MATERIA_RECENT_WINDOW = 5;
 const MATERIA_RECENT_CAP = 2;
+
+// Diversidade por ASSUNTO (prática intercalada): evita servir o mesmo assunto
+// repetidamente (ex.: só "transporte escolar" ou só "desconcentração"). No máx.
+// ASSUNTO_RECENT_CAP das últimas ASSUNTO_RECENT_WINDOW podem ser do mesmo assunto.
+const ASSUNTO_RECENT_WINDOW = 6;
+const ASSUNTO_RECENT_CAP = 1;
+
+// Quantas das últimas questões servidas são de cada assunto.
+function recentServedAssuntoCounts(window = ASSUNTO_RECENT_WINDOW) {
+  const rows = db.prepare(`
+    SELECT COALESCE(q.assunto, '') AS assunto
+    FROM study_served_questions ss
+    JOIN questions q ON q.id_question = ss.question_id
+    ORDER BY ss.served_at DESC, ss.id DESC
+    LIMIT ?
+  `).all(window);
+  const counts = new Map();
+  for (const row of rows) counts.set(row.assunto, (counts.get(row.assunto) || 0) + 1);
+  return counts;
+}
 
 // Fração de novas nos últimos serviços marcados. null = sem histórico marcado.
 function recentNewQuestionRatio(window = NEW_QUESTION_WINDOW) {
@@ -5714,14 +5742,19 @@ function recentServedMateriaCounts(window = MATERIA_RECENT_WINDOW) {
   return counts;
 }
 
-// Escolhe o 1º candidato cuja matéria ainda não estourou a cota recente; se
-// todos estouraram, devolve o de maior score (candidates[0]) — nunca fica vazio.
-function pickWithMateriaDiversity(candidates, recentCounts) {
+// Escolhe o 1º candidato "diverso" (matéria E assunto ainda dentro da cota
+// recente). Se não houver, prioriza NÃO repetir o assunto (o que mais cansa),
+// depois não repetir a matéria; por fim o de maior score. Nunca fica vazio.
+function pickWithMateriaDiversity(candidates, recentCounts, recentAssuntos = new Map()) {
   if (!candidates.length) return null;
-  const diverse = candidates.find(
-    (row) => (recentCounts.get(row.materia || '') || 0) < MATERIA_RECENT_CAP
+  const assuntoOk = (row) => (recentAssuntos.get(row.assunto || '') || 0) < ASSUNTO_RECENT_CAP;
+  const materiaOk = (row) => (recentCounts.get(row.materia || '') || 0) < MATERIA_RECENT_CAP;
+  return (
+    candidates.find((row) => materiaOk(row) && assuntoOk(row))
+    || candidates.find(assuntoOk)
+    || candidates.find(materiaOk)
+    || candidates[0]
   );
-  return diverse || candidates[0];
 }
 
 // Um alvo adaptativo. Com 2+ matérias selecionadas, aplica o rodízio (que já
@@ -5741,29 +5774,30 @@ function getAdaptiveTargetRow(searchParams, opts) {
   const queue = getAdaptiveQueueRows(searchParams, opts);
   if (!queue.length) return null;
   const recentMaterias = recentServedMateriaCounts();
+  const recentAssuntos = recentServedAssuntoCounts();
   // Planos de revisão/reparo: o pool já vem filtrado (só vencidas / só erros),
   // então serve o melhor sem aplicar a cota de novas — senão o "Revisar" tenta
   // intercalar questões novas.
   const plan = resolveStudyPlan(opts?.plan);
   if (plan === 'revisar_hoje' || plan === 'revisar_erros') {
-    return pickWithMateriaDiversity(queue, recentMaterias) || queue[0];
+    return pickWithMateriaDiversity(queue, recentMaterias, recentAssuntos) || queue[0];
   }
   const ratio = recentNewQuestionRatio();
   const wantNew = ratio === null || ratio < NEW_QUESTION_TARGET_RATIO;
   if (wantNew) {
-    const fresh = pickWithMateriaDiversity(queue.filter((row) => row.neverAnswered), recentMaterias);
+    const fresh = pickWithMateriaDiversity(queue.filter((row) => row.neverAnswered), recentMaterias, recentAssuntos);
     if (fresh) return fresh;
     // Nenhuma inédita no topo da fila (revisões dominam o score) → busca dirigida.
     const freshParams = new URLSearchParams(searchParams);
     freshParams.set('unanswered', '1');
     const targeted = getAdaptiveQueueRows(freshParams, { ...opts, limit: 20 });
-    const pickedFresh = pickWithMateriaDiversity(targeted, recentMaterias);
+    const pickedFresh = pickWithMateriaDiversity(targeted, recentMaterias, recentAssuntos);
     if (pickedFresh) return pickedFresh;
   } else {
-    const review = pickWithMateriaDiversity(queue.filter((row) => !row.neverAnswered), recentMaterias);
+    const review = pickWithMateriaDiversity(queue.filter((row) => !row.neverAnswered), recentMaterias, recentAssuntos);
     if (review) return review;
   }
-  return pickWithMateriaDiversity(queue, recentMaterias) || queue[0];
+  return pickWithMateriaDiversity(queue, recentMaterias, recentAssuntos) || queue[0];
 }
 
 function scoreAdaptiveQuestion(row, context) {
