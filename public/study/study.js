@@ -4731,6 +4731,9 @@ function historicalCommentToolbar({ editing }) {
         <button class="format-button" type="button" title="Sublinhado" data-action="historical-comment-format" data-command="underline"><span class="format-underline">U</span></button>
         <button class="format-button" type="button" title="Tachado" data-action="historical-comment-format" data-command="strikeThrough"><s>S</s></button>
         <span class="format-divider"></span>
+        <button class="format-button" type="button" title="Marcadores (bolinha)" data-action="historical-comment-format" data-command="insertUnorderedList">•</button>
+        <button class="format-button" type="button" title="Lista numerada" data-action="historical-comment-format" data-command="insertOrderedList">1.</button>
+        <span class="format-divider"></span>
         <button class="format-button" type="button" title="Alinhar à esquerda" data-action="historical-comment-format" data-command="justifyLeft"><span class="format-align is-left"></span></button>
         <button class="format-button" type="button" title="Centralizar" data-action="historical-comment-format" data-command="justifyCenter"><span class="format-align is-center"></span></button>
         <button class="format-button" type="button" title="Alinhar à direita" data-action="historical-comment-format" data-command="justifyRight"><span class="format-align is-right"></span></button>
@@ -4852,6 +4855,23 @@ function applyHistoricalCommentStyle(source, styleName, value) {
   if (!editor) return;
   editor.focus();
   restoreHistoricalCommentSelection(editor);
+
+  // Espaçamento entre linhas: aplica ao CONTEÚDO INTEIRO (não exige seleção e
+  // persiste no HTML salvo). line-height inline num <span> não muda o
+  // espaçamento visível — por isso envolvemos tudo num wrapper de bloco.
+  if (styleName === "lineHeight") {
+    let wrapper = editor.querySelector(":scope > div[data-lh-wrapper]");
+    if (!wrapper) {
+      wrapper = document.createElement("div");
+      wrapper.setAttribute("data-lh-wrapper", "1");
+      while (editor.firstChild) wrapper.appendChild(editor.firstChild);
+      editor.appendChild(wrapper);
+    }
+    wrapper.style.lineHeight = value;
+    saveHistoricalCommentSelection(editor);
+    setHistoricalCommentStatus("");
+    return;
+  }
 
   const selection = document.getSelection();
   if (!selection || !selection.rangeCount) return;
