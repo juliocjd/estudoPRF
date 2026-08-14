@@ -4312,7 +4312,10 @@ function buildQuestionWhere(searchParams, extra = {}) {
   const includedMaterias = getIncludedMaterias(searchParams, extra);
   const assunto = String(searchParams.get('assunto') || '').trim();
   const examKey = String(searchParams.get('examKey') || extra.examKey || '').trim();
-  const ano = String(searchParams.get('ano') || extra.ano || '').trim();
+  const anos = [
+    ...searchParams.getAll('ano'),
+    ...(Array.isArray(extra.anos) ? extra.anos : (extra.ano ? [extra.ano] : []))
+  ].map((a) => String(a).trim()).filter((a) => /^\d{4}$/.test(a));
   const commented = searchParams.get('commented') === '1';
   const unanswered = searchParams.get('unanswered') === '1' || extra.unanswered;
   const lastWrong = searchParams.get('lastWrong') === '1' || extra.lastWrong;
@@ -4387,9 +4390,9 @@ function buildQuestionWhere(searchParams, extra = {}) {
     }
   }
   applyExamFilter(where, values, examKey);
-  if (ano && /^\d{4}$/.test(ano)) {
-    where.push('q.concurso_ano = ?');
-    values.push(Number(ano));
+  if (anos.length) {
+    where.push(`q.concurso_ano IN (${anos.map(() => '?').join(', ')})`);
+    values.push(...anos.map(Number));
   }
   if (commented) {
     where.push("COALESCE(c.html_local, c.html, c.text, '') != ''");

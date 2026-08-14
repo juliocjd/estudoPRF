@@ -43,7 +43,7 @@ const state = {
     materia: "",
     assunto: "",
     examKey: "",
-    ano: "",
+    anos: [],
     excludedMaterias: [],
     includedMaterias: [],
     contranOnly: false,
@@ -186,7 +186,9 @@ const els = {
   subjectOptions: document.querySelector("#subjectOptions"),
   examInput: document.querySelector("#examInput"),
   examOptions: document.querySelector("#examOptions"),
-  yearSelect: document.querySelector("#yearSelect"),
+  yearField: document.querySelector("#yearField"),
+  yearList: document.querySelector("#yearList"),
+  yearCount: document.querySelector("#yearCount"),
   excludedMatterList: document.querySelector("#excludedMatterList"),
   includedMatterList: document.querySelector("#includedMatterList"),
   multiMateriaCount: document.querySelector("#multiMateriaCount"),
@@ -578,9 +580,12 @@ function bindEvents() {
     if (!state.exams.length) loadExamOptions("").catch(() => {});
   });
 
-  els.yearSelect?.addEventListener("change", () => {
+  els.yearList?.addEventListener("change", () => {
     activateManualQuestionListMode();
-    state.filters.ano = els.yearSelect.value;
+    state.filters.anos = [
+      ...els.yearList.querySelectorAll("input[type=checkbox]:checked"),
+    ].map((el) => el.value);
+    updateYearCount();
     state.page = 1;
     updateAdvancedFiltersSummary();
     loadCurrentModeTarget();
@@ -1698,7 +1703,8 @@ function activateContranUnpublishedMode() {
   renderSubjectOptions();
   if (els.subjectSelect) els.subjectSelect.value = "";
   if (els.examInput) els.examInput.value = "";
-  if (els.yearSelect) els.yearSelect.value = "";
+  if (els.yearList) els.yearList.querySelectorAll("input:checked").forEach((el) => { el.checked = false; });
+  updateYearCount();
   renderExcludedMatterOptions();
   if (els.normativeFilter) els.normativeFilter.value = "";
 }
@@ -1726,7 +1732,7 @@ function clearFilters() {
     materia: "",
     assunto: "",
     examKey: "",
-    ano: "",
+    anos: [],
     excludedMaterias: [],
     includedMaterias: [],
     contranOnly: false,
@@ -1756,7 +1762,8 @@ function clearFilters() {
   renderSubjectOptions();
   els.subjectSelect.value = "";
   if (els.examInput) els.examInput.value = "";
-  if (els.yearSelect) els.yearSelect.value = "";
+  if (els.yearList) els.yearList.querySelectorAll("input:checked").forEach((el) => { el.checked = false; });
+  updateYearCount();
   renderExcludedMatterOptions();
   els.commentedOnly.checked = false;
   els.unansweredOnly.checked = false;
@@ -1786,7 +1793,7 @@ function updateAdvancedFiltersSummary() {
     state.filters.materia,
     state.filters.assunto,
     state.filters.examKey,
-    state.filters.ano,
+    state.filters.anos.length,
     state.filters.excludedMaterias.length,
     state.filters.commented,
     state.filters.unanswered,
@@ -1971,16 +1978,15 @@ async function loadFilters() {
   renderExcludedMatterOptions(filters.matters || []);
   renderIncludedMatterOptions(filters.matters || []);
 
-  if (els.yearSelect) {
-    const current = state.filters.ano || "";
-    els.yearSelect.innerHTML =
-      '<option value="">Todos</option>' +
-      (filters.years || [])
-        .map(
-          (y) =>
-            `<option value="${escapeAttr(y.ano)}"${String(y.ano) === current ? " selected" : ""}>${escapeHtml(y.ano)} (${y.count})</option>`,
-        )
-        .join("");
+  if (els.yearList) {
+    const selected = new Set((state.filters.anos || []).map(String));
+    els.yearList.innerHTML = (filters.years || [])
+      .map(
+        (y) =>
+          `<label class="checkline"><input type="checkbox" value="${escapeAttr(y.ano)}"${selected.has(String(y.ano)) ? " checked" : ""}><span>${escapeHtml(y.ano)} (${y.count})</span></label>`,
+      )
+      .join("");
+    updateYearCount();
   }
 
   renderSubjectOptions();
@@ -2121,6 +2127,12 @@ function updateMultiMateriaCount() {
   if (!els.multiMateriaCount) return;
   const n = (state.filters.includedMaterias || []).length;
   els.multiMateriaCount.textContent = n ? `(${n})` : "";
+}
+
+function updateYearCount() {
+  if (!els.yearCount) return;
+  const n = (state.filters.anos || []).length;
+  els.yearCount.textContent = n ? `(${n})` : "";
 }
 
 async function loadExamProfiles() {
@@ -2435,7 +2447,7 @@ function buildQuestionParams() {
   if (state.filters.assunto) params.set("assunto", state.filters.assunto);
   if (state.filters.contranOnly) params.set("contranOnly", "1");
   if (state.filters.examKey) params.set("examKey", state.filters.examKey);
-  if (state.filters.ano) params.set("ano", state.filters.ano);
+  for (const ano of state.filters.anos || []) params.append("ano", ano);
   if (state.filters.commented) params.set("commented", "1");
   if (state.filters.unanswered) params.set("unanswered", "1");
   if (state.filters.lastWrong) params.set("lastWrong", "1");

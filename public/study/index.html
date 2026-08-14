@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Estudo PRF</title>
-    <link rel="stylesheet" href="/study.css?v=20260814-filtro-ano" />
+    <link rel="stylesheet" href="/study.css?v=20260814-anos-multi" />
   </head>
   <body>
     <div class="app-shell">
@@ -153,12 +153,18 @@
           />
           <datalist id="examOptions"></datalist>
         </label>
-        <label class="field">
-          <span>Ano</span>
-          <select id="yearSelect">
-            <option value="">Todos</option>
-          </select>
-        </label>
+        <details class="field field-multi-materia" id="yearField">
+          <summary>Ano <span id="yearCount"></span></summary>
+          <div class="multi-materia-panel">
+            <div
+              id="yearList"
+              class="matter-exclusion-list"
+              role="group"
+              aria-label="Anos das questões"
+            ></div>
+            <small class="matter-inclusion-hint">Marque um ou mais anos. Nenhum marcado = todos os anos.</small>
+          </div>
+        </details>
         <label class="field">
           <span>Perfil de prova</span>
           <select id="profileSelect">
@@ -1152,6 +1158,6 @@
       </article>
     </aside>
 
-    <script src="/study.js?v=20260814-filtro-ano" type="module"></script>
+    <script src="/study.js?v=20260814-anos-multi" type="module"></script>
   </body>
 </html>
