@@ -5618,94 +5618,38 @@ function getLastServedMateriaAmong(materias) {
   return row?.materia || '';
 }
 
-const singleMateriaParams = (searchParams, materia) => {
-  const sp = new URLSearchParams(searchParams);
-  sp.delete('includeMateria');
-  sp.delete('includeMaterias');
-  sp.set('includeMateria', materia);
-  return sp;
-};
-
-// Alvo adaptativo com rodízio entre matérias, priorização adaptativa completa e
-// custo ~baseline: UMA fila adaptativa com todas as matérias (o scorer é pesado,
-// então evita-se rodá-lo N vezes), agrupada por matéria (melhor primeiro).
-// Serve a melhor da próxima matéria no ciclo, girando a partir da última
-// servida. Se a matéria da vez não apareceu no pool (raro — dominada por
-// outra), faz uma consulta dirigida só para ela, para o rodízio não puxá-la.
-// Matérias distintas com questões estudáveis (com gabarito, não anuladas) dentro
-// do escopo filtrado (anos/banca/etc.). Usado para o rodízio quando NENHUMA
-// matéria foi selecionada: sem isso o motor cai no caminho de matéria única e a
-// de maior peso no edital (ex.: Legislação de Trânsito) monopoliza o topo da
-// fila por score, então o usuário via só ela mesmo sem ter escolhido matéria.
+// Matérias distintas dentro do escopo filtrado (anos/banca/etc.). Usado para o
+// rodízio quando NENHUMA matéria foi selecionada: sem isso o motor cai no
+// caminho de matéria única e a de maior peso no edital (ex.: Legislação de
+// Trânsito) monopoliza o topo da fila por score, então o usuário via só ela.
+// NÃO exige gabarito aqui (as subqueries correlacionadas de gabarito custavam
+// ~2s no DISTINCT): a busca dirigida por matéria já descarta matéria sem
+// questão estudável (retorna null e o rodízio pula). Resultado é cacheado por
+// assinatura de filtro — chamadas consecutivas do "próxima" reusam.
+const _scopeMateriasCache = new Map();
+const SCOPE_MATERIAS_TTL_MS = 30000;
 function distinctMateriasInScope(searchParams, opts) {
   const resolvedPlan = resolveStudyPlan(opts?.plan);
+  const cacheKey = `${resolvedPlan}|${[...searchParams.entries()].sort().map(([k, v]) => `${k}=${v}`).join('&')}`;
+  const now = Date.now();
+  const cached = _scopeMateriasCache.get(cacheKey);
+  if (cached && (now - cached.at) < SCOPE_MATERIAS_TTL_MS) return cached.materias;
   const { whereSql, values } = buildQuestionWhere(searchParams, {
     hideStudyExcluded: resolvedPlan !== 'ver_todas'
   });
-  const answerSql = currentLawStudyAnswerSql('q', 'c');
   const conds = [];
   if (whereSql) conds.push(whereSql.replace(/^WHERE\s+/i, ''));
   conds.push("COALESCE(q.materia, '') <> ''");
   conds.push('COALESCE(q.anulada, 0) = 0');
-  if (resolvedPlan !== 'ver_todas') conds.push(`${answerSql} != ''`);
   const rows = db.prepare(`
     SELECT DISTINCT COALESCE(q.materia, '') AS materia
     FROM questions q
     LEFT JOIN comments c ON c.question_id = q.id_question
     WHERE ${conds.join(' AND ')}
   `).all(...values);
-  return rows.map((r) => r.materia).filter(Boolean);
-}
-
-function getRoundRobinAdaptiveTarget(searchParams, opts, included) {
-  const cycle = [...included].sort((a, b) => a.localeCompare(b));
-  const pool = getAdaptiveQueueRows(searchParams, {
-    ...opts,
-    limit: Math.max(60, cycle.length * 40)
-  });
-  // Melhor questão por matéria, separando inéditas de revisões. Sem essa
-  // separação, revisão vencida (+150) sempre supera questão nova (+90) e o
-  // backlog de revisões trava o avanço no conteúdo novo dentro de cada matéria
-  // — a mesma cota nova/revisão que o modo de matéria única aplica via
-  // NEW_QUESTION_TARGET_RATIO, agora também no rodízio.
-  // Melhor por matéria, com uma variante "fresh" que evita o assunto recém-servido
-  // (prática intercalada — não esgota "transporte escolar" antes de trocar).
-  const recentAssuntos = recentServedAssuntoCounts();
-  const assuntoOk = (row) => (recentAssuntos.get(row.assunto || '') || 0) < ASSUNTO_RECENT_CAP;
-  const bestNewByMateria = new Map();
-  const bestReviewByMateria = new Map();
-  const freshNewByMateria = new Map();
-  const freshReviewByMateria = new Map();
-  for (const row of pool) {
-    if (row.neverAnswered) {
-      if (!bestNewByMateria.has(row.materia)) bestNewByMateria.set(row.materia, row);
-      if (assuntoOk(row) && !freshNewByMateria.has(row.materia)) freshNewByMateria.set(row.materia, row);
-    } else {
-      if (!bestReviewByMateria.has(row.materia)) bestReviewByMateria.set(row.materia, row);
-      if (assuntoOk(row) && !freshReviewByMateria.has(row.materia)) freshReviewByMateria.set(row.materia, row);
-    }
-  }
-  const ratio = recentNewQuestionRatio();
-  const wantNew = ratio === null || ratio < NEW_QUESTION_TARGET_RATIO;
-  const pickForMateria = (materia) => (wantNew
-    ? (freshNewByMateria.get(materia) || bestNewByMateria.get(materia) || freshReviewByMateria.get(materia) || bestReviewByMateria.get(materia))
-    : (freshReviewByMateria.get(materia) || bestReviewByMateria.get(materia) || freshNewByMateria.get(materia) || bestNewByMateria.get(materia))) || null;
-  const last = getLastServedMateriaAmong(cycle);
-  const lastIdx = cycle.indexOf(last);
-  const start = lastIdx >= 0 ? (lastIdx + 1) % cycle.length : 0;
-  for (let i = 0; i < cycle.length; i += 1) {
-    const materia = cycle[(start + i) % cycle.length];
-    const picked = pickForMateria(materia);
-    if (picked) return picked;
-    const targeted = getAdaptiveQueueRows(singleMateriaParams(searchParams, materia), {
-      ...opts,
-      limit: 1
-    })[0];
-    if (targeted) return targeted;
-  }
-  // Rodízio não achou nada nas matérias do ciclo → melhor do pool já montado
-  // (evita refazer a fila inteira no chamador).
-  return pool[0] || null;
+  const materias = rows.map((r) => r.materia).filter(Boolean);
+  _scopeMateriasCache.set(cacheKey, { at: now, materias });
+  return materias;
 }
 
 // Cota de questões novas: sem isso, revisão vencida (+150) sempre supera
@@ -5726,20 +5670,6 @@ const MATERIA_RECENT_CAP = 2;
 // Janela ampliada (6→10) a pedido: o mesmo assunto não reaparece por mais tempo.
 const ASSUNTO_RECENT_WINDOW = 10;
 const ASSUNTO_RECENT_CAP = 1;
-
-// Quantas das últimas questões servidas são de cada assunto.
-function recentServedAssuntoCounts(window = ASSUNTO_RECENT_WINDOW) {
-  const rows = db.prepare(`
-    SELECT COALESCE(q.assunto, '') AS assunto
-    FROM study_served_questions ss
-    JOIN questions q ON q.id_question = ss.question_id
-    ORDER BY ss.served_at DESC, ss.id DESC
-    LIMIT ?
-  `).all(window);
-  const counts = new Map();
-  for (const row of rows) counts.set(row.assunto, (counts.get(row.assunto) || 0) + 1);
-  return counts;
-}
 
 // Contagens de matéria E assunto das últimas servidas em UMA consulta só
 // (evita 2 idas ao banco por troca de questão).
@@ -5806,32 +5736,49 @@ function pickWithMateriaDiversity(candidates, recentCounts, recentAssuntos = new
   );
 }
 
-// Um alvo adaptativo. Com 2+ matérias selecionadas, aplica o rodízio (que já
-// respeita a cota nova/revisão por matéria). Senão,
-// equilibra questões novas × revisões ~50/50 numa janela curta: se andaram
-// vindo poucas novas, serve a melhor inédita; se vieram poucas revisões, serve
-// a melhor revisão. Assim o backlog de revisões não trava o avanço no conteúdo
-// novo, e as revisões também não são abandonadas. Mantém a priorização
-// adaptativa dentro de cada grupo (é sempre a MELHOR do grupo escolhido).
+// Rodízio LEVE entre um ciclo de matérias: escolhe a próxima (após a última
+// servida) e faz UMA busca dirigida de matéria única — que já é o caminho
+// rápido (cota nova/revisão + diversidade de assunto embutidas). Substitui o
+// pool gigante (N×40 questões pontuadas) do rodízio antigo, que estourava o
+// timeout do cliente quando o ciclo tinha muitas matérias. Retorna null se
+// nenhuma matéria do ciclo tem questão disponível (o chamador cai no pipeline).
+function getRotationTarget(searchParams, opts, cycleMaterias) {
+  const cycle = [...cycleMaterias].sort((a, b) => a.localeCompare(b));
+  const last = getLastServedMateriaAmong(cycle);
+  const lastIdx = cycle.indexOf(last);
+  const start = lastIdx >= 0 ? (lastIdx + 1) % cycle.length : 0;
+  for (let i = 0; i < cycle.length; i += 1) {
+    const materia = cycle[(start + i) % cycle.length];
+    const sp = new URLSearchParams(searchParams);
+    sp.delete('includeMateria');
+    sp.delete('includeMaterias');
+    sp.set('materia', materia);
+    const target = getAdaptiveTargetRow(sp, opts);
+    if (target) return target;
+  }
+  return null;
+}
+
+// Um alvo adaptativo. Com 2+ matérias selecionadas (ou nenhuma, só anos/banca),
+// faz o rodízio leve entre elas. Com matéria única, equilibra questões novas ×
+// revisões ~50/50 numa janela curta: se andaram vindo poucas novas, serve a
+// melhor inédita; se vieram poucas revisões, serve a melhor revisão. Assim o
+// backlog de revisões não trava o avanço no conteúdo novo, e as revisões também
+// não são abandonadas. Mantém a priorização adaptativa dentro de cada grupo.
 function getAdaptiveTargetRow(searchParams, opts) {
   const included = getIncludedMaterias(searchParams);
-  if (included.length >= 2) {
-    // getRoundRobinAdaptiveTarget já cai para o melhor do pool que montou; não
-    // refazer a fila aqui (era um segundo pipeline completo redundante).
-    return getRoundRobinAdaptiveTarget(searchParams, opts, included);
-  }
   const plan = resolveStudyPlan(opts?.plan);
   const singleMateria = String(searchParams.get('materia') || '').trim();
-  // Sem NENHUMA matéria selecionada (só anos, banca, etc.): faz o rodízio entre
-  // TODAS as matérias presentes no escopo. Senão o motor cai no caminho de
-  // matéria única e a de maior peso no edital (ex.: Legislação de Trânsito)
-  // enche o topo da fila por score — as outras matérias ficam abaixo do corte e
-  // a diversidade por matéria (janela curta) nunca as alcança. Restringe a
-  // planos com conteúdo novo; revisar_hoje/erros já vêm com pool filtrado.
-  if (!singleMateria && included.length < 2 && plan !== 'revisar_hoje' && plan !== 'revisar_erros') {
-    const scopeMaterias = distinctMateriasInScope(searchParams, opts);
-    if (scopeMaterias.length >= 2) {
-      return getRoundRobinAdaptiveTarget(searchParams, opts, scopeMaterias);
+  if (!singleMateria && plan !== 'revisar_hoje' && plan !== 'revisar_erros') {
+    // 2+ matérias escolhidas → rodízio entre elas. Nenhuma escolhida (só
+    // anos/banca) → rodízio entre TODAS do escopo; senão o motor cai no caminho
+    // de matéria única e a de maior peso no edital (ex.: Legislação de Trânsito)
+    // enche o topo da fila por score e monopoliza a sessão.
+    const cycle = included.length >= 2 ? included : distinctMateriasInScope(searchParams, opts);
+    if (cycle.length >= 2) {
+      const target = getRotationTarget(searchParams, opts, cycle);
+      if (target) return target;
+      // Nenhuma matéria do ciclo tem questão → segue o pipeline normal abaixo.
     }
   }
   const queue = getAdaptiveQueueRows(searchParams, opts);
