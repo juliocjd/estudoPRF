@@ -5632,6 +5632,31 @@ const singleMateriaParams = (searchParams, materia) => {
 // Serve a melhor da próxima matéria no ciclo, girando a partir da última
 // servida. Se a matéria da vez não apareceu no pool (raro — dominada por
 // outra), faz uma consulta dirigida só para ela, para o rodízio não puxá-la.
+// Matérias distintas com questões estudáveis (com gabarito, não anuladas) dentro
+// do escopo filtrado (anos/banca/etc.). Usado para o rodízio quando NENHUMA
+// matéria foi selecionada: sem isso o motor cai no caminho de matéria única e a
+// de maior peso no edital (ex.: Legislação de Trânsito) monopoliza o topo da
+// fila por score, então o usuário via só ela mesmo sem ter escolhido matéria.
+function distinctMateriasInScope(searchParams, opts) {
+  const resolvedPlan = resolveStudyPlan(opts?.plan);
+  const { whereSql, values } = buildQuestionWhere(searchParams, {
+    hideStudyExcluded: resolvedPlan !== 'ver_todas'
+  });
+  const answerSql = currentLawStudyAnswerSql('q', 'c');
+  const conds = [];
+  if (whereSql) conds.push(whereSql.replace(/^WHERE\s+/i, ''));
+  conds.push("COALESCE(q.materia, '') <> ''");
+  conds.push('COALESCE(q.anulada, 0) = 0');
+  if (resolvedPlan !== 'ver_todas') conds.push(`${answerSql} != ''`);
+  const rows = db.prepare(`
+    SELECT DISTINCT COALESCE(q.materia, '') AS materia
+    FROM questions q
+    LEFT JOIN comments c ON c.question_id = q.id_question
+    WHERE ${conds.join(' AND ')}
+  `).all(...values);
+  return rows.map((r) => r.materia).filter(Boolean);
+}
+
 function getRoundRobinAdaptiveTarget(searchParams, opts, included) {
   const cycle = [...included].sort((a, b) => a.localeCompare(b));
   const pool = getAdaptiveQueueRows(searchParams, {
@@ -5794,13 +5819,26 @@ function getAdaptiveTargetRow(searchParams, opts) {
     // refazer a fila aqui (era um segundo pipeline completo redundante).
     return getRoundRobinAdaptiveTarget(searchParams, opts, included);
   }
+  const plan = resolveStudyPlan(opts?.plan);
+  const singleMateria = String(searchParams.get('materia') || '').trim();
+  // Sem NENHUMA matéria selecionada (só anos, banca, etc.): faz o rodízio entre
+  // TODAS as matérias presentes no escopo. Senão o motor cai no caminho de
+  // matéria única e a de maior peso no edital (ex.: Legislação de Trânsito)
+  // enche o topo da fila por score — as outras matérias ficam abaixo do corte e
+  // a diversidade por matéria (janela curta) nunca as alcança. Restringe a
+  // planos com conteúdo novo; revisar_hoje/erros já vêm com pool filtrado.
+  if (!singleMateria && included.length < 2 && plan !== 'revisar_hoje' && plan !== 'revisar_erros') {
+    const scopeMaterias = distinctMateriasInScope(searchParams, opts);
+    if (scopeMaterias.length >= 2) {
+      return getRoundRobinAdaptiveTarget(searchParams, opts, scopeMaterias);
+    }
+  }
   const queue = getAdaptiveQueueRows(searchParams, opts);
   if (!queue.length) return null;
   const { materias: recentMaterias, assuntos: recentAssuntos } = recentServedMateriaAssunto();
   // Planos de revisão/reparo: o pool já vem filtrado (só vencidas / só erros),
   // então serve o melhor sem aplicar a cota de novas — senão o "Revisar" tenta
   // intercalar questões novas.
-  const plan = resolveStudyPlan(opts?.plan);
   if (plan === 'revisar_hoje' || plan === 'revisar_erros') {
     return pickWithMateriaDiversity(queue, recentMaterias, recentAssuntos) || queue[0];
   }
