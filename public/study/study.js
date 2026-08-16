@@ -4134,10 +4134,16 @@ function questionCoreAnswerOptions(question, currentAnswer) {
           { value: "CERTO", label: "CERTO" },
           { value: "ERRADO", label: "ERRADO" },
         ]
-      : (question?.alternatives || []).map((alternative) => ({
-          value: alternative.letter,
-          label: `Alternativa ${alternative.letter}`,
-        }));
+      : (question?.alternatives || []).map((alternative) => {
+          // Mostra o TEXTO (não só "Alternativa C"): no estudo as alternativas
+          // são embaralhadas, então a letra exibida difere da letra do banco.
+          // Escolher pelo conteúdo evita marcar o gabarito errado.
+          const txt = String(alternative.text || "").replace(/\s+/g, " ").trim();
+          return {
+            value: alternative.letter,
+            label: `${alternative.letter}) ${txt.length > 70 ? `${txt.slice(0, 70)}…` : txt}`,
+          };
+        });
   const normalizedOptions = new Set(
     options.map((option) => normalizeAnswerText(option.value)),
   );
