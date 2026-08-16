@@ -5717,13 +5717,14 @@ const NEW_QUESTION_WINDOW = 6;
 // Trava de diversidade: no máx. MATERIA_RECENT_CAP das últimas
 // MATERIA_RECENT_WINDOW questões podem ser da mesma matéria. Evita uma matéria
 // monopolizar a sessão (ex.: 46% de Redação), sem impedir foco moderado.
-const MATERIA_RECENT_WINDOW = 5;
+const MATERIA_RECENT_WINDOW = 8;
 const MATERIA_RECENT_CAP = 2;
 
 // Diversidade por ASSUNTO (prática intercalada): evita servir o mesmo assunto
 // repetidamente (ex.: só "transporte escolar" ou só "desconcentração"). No máx.
 // ASSUNTO_RECENT_CAP das últimas ASSUNTO_RECENT_WINDOW podem ser do mesmo assunto.
-const ASSUNTO_RECENT_WINDOW = 6;
+// Janela ampliada (6→10) a pedido: o mesmo assunto não reaparece por mais tempo.
+const ASSUNTO_RECENT_WINDOW = 10;
 const ASSUNTO_RECENT_CAP = 1;
 
 // Quantas das últimas questões servidas são de cada assunto.
