@@ -1303,6 +1303,7 @@ function getFilters() {
         SELECT 1 FROM question_study_status s
         WHERE s.question_id = q.id_question AND s.status = 'excluded'
       )
+      AND ${hiddenOutdatedExclusionSql('q')}
     GROUP BY q.materia
     ORDER BY q.materia
   `).all();
@@ -1316,6 +1317,7 @@ function getFilters() {
         SELECT 1 FROM question_study_status s
         WHERE s.question_id = q.id_question AND s.status = 'excluded'
       )
+      AND ${hiddenOutdatedExclusionSql('q')}
     GROUP BY q.materia, q.assunto
     ORDER BY q.materia, q.assunto
   `).all().map((subject) => {
@@ -1329,8 +1331,9 @@ function getFilters() {
 
   const years = db.prepare(`
     SELECT concurso_ano AS ano, COUNT(*) AS count
-    FROM questions
+    FROM questions q
     WHERE concurso_ano IS NOT NULL AND concurso_ano > 0
+      AND ${hiddenOutdatedExclusionSql('q')}
     GROUP BY concurso_ano
     ORDER BY concurso_ano DESC
   `).all();
@@ -4302,9 +4305,40 @@ function formatDateTimeForMessage(value) {
   });
 }
 
+// Desatualizadas que NÃO são de Trânsito e NÃO foram resgatadas (resposta de lei
+// atual verified) somem de TODO o front — a pedido: inflavam as contagens de
+// matéria/assunto sem utilidade. As de Trânsito ficam (é onde vivem as
+// resoluções, em curadoria) e as resgatadas ficam (são estudáveis). Sempre-ativo
+// em buildQuestionWhere e nas contagens do getFilters, inclusive no "Ver todas".
+// Reversível: é filtro, não apaga questão. Só literais → dá pra concatenar.
+function hiddenOutdatedExclusionSql(alias = 'q') {
+  const m = `LOWER(COALESCE(${alias}.materia, ''))`;
+  const rescued = hasCurrentLawAnswerTable()
+    ? `AND NOT EXISTS (
+        SELECT 1 FROM question_current_law_answers qho
+        WHERE qho.question_id = ${alias}.id_question
+          AND qho.current_law_status = 'verified'
+          AND qho.can_auto_score_current_law IS TRUE
+          AND COALESCE(qho.current_answer, '') <> ''
+      )`
+    : '';
+  return `NOT (
+    COALESCE(${alias}.desatualizada, 0) = 1
+    AND ${m} NOT LIKE '%trânsito%'
+    AND ${m} NOT LIKE '%transito%'
+    ${rescued}
+  )`;
+}
+
 function buildQuestionWhere(searchParams, extra = {}) {
   const where = [];
   const values = [];
+
+  // Oculta desatualizadas não-Trânsito e não-resgatadas de tudo (inclusive
+  // "Ver todas"). Scripts de manutenção passam extra.includeHiddenOutdated.
+  if (!extra.includeHiddenOutdated) {
+    where.push(hiddenOutdatedExclusionSql('q'));
+  }
 
   const q = String(searchParams.get('q') || '').trim();
   const materia = String(searchParams.get('materia') || '').trim();
@@ -8157,7 +8191,7 @@ function getSubjectsRanking(searchParams) {
   const examKey = String(searchParams.get('examKey') || '').trim();
   const hideOutdated = searchParams.get('hideOutdated') === '1';
   const hideStudyExcluded = searchParams.get('hideStudyExcluded') === '1';
-  const where = ["COALESCE(q.assunto, '') != ''"];
+  const where = ["COALESCE(q.assunto, '') != ''", hiddenOutdatedExclusionSql('q')];
   const values = [];
 
   if (q) {
@@ -8291,7 +8325,7 @@ function getSubjectMasteryRanking(searchParams) {
   const materia = String(searchParams.get('materia') || '').trim();
   const excludedMaterias = getExcludedMaterias(searchParams);
   const includedMaterias = getIncludedMaterias(searchParams);
-  const where = ["COALESCE(q.assunto, '') != ''"];
+  const where = ["COALESCE(q.assunto, '') != ''", hiddenOutdatedExclusionSql('q')];
   const values = [];
 
   if (q) {
