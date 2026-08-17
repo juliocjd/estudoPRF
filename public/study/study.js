@@ -558,7 +558,7 @@ function bindEvents() {
     }, 250);
   });
 
-  els.matterSelect.addEventListener("change", async () => {
+  els.matterSelect?.addEventListener("change", async () => {
     activateManualQuestionListMode();
     state.filters.materia = els.matterSelect.value;
     state.filters.assunto = "";
@@ -1028,11 +1028,10 @@ function bindEvents() {
     }
 
     state.filters.q = "";
-    state.filters.materia = button.dataset.materia || "";
+    setSingleMateriaFilter(button.dataset.materia || "");
     state.filters.assunto = button.dataset.assunto || "";
     state.page = 1;
     els.searchInput.value = "";
-    els.matterSelect.value = state.filters.materia;
     renderSubjectOptions();
     els.subjectSelect.value = state.filters.assunto;
     updateAdvancedFiltersSummary();
@@ -1770,7 +1769,7 @@ function clearFilters() {
   };
   state.page = 1;
   els.searchInput.value = "";
-  els.matterSelect.value = "";
+  if (els.matterSelect) els.matterSelect.value = "";
   try { localStorage.setItem("prf.contranOnly", "0"); } catch {}
   renderContranToggle();
   renderSubjectOptions();
@@ -1983,14 +1982,16 @@ async function loadFilters() {
   const filters = await api("/api/filters");
   state.subjects = filters.subjects || [];
 
-  els.matterSelect.innerHTML =
-    '<option value="">Todas</option>' +
-    (filters.matters || [])
-      .map(
-        (matter) =>
-          `<option value="${escapeAttr(matter.name)}">${escapeHtml(matter.name)} (${matter.count})</option>`,
-      )
-      .join("");
+  if (els.matterSelect) {
+    els.matterSelect.innerHTML =
+      '<option value="">Todas</option>' +
+      (filters.matters || [])
+        .map(
+          (matter) =>
+            `<option value="${escapeAttr(matter.name)}">${escapeHtml(matter.name)} (${matter.count})</option>`,
+        )
+        .join("");
+  }
   renderExcludedMatterOptions(filters.matters || []);
   renderIncludedMatterOptions(filters.matters || []);
 
@@ -2173,6 +2174,18 @@ function renderStudyPlanLabel() {
   const label = profile?.name || "Plano PRF";
   els.studyPlanLabel.textContent = label;
   els.studyPlanLabel.title = label;
+}
+
+// Aplica uma matéria vinda de navegação (ex.: "estudar esta matéria") no ÚNICO
+// controle de matéria que existe agora — o multi (checkboxes). Sem o dropdown
+// antigo, é assim que a escolha aparece marcada na UI. Vazio = todas.
+function setSingleMateriaFilter(materia) {
+  const m = String(materia || "").trim();
+  state.filters.materia = "";
+  state.filters.includedMaterias = m ? [m] : [];
+  try { localStorage.setItem("prf.includedMaterias", JSON.stringify(state.filters.includedMaterias)); } catch {}
+  renderIncludedMatterOptions();
+  updateMultiMateriaCount();
 }
 
 // Assuntos no escopo das matérias escolhidas: várias matérias (checkboxes) têm
@@ -2661,10 +2674,9 @@ async function navigateSpecial(mode) {
 
   if (target.mode === "subject") {
     state.filters.q = "";
-    state.filters.materia = target.materia || "";
+    setSingleMateriaFilter(target.materia || "");
     state.filters.assunto = target.assunto || "";
     els.searchInput.value = "";
-    els.matterSelect.value = state.filters.materia;
     renderSubjectOptions();
     els.subjectSelect.value = state.filters.assunto;
     state.page = 1;
