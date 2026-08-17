@@ -420,6 +420,17 @@ function restoreIncludedMateriasFilter() {
       state.filters.includedMaterias = arr.filter((x) => typeof x === "string" && x);
     }
   } catch { /* localStorage indisponível */ }
+  // Anos: lembrado igual às matérias. loadFilters pré-marca os checkboxes a
+  // partir de state.filters.anos, então basta restaurar o estado aqui (antes).
+  try {
+    const rawAnos = localStorage.getItem("prf.anos");
+    if (rawAnos) {
+      const anos = JSON.parse(rawAnos);
+      if (Array.isArray(anos)) {
+        state.filters.anos = anos.map(String).filter((x) => /^\d{4}$/.test(x));
+      }
+    }
+  } catch { /* localStorage indisponível */ }
   try {
     state.filters.contranOnly = localStorage.getItem("prf.contranOnly") === "1";
   } catch { /* localStorage indisponível */ }
@@ -585,6 +596,7 @@ function bindEvents() {
     state.filters.anos = [
       ...els.yearList.querySelectorAll("input[type=checkbox]:checked"),
     ].map((el) => el.value);
+    try { localStorage.setItem("prf.anos", JSON.stringify(state.filters.anos)); } catch {}
     updateYearCount();
     state.page = 1;
     updateAdvancedFiltersSummary();
@@ -1704,6 +1716,8 @@ function activateContranUnpublishedMode() {
   if (els.subjectSelect) els.subjectSelect.value = "";
   if (els.examInput) els.examInput.value = "";
   if (els.yearList) els.yearList.querySelectorAll("input:checked").forEach((el) => { el.checked = false; });
+  state.filters.anos = [];
+  try { localStorage.setItem("prf.anos", "[]"); } catch {}
   updateYearCount();
   renderExcludedMatterOptions();
   if (els.normativeFilter) els.normativeFilter.value = "";
@@ -1763,6 +1777,8 @@ function clearFilters() {
   els.subjectSelect.value = "";
   if (els.examInput) els.examInput.value = "";
   if (els.yearList) els.yearList.querySelectorAll("input:checked").forEach((el) => { el.checked = false; });
+  state.filters.anos = [];
+  try { localStorage.setItem("prf.anos", "[]"); } catch {}
   updateYearCount();
   renderExcludedMatterOptions();
   els.commentedOnly.checked = false;
