@@ -5249,7 +5249,7 @@ function getFixOutdatedNext(searchParams) {
     return { error: 'Nenhuma questão desatualizada de trânsito pendente de correção. 🎉', plan: 'corrigir_desatualizadas', profile: profileId };
   }
   recordServedQuestion(row.id, { mode: 'corrigir_desatualizadas', profileId, source: 'fix_outdated', reason: 'correcao_desatualizada' });
-  return adaptiveTargetPayload({ ...row, reasonText: 'Correção de desatualizada' }, 'corrigir_desatualizadas', profileId);
+  return adaptiveTargetPayload({ ...row, reasonText: 'Fila: corrigir desatualizada' }, 'corrigir_desatualizadas', profileId);
 }
 
 function getAdaptiveStudyNext(searchParams) {
