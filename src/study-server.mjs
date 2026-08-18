@@ -95,6 +95,7 @@ const skipStartupSchemaMaintenance = activeDbClient === 'postgres'
 if (activeDbClient === 'sqlite') {
   initStudySchema(db);
 }
+ensurePrimaryClusterMaterialization(db, activeDbClient);
 if (!skipStartupSchemaMaintenance) {
   ensureStudyTimeColumns(db);
   ensureColumn(db, 'comments', 'extracted_answer_source', 'TEXT');
@@ -5618,43 +5619,7 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
   const blockWeights = getPrfBlockWeights(resolvedProfile);
 
   const rows = db.prepare(`
-    WITH primary_cluster AS (
-      SELECT *
-      FROM (
-        SELECT
-          qcm.question_id,
-          qcm.cluster_id,
-          qcm.role AS cluster_role,
-          qcm.similarity,
-          qcm.reason AS cluster_reason,
-          qc.cluster_type,
-          qc.title AS cluster_title,
-          qc.representative_question_id,
-          qc.size AS cluster_size,
-          qc.confidence AS cluster_confidence,
-          COALESCE(qc.cluster_policy, '') AS cluster_policy,
-          COALESCE(qc.max_visible_per_pass, 1) AS max_visible_per_pass,
-          ROW_NUMBER() OVER (
-            PARTITION BY qcm.question_id
-            ORDER BY
-              CASE qc.cluster_type
-                WHEN 'exact_hash' THEN 1
-                WHEN 'normalized_statement' THEN 2
-                WHEN 'near_duplicate' THEN 3
-                WHEN 'same_skill' THEN 4
-                ELSE 5
-              END,
-              CASE qcm.role WHEN 'representative' THEN 0 ELSE 1 END,
-              qc.size DESC,
-              qc.id
-          ) AS rn
-        FROM question_cluster_members qcm
-        JOIN question_clusters qc ON qc.id = qcm.cluster_id
-        WHERE qc.status = 'active'
-      )
-      WHERE rn = 1
-    ),
-    answer_stats AS (
+    WITH answer_stats AS (
       SELECT question_id, COUNT(*) AS total_answers, MAX(id) AS last_id
       FROM study_answers
       GROUP BY question_id
@@ -5710,7 +5675,7 @@ function getAdaptiveQueueRows(searchParams, { plan, profileId, limit = 50, exclu
       ON w.profile_id = ?
       AND w.subject_key = qes.subject_key
     LEFT JOIN question_mastery qm ON qm.question_id = q.id_question
-    LEFT JOIN primary_cluster pc ON pc.question_id = q.id_question
+    LEFT JOIN question_primary_cluster pc ON pc.question_id = q.id_question
     LEFT JOIN cluster_mastery cm ON cm.cluster_id = pc.cluster_id
     LEFT JOIN answer_stats ON answer_stats.question_id = q.id_question
     LEFT JOIN study_answers last_answer ON last_answer.id = answer_stats.last_id
@@ -11878,6 +11843,51 @@ function initHistoricalCommentEditSchema(database) {
   ensureColumn(database, 'comments', 'html_local', 'TEXT');
   ensureColumn(database, 'comments', 'user_edited_at', 'TEXT');
   ensureColumn(database, 'comments', 'user_edited_by', 'TEXT');
+}
+
+// "Cluster primário por questão" pré-computado. Antes era uma CTE com
+// ROW_NUMBER() sobre TODAS as ~16k associações de cluster, recalculada a CADA
+// requisição do adaptativo (~1,6s no Neon). Como o bridge de Postgres é
+// síncrono, esse tempo bloqueava a thread = CPU ativa cobrada pela Vercel.
+// Agora é uma matview (Postgres) / view (sqlite) — a query só faz um JOIN.
+// Refrescada quando os clusters são reconstruídos (raro).
+const PRIMARY_CLUSTER_SELECT = `
+  SELECT * FROM (
+    SELECT
+      qcm.question_id, qcm.cluster_id, qcm.role AS cluster_role, qcm.similarity,
+      qcm.reason AS cluster_reason, qc.cluster_type, qc.title AS cluster_title,
+      qc.representative_question_id, qc.size AS cluster_size,
+      qc.confidence AS cluster_confidence,
+      COALESCE(qc.cluster_policy, '') AS cluster_policy,
+      COALESCE(qc.max_visible_per_pass, 1) AS max_visible_per_pass,
+      ROW_NUMBER() OVER (
+        PARTITION BY qcm.question_id
+        ORDER BY
+          CASE qc.cluster_type WHEN 'exact_hash' THEN 1 WHEN 'normalized_statement' THEN 2 WHEN 'near_duplicate' THEN 3 WHEN 'same_skill' THEN 4 ELSE 5 END,
+          CASE qcm.role WHEN 'representative' THEN 0 ELSE 1 END,
+          qc.size DESC, qc.id
+      ) AS rn
+    FROM question_cluster_members qcm
+    JOIN question_clusters qc ON qc.id = qcm.cluster_id
+    WHERE qc.status = 'active'
+  ) t WHERE rn = 1`;
+
+function ensurePrimaryClusterMaterialization(database, client) {
+  try {
+    if (client === 'postgres') {
+      database.exec(`CREATE MATERIALIZED VIEW IF NOT EXISTS question_primary_cluster AS ${PRIMARY_CLUSTER_SELECT}`);
+      database.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_qpc_question ON question_primary_cluster(question_id)');
+    } else {
+      database.exec(`CREATE VIEW IF NOT EXISTS question_primary_cluster AS ${PRIMARY_CLUSTER_SELECT}`);
+    }
+  } catch { /* tabelas de cluster podem não existir ainda (dev local vazio) */ }
+}
+
+// Refresca a matview (Postgres) após reconstruir clusters. No sqlite é view
+// (sempre atual), então é no-op. Chamável por scripts de manutenção.
+function refreshPrimaryClusterMaterialization(database = db, client = activeDbClient) {
+  if (client !== 'postgres') return;
+  try { database.exec('REFRESH MATERIALIZED VIEW question_primary_cluster'); } catch { /* ignore */ }
 }
 
 function initAdaptiveStudySchema(database) {

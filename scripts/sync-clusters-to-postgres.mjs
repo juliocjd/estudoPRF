@@ -39,5 +39,9 @@ try {
   let nm = 0;
   for (const b of chunk(memF.map((r) => clean(r, memberCols)), 400)) { await sql`INSERT INTO question_cluster_members ${sql(b, ...memberCols)}`; nm += b.length; }
   console.log(`membros inseridos: ${nm}`);
+  // A matview do "cluster primário por questão" precisa refrescar após mudar os
+  // clusters (senão o adaptativo usa o mapeamento antigo).
+  try { await sql`REFRESH MATERIALIZED VIEW question_primary_cluster`; console.log('matview question_primary_cluster refrescada.'); }
+  catch (e) { console.log('aviso: não refrescou a matview (', e.message.slice(0, 60), ')'); }
   console.log('OK: clusters sincronizados no prod.');
 } catch (e) { console.error('ERRO:', e.message); process.exitCode = 1; } finally { await sql.end(); }
