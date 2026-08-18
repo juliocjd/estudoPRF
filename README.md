@@ -1,4 +1,4 @@
-# Materiais Tec para PDF
+# Materiais para PDF
 
 Automacao local para abrir aulas em texto no navegador autenticado e gerar PDFs, usando a sua propria sessao e o fluxo normal de visualizacao/impressao.
 
