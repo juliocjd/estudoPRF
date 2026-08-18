@@ -905,10 +905,19 @@ function bindEvents() {
     return loadAdaptiveTarget("prf_otimizado");
   }));
   // Fila de correção: só desatualizadas de trânsito ainda não corrigidas. Cada
-  // uma sai da fila conforme você corrige (marca não-desatualizada ou grava
-  // resposta de lei atual). O servidor escopa (ignora os filtros da barra).
+  // uma sai conforme você corrige (marca não-desatualizada ou grava resposta de
+  // lei atual). Escopa a LISTA às pendentes (Trânsito + só desatualizadas s/
+  // gabarito vigente) — assim o pager vira o contador ("X / N pendentes") e a
+  // navegação nunca cai em questão já corrigida (desat=0).
   els.fixOutdatedQueue?.addEventListener("click", () => runNav(() => {
     closeAllDropdowns();
+    state.filters.includedMaterias = ["Legislação de Trânsito e Transportes"];
+    state.filters.outdatedNoCurrent = true;
+    try { localStorage.setItem("prf.includedMaterias", JSON.stringify(state.filters.includedMaterias)); } catch {}
+    if (els.outdatedNoCurrentOnly) els.outdatedNoCurrentOnly.checked = true;
+    renderIncludedMatterOptions();
+    updateMultiMateriaCount();
+    updateAdvancedFiltersSummary();
     setStudyMode("fixOutdated");
     return loadAdaptiveTarget("corrigir_desatualizadas");
   }));

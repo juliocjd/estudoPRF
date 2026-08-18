@@ -4405,6 +4405,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
     values.push('%contran%');
   }
   if (outdatedNoCurrent) {
+    where.push('COALESCE(q.anulada, 0) = 0');
     if (!hasCurrentLawAnswerTable()) {
       where.push('COALESCE(q.desatualizada, 0) = 1');
     } else {
@@ -4480,9 +4481,15 @@ function buildQuestionWhere(searchParams, extra = {}) {
   }
   if (hideStudyExcluded) {
     applyQuestionStudyStatusFilter(where);
-    if (!extra.skipFutureReviewFilter) applyFutureReviewFilter(where);
-    applyNormativeTeachingDiscardFilter(where);
-    applyCurrentLawMainStudyFilter(where);
+    // No modo "só desatualizadas s/ gabarito vigente" (fila de correção), NÃO
+    // aplicar os filtros que escondem justamente as desatualizadas (elas ficam
+    // ocultas do estudo até verificação). Aqui a intenção é MOSTRÁ-las; só as
+    // "fora do estudo" (status excluded) continuam removidas.
+    if (!outdatedNoCurrent) {
+      if (!extra.skipFutureReviewFilter) applyFutureReviewFilter(where);
+      applyNormativeTeachingDiscardFilter(where);
+      applyCurrentLawMainStudyFilter(where);
+    }
   }
   applyNormativeQuestionFilters(where, normative, { hideDiscarded, hideManualReview, onlyChangedAnswer });
   applyContranPrfUnpublishedVisibilityFilter(where);
@@ -5232,24 +5239,30 @@ function getFixOutdatedNext(searchParams) {
   const excluded = hasQuestionStudyStatusTable()
     ? `EXISTS (SELECT 1 FROM question_study_status s WHERE s.question_id = q.id_question AND s.status = 'excluded')`
     : '1=0';
-  const row = db.prepare(`
-    SELECT q.id_question AS id, COALESCE(q.materia, '') AS materia, COALESCE(q.assunto, '') AS assunto
-    FROM questions q
-    WHERE (LOWER(COALESCE(q.materia, '')) LIKE '%trânsito%' OR LOWER(COALESCE(q.materia, '')) LIKE '%transito%')
+  const pendingWhere = `
+    (LOWER(COALESCE(q.materia, '')) LIKE '%trânsito%' OR LOWER(COALESCE(q.materia, '')) LIKE '%transito%')
       AND COALESCE(q.desatualizada, 0) = 1
       AND COALESCE(q.anulada, 0) = 0
       AND NOT (${rescued})
-      AND NOT (${excluded})
+      AND NOT (${excluded})`;
+  const row = db.prepare(`
+    SELECT q.id_question AS id, COALESCE(q.materia, '') AS materia, COALESCE(q.assunto, '') AS assunto
+    FROM questions q
+    WHERE ${pendingWhere}
     ORDER BY
       (SELECT MAX(ss.served_at) FROM study_served_questions ss WHERE ss.question_id = q.id_question) ASC NULLS FIRST,
       q.assunto, q.id_question
     LIMIT 1
   `).get();
+  const remaining = db.prepare(`SELECT COUNT(*) AS n FROM questions q WHERE ${pendingWhere}`).get().n || 0;
   if (!row) {
-    return { error: 'Nenhuma questão desatualizada de trânsito pendente de correção. 🎉', plan: 'corrigir_desatualizadas', profile: profileId };
+    return { error: '🎉 Nenhuma questão desatualizada de trânsito pendente de correção.', plan: 'corrigir_desatualizadas', profile: profileId, remaining: 0 };
   }
   recordServedQuestion(row.id, { mode: 'corrigir_desatualizadas', profileId, source: 'fix_outdated', reason: 'correcao_desatualizada' });
-  return adaptiveTargetPayload({ ...row, reasonText: 'Fila: corrigir desatualizada' }, 'corrigir_desatualizadas', profileId);
+  return {
+    ...adaptiveTargetPayload({ ...row, reasonText: `Fila: corrigir desatualizada • ${remaining} pendentes` }, 'corrigir_desatualizadas', profileId),
+    remaining
+  };
 }
 
 function getAdaptiveStudyNext(searchParams) {
