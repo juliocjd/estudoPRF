@@ -1409,6 +1409,15 @@ body.is-report-page {
   vertical-align: middle;
 }
 
+/* O selo "editada" só aparece DEPOIS de responder. Antes, com uma única
+   alternativa editada, ele entregaria o gabarito. */
+#alternatives .alt-edited-tag {
+  display: none;
+}
+#alternatives.is-answered .alt-edited-tag {
+  display: inline-block;
+}
+
 .button-small {
   padding: 5px 10px;
   font-size: 13px;

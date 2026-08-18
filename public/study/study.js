@@ -3990,6 +3990,8 @@ function renderQuestion(question, options = {}) {
   `,
     )
     .join("");
+  // Selo "editada" só após responder (senão entrega o gabarito).
+  els.alternatives.classList.toggle("is-answered", hasAnsweredCurrentPrompt(question));
 
   state.altEditMode = false;
   renderAlternativeEditPanel(question);
@@ -7410,6 +7412,8 @@ function renderSelectedAlternative() {
     label.classList.toggle("is-answer-correct", isCorrectAnswer);
     label.classList.toggle("is-answer-wrong", isWrongAnswer);
   });
+  // Revela o selo "editada" só depois de responder.
+  els.alternatives.classList.toggle("is-answered", Boolean(result));
 }
 
 function renderAnswerResultBox() {
