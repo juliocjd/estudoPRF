@@ -4959,14 +4959,73 @@ async function handleHistoricalCommentImageInput(input, event) {
   await insertHistoricalCommentImages(editor, files);
 }
 
+// Detecta se um texto colado é markdown (saída do NotebookLM). No celular o
+// clipboard traz só texto puro, então o markdown aparece cru (cheio de *); no
+// desktop vinha HTML formatado. Convertendo aqui, funciona igual nos dois.
+function looksLikeMarkdown(text) {
+  if (!text) return false;
+  return (
+    /\*\*[^*\n]+\*\*/.test(text) // **negrito**
+    || /^\s*#{1,6}\s+\S/m.test(text) // ### título
+    || /^\s*[-*]\s+\S/m.test(text) // - lista
+    || /^\s*>\s+\S/m.test(text) // > citação
+  );
+}
+
+// Markdown -> HTML no estilo do editor (negrito, listas, citação de artigo).
+function markdownToHistoricalHtml(md) {
+  const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (t) =>
+    esc(t)
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*([^*\n]+?)\*/g, "$1<em>$2</em>");
+  const lines = String(md).replace(/\r/g, "").split("\n");
+  const out = [];
+  let i = 0;
+  while (i < lines.length) {
+    const l = lines[i];
+    if (!l.trim()) { i += 1; continue; }
+    if (/^\s*#{1,6}\s+/.test(l)) {
+      out.push(`<p><strong>${inline(l.replace(/^\s*#{1,6}\s+/, ""))}</strong></p>`);
+      i += 1; continue;
+    }
+    if (/^\s*>\s?/.test(l)) {
+      const b = [];
+      while (i < lines.length && /^\s*>\s?/.test(lines[i])) { b.push(inline(lines[i].replace(/^\s*>\s?/, ""))); i += 1; }
+      out.push(`<blockquote>${b.join("<br>")}</blockquote>`); continue;
+    }
+    if (/^\s*[-*]\s+/.test(l)) {
+      const b = [];
+      while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) { b.push(`<li>${inline(lines[i].replace(/^\s*[-*]\s+/, ""))}</li>`); i += 1; }
+      out.push(`<ul>${b.join("")}</ul>`); continue;
+    }
+    const b = [];
+    while (i < lines.length && lines[i].trim() && !/^\s*([#>]|[-*]\s)/.test(lines[i])) { b.push(inline(lines[i])); i += 1; }
+    out.push(`<p>${b.join("<br>")}</p>`);
+  }
+  return out.join("");
+}
+
 async function handleHistoricalCommentPaste(editor, event) {
   const files = Array.from(event.clipboardData?.files || []).filter((file) =>
     /^image\/(?:png|jpeg|webp|gif)$/i.test(file.type || ""),
   );
-  if (!files.length) return false;
-  event.preventDefault();
-  await insertHistoricalCommentImages(editor, files);
-  return true;
+  if (files.length) {
+    event.preventDefault();
+    await insertHistoricalCommentImages(editor, files);
+    return true;
+  }
+  // Markdown colado (ex.: saída do NotebookLM no celular) -> HTML formatado.
+  const text = event.clipboardData?.getData("text/plain") || "";
+  if (looksLikeMarkdown(text)) {
+    event.preventDefault();
+    const html = markdownToHistoricalHtml(text);
+    editor.focus();
+    document.execCommand("insertHTML", false, html);
+    saveHistoricalCommentSelection(editor);
+    return true;
+  }
+  return false;
 }
 
 async function insertHistoricalCommentImages(editor, files) {
