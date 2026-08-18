@@ -4377,6 +4377,10 @@ function buildQuestionWhere(searchParams, extra = {}) {
   // desatualizadas que ainda NÃO têm correção verificada que pontue pela lei
   // atual (mesmo conjunto que o estudo normal esconde). Serve p/ corrigir à mão.
   const outdatedNoCurrent = searchParams.get('outdatedNoCurrent') === '1' || extra.outdatedNoCurrent;
+  // "Resgatadas sem explicação": já têm resposta de lei atual verificada, mas a
+  // explicação histórica ainda não foi editada por você. Serve p/ escrever a
+  // explicação delas.
+  const rescuedNoExplanation = searchParams.get('rescuedNoExplanation') === '1' || extra.rescuedNoExplanation;
 
   if (q) {
     where.push('(LOWER(q.statement_text) LIKE ? OR LOWER(q.materia) LIKE ? OR LOWER(q.assunto) LIKE ? OR CAST(q.id_question AS TEXT) LIKE ?)');
@@ -4423,6 +4427,22 @@ function buildQuestionWhere(searchParams, extra = {}) {
         )
       )`);
     }
+  }
+  if (rescuedNoExplanation && hasCurrentLawAnswerTable()) {
+    where.push('COALESCE(q.anulada, 0) = 0');
+    where.push(`(
+      EXISTS (
+        SELECT 1 FROM question_current_law_answers qcla_resg
+        WHERE qcla_resg.question_id = q.id_question
+          AND qcla_resg.current_law_status = 'verified'
+          AND qcla_resg.can_auto_score_current_law IS TRUE
+          AND COALESCE(qcla_resg.current_answer, '') != ''
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM comments c_resg
+        WHERE c_resg.question_id = q.id_question AND c_resg.user_edited_at IS NOT NULL
+      )
+    )`);
   }
   applyExamFilter(where, values, examKey);
   if (anos.length) {
@@ -4485,7 +4505,7 @@ function buildQuestionWhere(searchParams, extra = {}) {
     // aplicar os filtros que escondem justamente as desatualizadas (elas ficam
     // ocultas do estudo até verificação). Aqui a intenção é MOSTRÁ-las; só as
     // "fora do estudo" (status excluded) continuam removidas.
-    if (!outdatedNoCurrent) {
+    if (!outdatedNoCurrent && !rescuedNoExplanation) {
       if (!extra.skipFutureReviewFilter) applyFutureReviewFilter(where);
       applyNormativeTeachingDiscardFilter(where);
       applyCurrentLawMainStudyFilter(where);
@@ -5265,9 +5285,50 @@ function getFixOutdatedNext(searchParams) {
   };
 }
 
+// Fila de EXPLICAÇÃO das resgatadas: questões de trânsito que já têm resposta de
+// lei atual verificada (corrigidas pelo NotebookLM) mas cuja explicação
+// histórica você ainda NÃO editou. Cada uma sai quando você salva a explicação.
+function getRescuedExplanationNext(searchParams) {
+  const profileId = resolveProfileId(searchParams.get('profile'));
+  if (!hasCurrentLawAnswerTable()) {
+    return { error: '🎉 Nenhuma resgatada pendente de explicação.', plan: 'explicar_resgatadas', profile: profileId, remaining: 0 };
+  }
+  const excluded = hasQuestionStudyStatusTable()
+    ? `EXISTS (SELECT 1 FROM question_study_status s WHERE s.question_id = q.id_question AND s.status = 'excluded')`
+    : '1=0';
+  const pendingWhere = `
+    (LOWER(COALESCE(q.materia, '')) LIKE '%trânsito%' OR LOWER(COALESCE(q.materia, '')) LIKE '%transito%')
+      AND COALESCE(q.anulada, 0) = 0
+      AND EXISTS (SELECT 1 FROM question_current_law_answers x WHERE x.question_id = q.id_question
+        AND x.current_law_status = 'verified' AND x.can_auto_score_current_law IS TRUE AND COALESCE(x.current_answer, '') <> '')
+      AND NOT EXISTS (SELECT 1 FROM comments c WHERE c.question_id = q.id_question AND c.user_edited_at IS NOT NULL)
+      AND NOT (${excluded})`;
+  const row = db.prepare(`
+    SELECT q.id_question AS id, COALESCE(q.materia, '') AS materia, COALESCE(q.assunto, '') AS assunto
+    FROM questions q
+    WHERE ${pendingWhere}
+    ORDER BY
+      (SELECT MAX(ss.served_at) FROM study_served_questions ss WHERE ss.question_id = q.id_question) ASC NULLS FIRST,
+      q.assunto, q.id_question
+    LIMIT 1
+  `).get();
+  const remaining = db.prepare(`SELECT COUNT(*) AS n FROM questions q WHERE ${pendingWhere}`).get().n || 0;
+  if (!row) {
+    return { error: '🎉 Nenhuma resgatada de trânsito pendente de explicação.', plan: 'explicar_resgatadas', profile: profileId, remaining: 0 };
+  }
+  recordServedQuestion(row.id, { mode: 'explicar_resgatadas', profileId, source: 'rescued_explanation', reason: 'explicacao_resgatada' });
+  return {
+    ...adaptiveTargetPayload({ ...row, reasonText: `Explicação resgatadas • ${remaining} pendentes` }, 'explicar_resgatadas', profileId),
+    remaining
+  };
+}
+
 function getAdaptiveStudyNext(searchParams) {
   if (String(searchParams.get('plan') || '') === 'corrigir_desatualizadas') {
     return getFixOutdatedNext(searchParams);
+  }
+  if (String(searchParams.get('plan') || '') === 'explicar_resgatadas') {
+    return getRescuedExplanationNext(searchParams);
   }
   const plan = resolveStudyPlan(searchParams.get('plan'));
   const profileId = resolveProfileId(searchParams.get('profile'));

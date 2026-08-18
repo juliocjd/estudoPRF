@@ -55,6 +55,7 @@ const state = {
     hideDuplicates: false,
     representative: false,
     outdatedNoCurrent: false,
+    rescuedNoExplanation: false,
     normative: "",
     contranUnpublished: false,
     contranCurrentResolution: "",
@@ -229,6 +230,7 @@ const els = {
   nextUnanswered: document.querySelector("#nextUnanswered"),
   coverageQueue: document.querySelector("#coverageQueue"),
   fixOutdatedQueue: document.querySelector("#fixOutdatedQueue"),
+  rescuedExplanationQueue: document.querySelector("#rescuedExplanationQueue"),
   smartQueue: document.querySelector("#smartQueue"),
   repairQueue: document.querySelector("#repairQueue"),
   dueReviews: document.querySelector("#dueReviews"),
@@ -913,6 +915,7 @@ function bindEvents() {
     closeAllDropdowns();
     state.filters.includedMaterias = ["Legislação de Trânsito e Transportes"];
     state.filters.outdatedNoCurrent = true;
+    state.filters.rescuedNoExplanation = false;
     try { localStorage.setItem("prf.includedMaterias", JSON.stringify(state.filters.includedMaterias)); } catch {}
     if (els.outdatedNoCurrentOnly) els.outdatedNoCurrentOnly.checked = true;
     renderIncludedMatterOptions();
@@ -920,6 +923,21 @@ function bindEvents() {
     updateAdvancedFiltersSummary();
     setStudyMode("fixOutdated");
     return loadAdaptiveTarget("corrigir_desatualizadas");
+  }));
+  // Fila de explicação das resgatadas: já têm resposta de lei atual, falta a
+  // explicação histórica. Sai quando você edita/salva a explicação.
+  els.rescuedExplanationQueue?.addEventListener("click", () => runNav(() => {
+    closeAllDropdowns();
+    state.filters.includedMaterias = ["Legislação de Trânsito e Transportes"];
+    state.filters.rescuedNoExplanation = true;
+    state.filters.outdatedNoCurrent = false;
+    if (els.outdatedNoCurrentOnly) els.outdatedNoCurrentOnly.checked = false;
+    try { localStorage.setItem("prf.includedMaterias", JSON.stringify(state.filters.includedMaterias)); } catch {}
+    renderIncludedMatterOptions();
+    updateMultiMateriaCount();
+    updateAdvancedFiltersSummary();
+    setStudyMode("rescuedExplain");
+    return loadAdaptiveTarget("explicar_resgatadas");
   }));
 
   // Stats do topo clicáveis: "revisar erros" / "revisar hoje" / "prontas" entram
@@ -1775,6 +1793,7 @@ function clearFilters() {
     hideDuplicates: false,
     representative: false,
     outdatedNoCurrent: false,
+    rescuedNoExplanation: false,
     normative: "",
     contranUnpublished: false,
     contranCurrentResolution: "",
@@ -1868,6 +1887,7 @@ function setStudyMode(mode) {
     subject: "Modo: Trocar assunto",
     examSource: "Modo: Prova selecionada",
     fixOutdated: "Modo: Corrigir desatualizadas",
+    rescuedExplain: "Modo: Explicação das resgatadas",
   };
   els.modeMenuButton.textContent = labels[mode] || labels.study;
   updateAdvancedFiltersSummary();
@@ -2504,6 +2524,7 @@ function buildQuestionParams() {
   if (state.filters.hideDuplicates) params.set("hideDuplicates", "1");
   if (state.filters.representative) params.set("representative", "1");
   if (state.filters.outdatedNoCurrent) params.set("outdatedNoCurrent", "1");
+  if (state.filters.rescuedNoExplanation) params.set("rescuedNoExplanation", "1");
   if (state.filters.normative) params.set("normative", state.filters.normative);
   if (state.filters.contranUnpublished)
     params.set("unpublished", "contran-prf");
@@ -2667,6 +2688,11 @@ async function goNext() {
     return;
   }
 
+  if (state.studyMode === "rescuedExplain") {
+    await loadAdaptiveTarget("explicar_resgatadas");
+    return;
+  }
+
   if (state.rowIndex < state.rows.length - 1) {
     state.rowIndex += 1;
     const requestToken = beginQuestionRequest();
@@ -2770,6 +2796,13 @@ async function loadAdaptiveTarget(plan = "prf_otimizado") {
       renderEmptyQuestion(
         target.error ||
           "🎉 Nenhuma questão desatualizada de trânsito pendente de correção.",
+      );
+      return false;
+    }
+    if (plan === "explicar_resgatadas") {
+      renderEmptyQuestion(
+        target.error ||
+          "🎉 Nenhuma resgatada de trânsito pendente de explicação.",
       );
       return false;
     }
