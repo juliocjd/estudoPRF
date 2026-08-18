@@ -1516,10 +1516,7 @@ function bindEvents() {
   });
 
   // "Pular": avança sem responder (não passa pelo bloqueio answer-first).
-  els.skipQuestion?.addEventListener("click", () => {
-    console.log("[DIAG] clique Pular/Próxima | studyMode=", state.studyMode, "editMode=", state.historicalCommentEditMode, "selectedId=", state.selectedId);
-    runNav(goNext);
-  });
+  els.skipQuestion?.addEventListener("click", () => runNav(goNext));
 
   els.similarQuestions.addEventListener("click", () => showSimilarPanel());
 
@@ -2627,7 +2624,6 @@ async function goPrevious() {
 }
 
 async function goNext() {
-  console.log("[DIAG] goNext entrou | studyMode=", state.studyMode, "rows=", state.rows?.length, "rowIndex=", state.rowIndex, "page=", state.page, "/", state.totalPages);
   if (
     state.studyMode === "adaptive" ||
     state.studyMode === "smart" ||
@@ -2636,7 +2632,6 @@ async function goNext() {
     await loadAdaptiveTarget("prf_otimizado");
     return;
   }
-  console.log("[DIAG] goNext: NÃO é modo adaptativo — caiu no caminho de lista");
 
   if (state.studyMode === "review") {
     await loadAdaptiveTarget("revisar_hoje");
@@ -2660,6 +2655,17 @@ async function goNext() {
   if (state.page < state.totalPages) {
     state.page += 1;
     await loadQuestions();
+    return;
+  }
+  // Lista esgotada (ex.: abriu 1 questão por link direto ?targetId=). Em vez de
+  // "não acontecer nada", avisa como continuar.
+  if (els.answerStatus) {
+    els.answerStatus.textContent =
+      'Fim da lista. Para seguir, clique em "Estudar agora" ou use um filtro + "Ver todas".';
+  }
+  if (els.answerHint) {
+    els.answerHint.textContent =
+      "Você abriu uma questão isolada (link direto), por isso o “próximo” não tem sequência aqui.";
   }
 }
 
@@ -2719,15 +2725,7 @@ async function loadAdaptiveTarget(plan = "prf_otimizado") {
   const params = buildQuestionParams();
   params.set("plan", plan);
   if (state.activeProfile) params.set("profile", state.activeProfile);
-  console.log("[DIAG] loadAdaptiveTarget: buscando next | plan=", plan, "token=", requestToken, "params=", params.toString());
-  let target;
-  try {
-    target = await api(`/api/adaptive-study/next?${params}`);
-  } catch (e) {
-    console.log("[DIAG] loadAdaptiveTarget: ERRO no fetch ->", e?.message || e);
-    throw e;
-  }
-  console.log("[DIAG] loadAdaptiveTarget: resposta | questionId=", target?.questionId, "error=", target?.error, "tokenAtual=", questionRequestToken, "aindaAtual?", isCurrentQuestionRequest(requestToken));
+  const target = await api(`/api/adaptive-study/next?${params}`);
   if (!isCurrentQuestionRequest(requestToken)) return false;
   if (!target?.questionId) {
     // Modos só-revisão / só-erros NÃO podem cair na lista geral: isso traria
