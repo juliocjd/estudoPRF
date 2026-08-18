@@ -228,6 +228,7 @@ const els = {
   nextSubject: document.querySelector("#nextSubject"),
   nextUnanswered: document.querySelector("#nextUnanswered"),
   coverageQueue: document.querySelector("#coverageQueue"),
+  fixOutdatedQueue: document.querySelector("#fixOutdatedQueue"),
   smartQueue: document.querySelector("#smartQueue"),
   repairQueue: document.querySelector("#repairQueue"),
   dueReviews: document.querySelector("#dueReviews"),
@@ -902,6 +903,14 @@ function bindEvents() {
     closeAllDropdowns();
     setStudyMode("coverage");
     return loadAdaptiveTarget("prf_otimizado");
+  }));
+  // Fila de correção: só desatualizadas de trânsito ainda não corrigidas. Cada
+  // uma sai da fila conforme você corrige (marca não-desatualizada ou grava
+  // resposta de lei atual). O servidor escopa (ignora os filtros da barra).
+  els.fixOutdatedQueue?.addEventListener("click", () => runNav(() => {
+    closeAllDropdowns();
+    setStudyMode("fixOutdated");
+    return loadAdaptiveTarget("corrigir_desatualizadas");
   }));
 
   // Stats do topo clicáveis: "revisar erros" / "revisar hoje" / "prontas" entram
@@ -1849,6 +1858,7 @@ function setStudyMode(mode) {
     coverage: "Modo: Varrer o banco",
     subject: "Modo: Trocar assunto",
     examSource: "Modo: Prova selecionada",
+    fixOutdated: "Modo: Corrigir desatualizadas",
   };
   els.modeMenuButton.textContent = labels[mode] || labels.study;
   updateAdvancedFiltersSummary();
@@ -2643,6 +2653,11 @@ async function goNext() {
     return;
   }
 
+  if (state.studyMode === "fixOutdated") {
+    await loadAdaptiveTarget("corrigir_desatualizadas");
+    return;
+  }
+
   if (state.rowIndex < state.rows.length - 1) {
     state.rowIndex += 1;
     const requestToken = beginQuestionRequest();
@@ -2739,6 +2754,13 @@ async function loadAdaptiveTarget(plan = "prf_otimizado") {
         (plan === "revisar_hoje"
           ? "🎉 Nenhuma revisão vencida agora nas matérias selecionadas. Volte mais tarde ou troque de modo (ex.: “Estudar agora”)."
           : "Nenhum erro recente para revisar nas matérias selecionadas.") + contranHint,
+      );
+      return false;
+    }
+    if (plan === "corrigir_desatualizadas") {
+      renderEmptyQuestion(
+        target.error ||
+          "🎉 Nenhuma questão desatualizada de trânsito pendente de correção.",
       );
       return false;
     }

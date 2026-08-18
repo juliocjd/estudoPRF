@@ -5218,7 +5218,44 @@ function getSessionPlan(searchParams) {
   };
 }
 
+// Fila de CORREÇÃO: serve a próxima questão de trânsito desatualizada AINDA não
+// corrigida (sem resposta de lei atual verificada). Conforme o usuário corrige
+// (adiciona resposta de lei atual OU zera a flag), ela sai da fila. Ordena pela
+// menos-recém-servida, então "próximo" avança mesmo que pule sem corrigir.
+function getFixOutdatedNext(searchParams) {
+  const profileId = resolveProfileId(searchParams.get('profile'));
+  const rescued = hasCurrentLawAnswerTable()
+    ? `EXISTS (SELECT 1 FROM question_current_law_answers x WHERE x.question_id = q.id_question
+        AND x.current_law_status = 'verified' AND x.can_auto_score_current_law IS TRUE
+        AND COALESCE(x.current_answer, '') <> '')`
+    : '1=0';
+  const excluded = hasQuestionStudyStatusTable()
+    ? `EXISTS (SELECT 1 FROM question_study_status s WHERE s.question_id = q.id_question AND s.status = 'excluded')`
+    : '1=0';
+  const row = db.prepare(`
+    SELECT q.id_question AS id, COALESCE(q.materia, '') AS materia, COALESCE(q.assunto, '') AS assunto
+    FROM questions q
+    WHERE (LOWER(COALESCE(q.materia, '')) LIKE '%trânsito%' OR LOWER(COALESCE(q.materia, '')) LIKE '%transito%')
+      AND COALESCE(q.desatualizada, 0) = 1
+      AND COALESCE(q.anulada, 0) = 0
+      AND NOT (${rescued})
+      AND NOT (${excluded})
+    ORDER BY
+      (SELECT MAX(ss.served_at) FROM study_served_questions ss WHERE ss.question_id = q.id_question) ASC NULLS FIRST,
+      q.assunto, q.id_question
+    LIMIT 1
+  `).get();
+  if (!row) {
+    return { error: 'Nenhuma questão desatualizada de trânsito pendente de correção. 🎉', plan: 'corrigir_desatualizadas', profile: profileId };
+  }
+  recordServedQuestion(row.id, { mode: 'corrigir_desatualizadas', profileId, source: 'fix_outdated', reason: 'correcao_desatualizada' });
+  return adaptiveTargetPayload({ ...row, reasonText: 'Correção de desatualizada' }, 'corrigir_desatualizadas', profileId);
+}
+
 function getAdaptiveStudyNext(searchParams) {
+  if (String(searchParams.get('plan') || '') === 'corrigir_desatualizadas') {
+    return getFixOutdatedNext(searchParams);
+  }
   const plan = resolveStudyPlan(searchParams.get('plan'));
   const profileId = resolveProfileId(searchParams.get('profile'));
   const flow = getStudyFlowState();
