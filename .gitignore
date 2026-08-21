@@ -76,3 +76,13 @@ validacao_*.csv
 v*_worklist_*.csv
 v*_worklist_*.json
 v*_worklist_*.jsonl
+
+# Ferramentas de coleta (TEC) — NUNCA versionar (repo pode ficar publico).
+# Copias locais seguem funcionando; so nao vao para o git.
+src/tec-to-pdf.mjs
+scripts/tec-descobrir-cadernos.mjs
+scripts/coleta-watchdog.mjs
+scripts/coleta-watchdog-comentarios.mjs
+scripts/coletar-restante-conservador.ps1
+aulas.txt
+config.*.json

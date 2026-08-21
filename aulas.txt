@@ -1,5 +1,0 @@
-# Coloque uma URL de aula por linha.
-# Linhas vazias e linhas iniciadas com # sao ignoradas.
-#
-# Exemplo:
-# https://www.tecconcursos.com.br/...

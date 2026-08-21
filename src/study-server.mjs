@@ -82,7 +82,7 @@ const dbPath = path.resolve(ROOT_DIR, args.db || config.prf?.questionsDb || 'que
 const assetsDir = path.resolve(ROOT_DIR, args.assets || config.prf?.assetsDir || 'assets');
 // PDFs ficam em public/pdfs para a Vercel servir estaticamente (public/ é a
 // raiz estática). Localmente o servidor também lê daqui. Não usa
-// config.outputDir de propósito: aquele é o destino de GERAÇÃO (tec-to-pdf),
+// config.outputDir de propósito: aquele é o destino de GERAÇÃO offline,
 // não o de serving.
 const pdfsDir = path.resolve(ROOT_DIR, args.pdfs || 'public/pdfs');
 const port = Number(args.port || 4173);
