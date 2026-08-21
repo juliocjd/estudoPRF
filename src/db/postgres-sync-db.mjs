@@ -60,7 +60,9 @@ export class PostgresSyncDatabase {
     const request = { op, ...payload };
     fs.writeFileSync(this.requestPath, JSON.stringify(request), 'utf8');
     Atomics.store(this.control, 0, 1);
-    this.worker.postMessage(request);
+    // O worker dorme em Atomics.wait; notify é o que o acorda (postMessage não
+    // desperta uma thread parada em Atomics.wait).
+    Atomics.notify(this.control, 0, 1);
 
     while (Atomics.load(this.control, 0) === 1) {
       Atomics.wait(this.control, 0, 1);

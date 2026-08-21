@@ -10,34 +10,49 @@ const sql = postgres(workerData.databaseUrl, {
   idle_timeout: 20,
   connect_timeout: 30
 });
-let busy = false;
+// Estados de control[0]: 0 = ocioso, 1 = pedido pendente, 2 = resposta pronta,
+// 3 = encerrar. Event-driven: o worker BLOQUEIA em Atomics.wait enquanto ocioso
+// e só acorda quando a thread principal muda o estado (store + notify). Antes era
+// setInterval(…, 1), que mantinha o event loop sempre ativo e fazia a Vercel
+// cobrar CPU durante TODO o tempo quente da instância, mesmo sem query rodando.
+async function run() {
+  for (;;) {
+    // Dorme de verdade enquanto NÃO houver trabalho. Os valores "sem trabalho"
+    // são 0 (ocioso) e 2 (resposta que a main ainda vai consumir e zerar);
+    // esperamos exatamente no valor atual, então acordamos só quando a main o
+    // muda (store + notify). Sai do laço em 1 (pedido) ou 3 (encerrar). Como o
+    // Atomics.wait retorna 'not-equal' na hora se o valor já mudou, não há
+    // wakeup perdido nem busy-spin.
+    let state = Atomics.load(control, 0);
+    while (state !== 1 && state !== 3) {
+      Atomics.wait(control, 0, state);
+      state = Atomics.load(control, 0);
+    }
 
-setInterval(async () => {
-  if (busy) return;
-  const state = Atomics.load(control, 0);
-  if (state === 3) {
-    await sql.end({ timeout: 5 }).catch(() => {});
-    process.exit(0);
-  }
-  if (state !== 1) return;
-  busy = true;
-  let request = null;
-  try {
-    request = JSON.parse(fs.readFileSync(requestPath, 'utf8'));
-    const value = await executeRequest(request);
-    fs.writeFileSync(responsePath, JSON.stringify({ ok: true, value }), 'utf8');
-  } catch (error) {
-    fs.writeFileSync(responsePath, JSON.stringify({
-      ok: false,
-      error: `${error.message || String(error)}${request?.sql ? `\nSQL: ${request.sql}` : ''}`,
-      stack: error.stack || ''
-    }), 'utf8');
-  }
+    if (state === 3) {
+      await sql.end({ timeout: 5 }).catch(() => {});
+      process.exit(0);
+    }
 
-  Atomics.store(control, 0, 2);
-  Atomics.notify(control, 0, 1);
-  busy = false;
-}, 1);
+    let request = null;
+    try {
+      request = JSON.parse(fs.readFileSync(requestPath, 'utf8'));
+      const value = await executeRequest(request);
+      fs.writeFileSync(responsePath, JSON.stringify({ ok: true, value }), 'utf8');
+    } catch (error) {
+      fs.writeFileSync(responsePath, JSON.stringify({
+        ok: false,
+        error: `${error.message || String(error)}${request?.sql ? `\nSQL: ${request.sql}` : ''}`,
+        stack: error.stack || ''
+      }), 'utf8');
+    }
+
+    Atomics.store(control, 0, 2);
+    Atomics.notify(control, 0, 1);
+  }
+}
+
+run();
 
 async function executeRequest(request) {
   if (request.op === 'all') {
