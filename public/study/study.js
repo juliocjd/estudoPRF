@@ -260,6 +260,7 @@ const els = {
   questionMeta: document.querySelector("#questionMeta"),
   questionQuickStatus: document.querySelector("#questionQuickStatus"),
   questionEditToggle: document.querySelector("#questionEditToggle"),
+  questionEditMenuItem: document.querySelector("#questionEditMenuItem"),
   copyQuestion: document.querySelector("#copyQuestion"),
   questionEditStatus: document.querySelector("#questionEditStatus"),
   questionEditPanel: document.querySelector("#questionEditPanel"),
@@ -1590,6 +1591,17 @@ function bindEvents() {
     state.questionEditMode = !state.questionEditMode;
     state.questionEditStatus = "";
     renderQuestionEditPanel(state.currentQuestion);
+  });
+  // Acesso à edição do enunciado no MOBILE: o cabeçalho da questão (com o botão
+  // "Editar questão") é ocultado no celular pra economizar espaço, então o mesmo
+  // comando fica no menu "Material". Abre o modo edição e rola até o painel.
+  els.questionEditMenuItem?.addEventListener("click", () => {
+    closeAllDropdowns();
+    if (!state.currentQuestion) return;
+    state.questionEditMode = true;
+    state.questionEditStatus = "";
+    renderQuestionEditPanel(state.currentQuestion);
+    els.questionEditPanel?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
   els.copyQuestion?.addEventListener("click", () => copyQuestionText());
   els.questionEditPanel?.addEventListener("click", (event) => {
@@ -4801,6 +4813,7 @@ async function copyTextFromElement(text, button, successLabel) {
 
 function historicalCommentToolbar({ editing }) {
   const fontFamilies = [
+    ["'Segoe UI Variable Text', 'Segoe UI', Segoe, sans-serif", "Segoe UI"],
     ["Arial, Helvetica, sans-serif", "Arial"],
     ["Georgia, serif", "Georgia"],
     ["Times New Roman, Times, serif", "Times"],
