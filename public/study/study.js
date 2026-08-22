@@ -2013,8 +2013,7 @@ async function loadStats() {
       ? statMarkup(stats.contranPrfUnpublished, "ineditas PRF/CONTRAN")
       : "",
   ].join("");
-  state.studyTimeSummary = stats.studyTime || {};
-  renderStudyTimeSummary();
+  // Painel de tempo de estudo desativado (escondido na tela); não renderiza.
 }
 
 async function loadFilters() {
@@ -2308,7 +2307,6 @@ function renderTimer() {
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = elapsedSeconds % 60;
   els.timerLabel.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-  renderStudyTimeSummary();
 }
 
 function resetQuestionTimer() {

@@ -884,8 +884,10 @@ function getStatsLight() {
       WHERE COALESCE(wrong_streak, 0) > 0
         OR COALESCE(mastery_score, 0) < 0.35
     `).get().n,
-    contranPrfUnpublished: getContranPrfUnpublishedCount(),
-    studyTime: getStudyTimeSummary()
+    contranPrfUnpublished: getContranPrfUnpublishedCount()
+    // studyTime removido do caminho quente: o painel de "tempo de estudo" foi
+    // escondido na tela (o usuário acompanha metas, não tempo). getStats()
+    // completo e /api/study-time/daily seguem calculando quando necessário.
   };
 }
 
