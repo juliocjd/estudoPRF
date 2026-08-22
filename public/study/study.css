@@ -98,30 +98,16 @@ button:disabled {
   min-height: 100vh;
 }
 
+/* Sem título/marca no topo: a barra só existe para hospedar o alerta CONTRAN
+   (quando há desatualização). Vazia, ela colapsa (0 de altura, sem borda). */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: grid;
-  grid-template-columns: minmax(150px, auto) minmax(0, 1fr);
-  gap: 16px;
-  align-items: center;
-  padding: 10px 24px;
-  border-bottom: 1px solid var(--border);
+  display: block;
   background: var(--surface);
 }
 
-.brand strong {
-  display: block;
-  font-size: 19px;
-  letter-spacing: 0;
-}
-
-.brand span {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 12px;
+/* Espaço só quando o alerta CONTRAN realmente aparece. */
+.topbar-metrics > #contranCurrencyMonitor:not([hidden]) {
+  margin: 10px 24px;
 }
 
 .topbar-metrics {
@@ -4694,14 +4680,6 @@ body.is-report-page {
   .topbar {
     gap: 10px;
     padding: 10px 12px;
-  }
-
-  .brand strong {
-    font-size: 17px;
-  }
-
-  .brand span {
-    font-size: 11px;
   }
 
   .stats {
