@@ -1999,7 +1999,7 @@ async function saveStudyState(payload) {
 }
 
 async function loadStats() {
-  const stats = await api("/api/stats");
+  const stats = await api("/api/stats?light=1");
   els.stats.innerHTML = [
     statMarkup(
       stats.readyToStudy ?? stats.knownAnswers ?? 0,
@@ -10590,7 +10590,7 @@ function cleanMathNotation(value) {
 }
 
 async function api(url, options) {
-  const isStatsGet = url === "/api/stats" && !options;
+  const isStatsGet = url === "/api/stats?light=1" && !options;
   if (isStatsGet && inflightStats.promise) {
     return inflightStats.promise;
   }
@@ -11755,7 +11755,7 @@ function escapeAttr(value) {
     if (seq !== refreshSeq) return;
     render(data, lastBank);
 
-    api("/api/stats").then((bank) => {
+    api("/api/stats?light=1").then((bank) => {
       if (seq !== refreshSeq) return;
       lastBank = bank;
       render(data, bank);

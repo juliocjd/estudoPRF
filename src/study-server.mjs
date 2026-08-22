@@ -145,7 +145,10 @@ async function routeRequest(request, response) {
   const url = new URL(request.url, `http://${request.headers.host || '127.0.0.1'}`);
 
   if (url.pathname === '/api/stats' && request.method === 'GET') {
-    sendJson(response, 200, getStats());
+    // ?light=1: só os contadores que a tela de estudo e o painel "Hoje" usam
+    // (~6 queries em vez de ~26). getStats() completo fica para quem precisar do
+    // resto. Caminho quente: loadStats roda a cada resposta.
+    sendJson(response, 200, url.searchParams.get('light') === '1' ? getStatsLight() : getStats());
     return;
   }
 
@@ -842,6 +845,47 @@ function getStats() {
     studyTime,
     errorsByType,
     masteryByMatter
+  };
+}
+
+// Versão enxuta do getStats para o caminho quente (loadStats + painel "Hoje").
+// Retorna SÓ os campos que o frontend lê (readyToStudy, knownAnswers, dueReviews,
+// repairQuestions, answered, contranPrfUnpublished, studyTime). Mesmas queries do
+// getStats, mas sem os ~19 contadores que a tela de estudo descartava a cada
+// resposta (normativeTeaching, attempts, errorsByType, masteryByMatter, etc.).
+function getStatsLight() {
+  return {
+    answered: db.prepare('SELECT COUNT(DISTINCT question_id) AS n FROM study_answers').get().n,
+    knownAnswers: db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM questions q
+      LEFT JOIN comments c ON c.question_id = q.id_question
+      WHERE ${currentLawStudyAnswerSql('q', 'c')} != ''
+    `).get().n,
+    readyToStudy: db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM questions q
+      LEFT JOIN comments c ON c.question_id = q.id_question
+      LEFT JOIN question_study_status qss ON qss.question_id = q.id_question
+      WHERE ${currentLawStudyAnswerSql('q', 'c')} != ''
+        AND COALESCE(q.anulada, 0) = 0
+        AND COALESCE(qss.status, 'active') != 'excluded'
+    `).get().n,
+    dueReviews: db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_mastery
+      WHERE next_due_at IS NOT NULL
+        AND CAST(next_due_at AS TEXT) != ''
+        AND next_due_at <= datetime('now')
+    `).get().n,
+    repairQuestions: db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM question_mastery
+      WHERE COALESCE(wrong_streak, 0) > 0
+        OR COALESCE(mastery_score, 0) < 0.35
+    `).get().n,
+    contranPrfUnpublished: getContranPrfUnpublishedCount(),
+    studyTime: getStudyTimeSummary()
   };
 }
 
