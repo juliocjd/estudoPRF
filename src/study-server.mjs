@@ -579,13 +579,6 @@ async function routeRequest(request, response) {
     return;
   }
 
-  const errorTypeMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/error-type$/);
-  if (errorTypeMatch && request.method === 'POST') {
-    const body = await readJsonBody(request);
-    sendJson(response, 200, setLastAnswerErrorType(Number(errorTypeMatch[1]), body?.errorType));
-    return;
-  }
-
   const postponeMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/postpone-review$/);
   if (postponeMatch && request.method === 'POST') {
     sendJson(response, 200, postponeReview(Number(postponeMatch[1])));
@@ -10512,21 +10505,6 @@ async function getQuestionExtras(questionId) {
     getQuestionAppliedTheoryCard(questionId), question, currentLawAnswer
   );
   return { exists: true, questionId, theory, appliedTheoryCard };
-}
-
-// Atualiza o "tipo de erro" da ÚLTIMA resposta errada da questão. A UI mostra o
-// seletor só depois de errar (quando a resposta já foi salva com o valor padrão),
-// então a escolha do usuário precisa deste endpoint para não se perder.
-function setLastAnswerErrorType(questionId, errorType) {
-  const valid = ['other', 'content', 'interpretation', 'confusion', 'memory', 'outdated', 'misclick'];
-  const et = valid.includes(String(errorType)) ? String(errorType) : 'other';
-  const res = db.prepare(`
-    UPDATE study_answers SET error_type = ?
-    WHERE question_id = ? AND is_correct = 0
-      AND answered_at = (SELECT MAX(answered_at) FROM study_answers WHERE question_id = ? AND is_correct = 0)
-  `).run(et, questionId, questionId);
-  db.prepare('UPDATE question_mastery SET last_error_type = ? WHERE question_id = ?').run(et, questionId);
-  return { ok: true, errorType: et, updated: Number(res?.changes || 0) };
 }
 
 // "Adiar revisão": empurra a próxima revisão para mais longe quando o usuário

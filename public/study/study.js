@@ -288,8 +288,6 @@ const els = {
   nextDue: document.querySelector("#nextDue"),
   confidenceSelect: document.querySelector("#confidenceSelect"),
   confidenceOptions: document.querySelector("#confidenceOptions"),
-  errorTypeWrapper: document.querySelector("#errorTypeWrapper"),
-  errorTypeSelect: document.querySelector("#errorTypeSelect"),
   submitAnswer: document.querySelector("#submitAnswer"),
   secondaryExplain: document.querySelector("#secondaryExplain"),
   skipQuestion: document.querySelector("#skipQuestion"),
@@ -1559,18 +1557,6 @@ function bindEvents() {
 
   els.similarQuestions.addEventListener("click", () => showSimilarPanel());
 
-  // Salva o "tipo de erro" quando escolhido (o seletor só aparece após errar,
-  // depois de a resposta já ter sido gravada com o padrão — antes se perdia).
-  els.errorTypeSelect?.addEventListener("change", () => {
-    const qid = state.currentQuestion?.id ?? state.selectedId;
-    if (!qid || els.errorTypeWrapper?.hidden) return;
-    api(`/api/questions/${qid}/error-type`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ errorType: els.errorTypeSelect.value }),
-    }).catch(() => {});
-  });
-
   els.excludeFromStudy.addEventListener("click", () =>
     updateQuestionStudyStatus("excluded"),
   );
@@ -1650,7 +1636,6 @@ function bindEvents() {
         body: JSON.stringify({
           answer: selected,
           confidence: els.confidenceSelect.value,
-          errorType: els.errorTypeSelect.value,
           elapsedMs,
           studyMode: state.studyMode,
           sessionId: state.sessionId,
@@ -2624,7 +2609,6 @@ function renderEmptyQuestion(message = "") {
   if (els.inlineSupportCard) els.inlineSupportCard.hidden = true;
   if (els.inlineSupportBody) els.inlineSupportBody.innerHTML = "";
   els.answerHint.textContent = "Sem questão selecionada";
-  els.errorTypeWrapper.hidden = true;
   els.teachingInfo.textContent = "";
   els.supportTeachingBody.innerHTML =
     '<p class="empty">Nenhum comentário atualizado carregado.</p>';
@@ -6641,7 +6625,6 @@ function updateAnswerActions() {
 
   els.secondaryExplain.disabled = !question;
   els.secondaryExplain.hidden = false;
-  els.errorTypeWrapper.hidden = true;
 
   // "Adiar revisão": só aparece depois de responder uma questão pontuável
   // (acerto/erro). Reseta o rótulo/estado a cada render de questão.
@@ -6686,7 +6669,6 @@ function updateAnswerActions() {
       // "Próxima" — a troca quebrava a memória muscular). Só o aviso e o seletor
       // de tipo de erro mudam.
       els.answerHint.textContent = "Revise a explicação antes de avançar";
-      els.errorTypeWrapper.hidden = false;
       els.submitAnswer.textContent = "Próxima questão";
       els.submitAnswer.dataset.action = "next";
       els.submitAnswer.disabled = false;
@@ -6920,7 +6902,6 @@ function answerHistoryMarkup(question) {
     <span>Erros: <strong>${Number(stats.wrong || 0)}</strong></span>
     <span>Sem correção: <strong>${Number(stats.unknown || 0)}</strong></span>
     ${last ? `<span>Última resposta: <strong>${escapeHtml(lastStatus)}</strong></span>` : ""}
-    ${last?.error_type ? `<span>Tipo de erro: <strong>${escapeHtml(errorTypeLabel(last.error_type))}</strong></span>` : ""}
   `;
 }
 
