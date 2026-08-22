@@ -2660,33 +2660,41 @@ async function goPrevious() {
 }
 
 async function goNext() {
-  if (
-    state.studyMode === "adaptive" ||
-    state.studyMode === "smart" ||
-    state.studyMode === "coverage"
-  ) {
-    await loadAdaptiveTarget("prf_otimizado");
-    return;
-  }
+  // Busca textual ativa: as setas navegam a LISTA de resultados (state.rows),
+  // não a fila adaptativa. Sem isso, o ">" chamava loadAdaptiveTarget, que com o
+  // filtro de texto reabria a fila e voltava sempre pro 1º resultado ("volta pra
+  // questão 1"). O goPrevious já usa a lista, por isso o "<" não tinha o bug.
+  const inTextSearch = Boolean(state.filters.q);
 
-  if (state.studyMode === "review") {
-    await loadAdaptiveTarget("revisar_hoje");
-    return;
-  }
+  if (!inTextSearch) {
+    if (
+      state.studyMode === "adaptive" ||
+      state.studyMode === "smart" ||
+      state.studyMode === "coverage"
+    ) {
+      await loadAdaptiveTarget("prf_otimizado");
+      return;
+    }
 
-  if (state.studyMode === "repair") {
-    await loadAdaptiveTarget("revisar_erros");
-    return;
-  }
+    if (state.studyMode === "review") {
+      await loadAdaptiveTarget("revisar_hoje");
+      return;
+    }
 
-  if (state.studyMode === "fixOutdated") {
-    await loadAdaptiveTarget("corrigir_desatualizadas");
-    return;
-  }
+    if (state.studyMode === "repair") {
+      await loadAdaptiveTarget("revisar_erros");
+      return;
+    }
 
-  if (state.studyMode === "rescuedExplain") {
-    await loadAdaptiveTarget("explicar_resgatadas");
-    return;
+    if (state.studyMode === "fixOutdated") {
+      await loadAdaptiveTarget("corrigir_desatualizadas");
+      return;
+    }
+
+    if (state.studyMode === "rescuedExplain") {
+      await loadAdaptiveTarget("explicar_resgatadas");
+      return;
+    }
   }
 
   if (state.rowIndex < state.rows.length - 1) {
