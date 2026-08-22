@@ -852,7 +852,6 @@ body.is-report-page {
 .question-card {
   grid-column: 1;
   overflow: hidden;
-  min-height: 300px;
 }
 
 .inline-support-card {
@@ -997,7 +996,6 @@ body.is-report-page {
 }
 
 .statement {
-  min-height: 260px;
   padding: 28px 34px;
   background: var(--surface);
   color: var(--text);
