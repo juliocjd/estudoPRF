@@ -1626,6 +1626,9 @@ function bindEvents() {
     // Questão sendo respondida agora. Se o usuário navegar (Pular/seta) durante
     // o await, não podemos aplicar o resultado desta na questão seguinte.
     const answeredId = state.selectedId;
+    // Nova (nunca respondida) x revisão (já tinha resposta): decidido pelo estado
+    // ANTES de enviar. Alimenta o contador do dia (client-side, sem query).
+    const wasNew = Number(state.currentQuestion?.answerStats?.total || 0) === 0;
     els.submitAnswer.disabled = true;
     const elapsedMs = getQuestionElapsedMs();
     pauseQuestionTimer();
@@ -1646,6 +1649,7 @@ function bindEvents() {
       // A resposta já está gravada aqui; avisa o painel antes de renderizar,
       // para que um erro de renderização não impeça a atualização dos contadores.
       document.dispatchEvent(new CustomEvent("study:progress"));
+      bumpTodayCount(wasNew);
       // Corrida: se navegou para outra questão durante o envio, a resposta foi
       // salva (contadores atualizam), mas NÃO aplicar o resultado na questão atual.
       if (state.selectedId !== answeredId) {
@@ -1998,21 +2002,11 @@ async function saveStudyState(payload) {
 }
 
 async function loadStats() {
-  const stats = await api("/api/stats?light=1");
-  els.stats.innerHTML = [
-    statMarkup(
-      stats.readyToStudy ?? stats.knownAnswers ?? 0,
-      "prontas para estudar",
-      "adaptive",
-    ),
-    statMarkup(stats.dueReviews || 0, "revisar hoje", "review"),
-    statMarkup(stats.repairQuestions || 0, "revisar erros", "repair"),
-    statMarkup(stats.answered || 0, "resolvidas"),
-    stats.contranPrfUnpublished
-      ? statMarkup(stats.contranPrfUnpublished, "ineditas PRF/CONTRAN")
-      : "",
-  ].join("");
-  // Painel de tempo de estudo desativado (escondido na tela); não renderiza.
+  // No-op: o "Resumo do banco" (#stats) saiu do topo — o usuário acompanha só
+  // o contador do dia (novas x revisão), feito no navegador. Antes esta função
+  // buscava /api/stats a cada resposta para um painel que já ficava escondido.
+  // Mantida (vazia) para não quebrar as chamadas existentes.
+  if (els.stats) els.stats.style.display = "none";
 }
 
 async function loadFilters() {
@@ -11761,35 +11755,59 @@ function escapeAttr(value) {
 })();
 
 /* ============================================================
-   Painel "Hoje" — resumo acionável no topo (UI 2026-07)
+   Contador do dia (novas x revisão) — client-side, ZERO query.
+   Substituiu a barra "Resumo do dia/banco" (que fazia /api/today-summary
+   + /api/stats a CADA resposta). Guarda em localStorage por dia, no fuso
+   America/Sao_Paulo. "nova" = questão nunca respondida antes; "revisão" =
+   já tinha resposta (decidido no fluxo de resposta, por answerStats.total).
    ============================================================ */
+const TODAY_COUNTS_KEY = "prf.todayCounts";
+function todayCountsDateKey() {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+function loadTodayCounts() {
+  const date = todayCountsDateKey();
+  try {
+    const raw = JSON.parse(localStorage.getItem(TODAY_COUNTS_KEY) || "{}");
+    if (raw && raw.date === date) {
+      return { date, novas: Number(raw.novas) || 0, revisao: Number(raw.revisao) || 0 };
+    }
+  } catch { /* localStorage indisponível */ }
+  return { date, novas: 0, revisao: 0 };
+}
+function renderTodayCounts() {
+  const panel = document.getElementById("todayPanel");
+  if (!panel) return;
+  const c = loadTodayCounts();
+  panel.innerHTML = `
+    <span class="today-chip chip-passive" title="Questões novas respondidas hoje"><strong>${c.novas}</strong> novas</span>
+    <span class="today-chip chip-passive" title="Revisões respondidas hoje"><strong>${c.revisao}</strong> revisão</span>`;
+  panel.hidden = false;
+  const legacyStats = document.getElementById("stats");
+  if (legacyStats) legacyStats.style.display = "none";
+}
+function bumpTodayCount(isNew) {
+  const c = loadTodayCounts();
+  if (isNew) c.novas += 1; else c.revisao += 1;
+  try { localStorage.setItem(TODAY_COUNTS_KEY, JSON.stringify(c)); } catch { /* ignore */ }
+  renderTodayCounts();
+}
+
 (function todayPanelModule() {
   const panel = document.getElementById("todayPanel");
   if (!panel) return;
 
-  let refreshSeq = 0;
-  let lastBank = {};
-
-  // /api/stats é lento (segundos). Os contadores do dia dependem só de
-  // /api/today-summary, então pinta assim que ele chega e repinta quando
-  // o banco responder — em vez de esperar o mais lento dos dois.
+  // Antes buscava /api/today-summary + /api/stats por resposta; agora só pinta
+  // o contador local (novas x revisão), sem query nenhuma.
   async function refresh() {
-    const seq = ++refreshSeq;
-    let data;
-    try {
-      data = await api("/api/today-summary");
-    } catch {
-      panel.hidden = true;
-      return;
-    }
-    if (seq !== refreshSeq) return;
-    render(data, lastBank);
-
-    api("/api/stats?light=1").then((bank) => {
-      if (seq !== refreshSeq) return;
-      lastBank = bank;
-      render(data, bank);
-    }).catch(() => {});
+    renderTodayCounts();
   }
 
   function render(data, bank) {
