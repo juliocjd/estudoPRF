@@ -1626,9 +1626,6 @@ function bindEvents() {
     // Questão sendo respondida agora. Se o usuário navegar (Pular/seta) durante
     // o await, não podemos aplicar o resultado desta na questão seguinte.
     const answeredId = state.selectedId;
-    // Nova (nunca respondida) x revisão (já tinha resposta): decidido pelo estado
-    // ANTES de enviar. Alimenta o contador do dia (client-side, sem query).
-    const wasNew = Number(state.currentQuestion?.answerStats?.total || 0) === 0;
     els.submitAnswer.disabled = true;
     const elapsedMs = getQuestionElapsedMs();
     pauseQuestionTimer();
@@ -1649,7 +1646,6 @@ function bindEvents() {
       // A resposta já está gravada aqui; avisa o painel antes de renderizar,
       // para que um erro de renderização não impeça a atualização dos contadores.
       document.dispatchEvent(new CustomEvent("study:progress"));
-      bumpTodayCount(wasNew);
       // Corrida: se navegou para outra questão durante o envio, a resposta foi
       // salva (contadores atualizam), mas NÃO aplicar o resultado na questão atual.
       if (state.selectedId !== answeredId) {
@@ -11755,61 +11751,23 @@ function escapeAttr(value) {
 })();
 
 /* ============================================================
-   Contador do dia (novas x revisão) — client-side, ZERO query.
-   Substituiu a barra "Resumo do dia/banco" (que fazia /api/today-summary
-   + /api/stats a CADA resposta). Guarda em localStorage por dia, no fuso
-   America/Sao_Paulo. "nova" = questão nunca respondida antes; "revisão" =
-   já tinha resposta (decidido no fluxo de resposta, por answerStats.total).
+   Topo enxuto: a barra "Resumo do dia/banco" foi removida (fazia
+   /api/today-summary + /api/stats a CADA resposta). A contagem de
+   novas x revisão do dia já vem do banco no #metaDayProgress (perto
+   das alternativas, "Novas x/y · Revisões a/b"), então o #todayPanel
+   fica oculto — evita duplicar a informação e não custa query.
    ============================================================ */
-const TODAY_COUNTS_KEY = "prf.todayCounts";
-function todayCountsDateKey() {
-  try {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric", month: "2-digit", day: "2-digit",
-    }).format(new Date());
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
-function loadTodayCounts() {
-  const date = todayCountsDateKey();
-  try {
-    const raw = JSON.parse(localStorage.getItem(TODAY_COUNTS_KEY) || "{}");
-    if (raw && raw.date === date) {
-      return { date, novas: Number(raw.novas) || 0, revisao: Number(raw.revisao) || 0 };
-    }
-  } catch { /* localStorage indisponível */ }
-  return { date, novas: 0, revisao: 0 };
-}
-function renderTodayCounts() {
-  const panel = document.getElementById("todayPanel");
-  if (!panel) return;
-  const c = loadTodayCounts();
-  panel.innerHTML = `
-    <span class="today-chip chip-passive" title="Questões novas respondidas hoje"><strong>${c.novas}</strong> novas</span>
-    <span class="today-chip chip-passive" title="Revisões respondidas hoje"><strong>${c.revisao}</strong> revisão</span>`;
-  panel.hidden = false;
-  const legacyStats = document.getElementById("stats");
-  if (legacyStats) legacyStats.style.display = "none";
-}
-function bumpTodayCount(isNew) {
-  const c = loadTodayCounts();
-  if (isNew) c.novas += 1; else c.revisao += 1;
-  try { localStorage.setItem(TODAY_COUNTS_KEY, JSON.stringify(c)); } catch { /* ignore */ }
-  renderTodayCounts();
-}
-
 (function todayPanelModule() {
   const panel = document.getElementById("todayPanel");
   if (!panel) return;
+  panel.hidden = true;
+  const legacyStatsStrip = document.getElementById("stats");
+  if (legacyStatsStrip) legacyStatsStrip.style.display = "none";
 
-  // Antes buscava /api/today-summary + /api/stats por resposta; agora só pinta
-  // o contador local (novas x revisão), sem query nenhuma.
-  async function refresh() {
-    renderTodayCounts();
-  }
-
+  // Topo oculto: sem busca. A contagem novas x revisão vive no #metaDayProgress
+  // (alimentado pelo /api/study-plan/progress, já usado). refresh() é no-op.
+  function refresh() {}
+  // eslint-disable-next-line no-unused-vars
   function render(data, bank) {
     const accuracy = data.answersToday > 0
       ? Math.round((data.correctToday / data.answersToday) * 100)
