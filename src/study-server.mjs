@@ -1214,7 +1214,66 @@ function buildGranCursosLessonFilters(lessons) {
 }
 
 function getStudyTimeSummary() {
-  const rows = getStudyAnswerTimeRows();
+  // Postgres (prod e local-contra-Neon): agrega os totais de sempre NO BANCO
+  // (1 linha, custo constante) em vez de transferir e varrer todas as ~3.700+
+  // tentativas por resposta. O "hoje" depende do fuso (America/Sao_Paulo), então
+  // puxa só as tentativas recentes (~2 dias) e reaproveita a lógica JS já
+  // validada (getLocalDateKey) — sem arriscar o limite do dia em SQL. O caminho
+  // SQLite (arquivo só de backup) fica como fallback com o loop antigo.
+  if (activeDbClient !== 'postgres') {
+    return getStudyTimeSummaryFromRows(getStudyAnswerTimeRows());
+  }
+
+  const cap = STUDY_TIME_MAX_ATTEMPT_MS;
+  const agg = db.prepare(`
+    SELECT
+      COUNT(*) AS timed_attempts,
+      COALESCE(SUM(ROUND(elapsed_ms::numeric)), 0) AS raw_total_ms,
+      COALESCE(SUM(LEAST(ROUND(elapsed_ms::numeric), ${cap})), 0) AS total_ms,
+      COALESCE(SUM(CASE WHEN ROUND(elapsed_ms::numeric) > ${cap} THEN 1 ELSE 0 END), 0) AS capped_attempts
+    FROM study_answers
+    WHERE elapsed_ms IS NOT NULL AND elapsed_ms > 0
+  `).get();
+
+  const recent = db.prepare(`
+    SELECT elapsed_ms, created_at, answered_at
+    FROM study_answers
+    WHERE elapsed_ms IS NOT NULL AND elapsed_ms > 0
+      AND COALESCE(created_at, answered_at) >= datetime('now', '-2 days')
+  `).all();
+  const today = getLocalDateKey(new Date());
+  let todayMs = 0;
+  let rawTodayMs = 0;
+  let todayAttempts = 0;
+  let todayCappedAttempts = 0;
+  for (const row of recent) {
+    const rawMs = normalizeStoredElapsedMs(row.elapsed_ms);
+    if (rawMs <= 0) continue;
+    if (getLocalDateKey(row.created_at || row.answered_at) !== today) continue;
+    const adjustedMs = normalizeStudyElapsedMs(rawMs);
+    rawTodayMs += rawMs;
+    todayMs += adjustedMs;
+    todayAttempts += 1;
+    if (adjustedMs < rawMs) todayCappedAttempts += 1;
+  }
+
+  return {
+    totalMs: Number(agg.total_ms) || 0,
+    rawTotalMs: Number(agg.raw_total_ms) || 0,
+    todayMs,
+    rawTodayMs,
+    timedAttempts: Number(agg.timed_attempts) || 0,
+    todayAttempts,
+    cappedAttempts: Number(agg.capped_attempts) || 0,
+    todayCappedAttempts,
+    maxAttemptMs: STUDY_TIME_MAX_ATTEMPT_MS,
+    maxAttemptMinutes: STUDY_TIME_MAX_ATTEMPT_MINUTES,
+    timeZone: STUDY_TIME_ZONE
+  };
+}
+
+// Fallback SQLite: soma varrendo todas as linhas em JS (comportamento original).
+function getStudyTimeSummaryFromRows(rows) {
   const today = getLocalDateKey(new Date());
   let totalMs = 0;
   let rawTotalMs = 0;
