@@ -424,6 +424,12 @@ async function routeRequest(request, response) {
     return;
   }
 
+  const questionExtrasMatch = url.pathname.match(/^\/api\/questions\/(\d+)\/extras$/);
+  if (questionExtrasMatch && request.method === 'GET') {
+    sendJson(response, 200, await getQuestionExtras(Number(questionExtrasMatch[1])));
+    return;
+  }
+
   const questionMatch = url.pathname.match(/^\/api\/questions\/(\d+)$/);
   if (questionMatch && request.method === 'GET') {
     sendJson(response, 200, await getQuestion(Number(questionMatch[1])));
@@ -10381,17 +10387,9 @@ async function getQuestion(questionId) {
     FROM study_answers
     WHERE question_id = ?
   `).get(questionId);
-  const theory = await findTheoryPdf(question.materia, question.assunto, {
-    questionId,
-    statementText: question.statement_text || ''
-  });
-  // Os PDFs vivem em public/pdfs. Na Vercel eles são servidos estaticamente
-  // pelo CDN e a função não os enxerga por fs — então assume disponível quando
-  // há caminho. Localmente confere no disco.
-  theory.pdfAvailable = Boolean(
-    theory.available && theory.pdfPath
-      && (process.env.VERCEL || await pdfFileExists(theory.pdfPath))
-  );
+  // theory (PDF) e appliedTheoryCard saíram daqui: são carregados sob demanda
+  // via /api/questions/:id/extras (botão "Teoria" / tab "Teoria aplicada"),
+  // economizando queries por questão aberta pra quem não usa esses painéis.
   const normativeUpdate = getNormativeUpdate(questionId);
   const currentLawAnswer = getCurrentLawAnswer(questionId);
   const correction = resolveCurrentLawCorrection(question, currentLawAnswer, alternatives);
@@ -10402,9 +10400,6 @@ async function getQuestion(questionId) {
   );
   const legalStudy = applyDesatualizadaToLegalStudy(
     getQuestionLegalStudy(questionId), question, currentLawAnswer
-  );
-  const appliedTheoryCard = applyCurrentLawPrecedenceToAppliedCard(
-    getQuestionAppliedTheoryCard(questionId), question, currentLawAnswer
   );
   const adaptive = getQuestionAdaptiveSummary(questionId);
   const studyStatus = getQuestionStudyStatus(questionId);
@@ -10440,7 +10435,7 @@ async function getQuestion(questionId) {
     normativeTeachingComment,
     contranPrf2021Matches,
     contranPrfUnpublished,
-    appliedTheoryCard,
+    extrasDeferred: true,
     legalStudy,
     answering: {
       historicalAnswer: question.historical_answer || '',
@@ -10474,7 +10469,6 @@ async function getQuestion(questionId) {
       userEditedAt: toIsoText(question.comment_user_edited_at),
       userEditedBy: question.comment_user_edited_by || ''
     },
-    theory,
     answerStats: {
       total: answerStats?.total || 0,
       correct: answerStats?.correct || 0,
@@ -10492,6 +10486,32 @@ async function getQuestion(questionId) {
     },
     lastAnswer
   };
+}
+
+// Painéis carregados sob demanda (botão "Teoria" / tab "Teoria aplicada"): saíram
+// do getQuestion para não custar queries por questão aberta a quem não os usa.
+async function getQuestionExtras(questionId) {
+  const question = db.prepare(`
+    SELECT id_question, materia, assunto, statement_text, desatualizada, anulada, type_question
+    FROM questions
+    WHERE id_question = ?
+  `).get(questionId);
+  if (!question) {
+    return { exists: false, questionId };
+  }
+  const theory = await findTheoryPdf(question.materia, question.assunto, {
+    questionId,
+    statementText: question.statement_text || ''
+  });
+  theory.pdfAvailable = Boolean(
+    theory.available && theory.pdfPath
+      && (process.env.VERCEL || await pdfFileExists(theory.pdfPath))
+  );
+  const currentLawAnswer = getCurrentLawAnswer(questionId);
+  const appliedTheoryCard = applyCurrentLawPrecedenceToAppliedCard(
+    getQuestionAppliedTheoryCard(questionId), question, currentLawAnswer
+  );
+  return { exists: true, questionId, theory, appliedTheoryCard };
 }
 
 // Atualiza o "tipo de erro" da ÚLTIMA resposta errada da questão. A UI mostra o

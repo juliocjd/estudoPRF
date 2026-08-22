@@ -1127,8 +1127,9 @@ function bindEvents() {
     showQuickTheoryPanel();
   });
 
-  els.openTheory.addEventListener("click", () => {
+  els.openTheory.addEventListener("click", async () => {
     closeAllDropdowns();
+    await ensureQuestionExtras();
     showTheoryPanel();
   });
 
@@ -1410,6 +1411,7 @@ function bindEvents() {
       const tab = button.dataset.supportTab || "comment";
       openSupportPanel(tab, { keepFocus: true });
       if (tab === "similar") loadSimilarQuestions();
+      if (tab === "appliedTheory" || tab === "theory") ensureQuestionExtras();
     });
   });
 
@@ -4013,11 +4015,14 @@ function renderQuestion(question, options = {}) {
       ? "Teoria rápida"
       : "Teoria rápida indisponível";
   }
-  els.openTheory.disabled = !state.theoryUrl;
+  // Teoria (PDF) é carregada sob demanda: o botão fica sempre clicável e a busca
+  // só roda no clique (ensureQuestionExtras). Não desabilita com base no payload
+  // inicial, que não traz mais question.theory.
+  els.openTheory.disabled = false;
   els.openTheory.textContent = "PDF de teoria";
   els.openTheory.title = question.theory?.available
     ? `Abrir teoria: ${question.theory.title}`
-    : "PDF de teoria não encontrado para este assunto";
+    : "Abrir PDF de teoria (busca ao clicar)";
   const hasSupportExplanation = Boolean(
     canRevealExplanation(question) &&
     (question.comment.html ||
@@ -6207,6 +6212,31 @@ function normativeTextBlock(title, text) {
       <p>${escapeHtml(text)}</p>
     </section>
   `;
+}
+
+// Carrega sob demanda os painéis adiados (PDF de Teoria + Teoria aplicada), que
+// getQuestion marca com extrasDeferred=true e NÃO envia no payload inicial.
+// Busca uma vez por questão, mescla em state.currentQuestion e repinta os painéis.
+async function ensureQuestionExtras() {
+  const q = state.currentQuestion;
+  if (!q || !q.id || q._extrasLoaded || q._extrasLoading) return;
+  q._extrasLoading = true;
+  try {
+    const extras = await api(`/api/questions/${q.id}/extras`);
+    if (extras && extras.exists !== false) {
+      if (extras.theory) q.theory = extras.theory;
+      if (extras.appliedTheoryCard) q.appliedTheoryCard = extras.appliedTheoryCard;
+      q._extrasLoaded = true;
+      state.theoryUrl = q.theory?.available ? q.theory.url : "";
+      state.theoryPdfAvailable = Boolean(q.theory?.pdfAvailable);
+      renderTheoryPanel(q);
+      renderAppliedTheoryPanel(q);
+    }
+  } catch {
+    /* mantém painel vazio; nova abertura tenta de novo (flag não fica travada) */
+  } finally {
+    q._extrasLoading = false;
+  }
 }
 
 function renderAppliedTheoryPanel(question) {
