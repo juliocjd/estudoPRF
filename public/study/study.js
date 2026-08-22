@@ -1626,6 +1626,9 @@ function bindEvents() {
     // Questão sendo respondida agora. Se o usuário navegar (Pular/seta) durante
     // o await, não podemos aplicar o resultado desta na questão seguinte.
     const answeredId = state.selectedId;
+    // nova (nunca respondida) x revisão (já tinha resposta), decidido ANTES do
+    // envio — alimenta o incremento local do #metaDayProgress (opção 3, sem query).
+    const wasNew = Number(state.currentQuestion?.answerStats?.total || 0) === 0;
     els.submitAnswer.disabled = true;
     const elapsedMs = getQuestionElapsedMs();
     pauseQuestionTimer();
@@ -1645,7 +1648,7 @@ function bindEvents() {
       });
       // A resposta já está gravada aqui; avisa o painel antes de renderizar,
       // para que um erro de renderização não impeça a atualização dos contadores.
-      document.dispatchEvent(new CustomEvent("study:progress"));
+      document.dispatchEvent(new CustomEvent("study:progress", { detail: { wasNew } }));
       // Corrida: se navegou para outra questão durante o envio, a resposta foi
       // salva (contadores atualizam), mas NÃO aplicar o resultado na questão atual.
       if (state.selectedId !== answeredId) {
@@ -12095,6 +12098,10 @@ function escapeAttr(value) {
   const BROWSE_MODES = new Set(["all", "ver_todas", "examSource"]);
   let last = null;
   let prevComplete = { news: null, reviews: null };
+  // Opção 3 (híbrido): busca do DB só no load / ao voltar à aba / a cada N
+  // respostas / ao cruzar a meta. Entre isso, incrementa localmente (zero query).
+  let answersSinceSync = 0;
+  const RECONCILE_EVERY = 20;
 
   const inStudyMode = () => !BROWSE_MODES.has(state.studyMode);
 
@@ -12159,25 +12166,54 @@ function escapeAttr(value) {
     }, kind === "day" ? 5000 : 3500);
   }
 
-  async function refresh() {
+  // Recalcula os campos derivados após um incremento LOCAL (sem ir ao DB).
+  function recomputeDerived(p) {
+    p.newRemaining = Math.max(0, (p.newQuota || 0) - (p.newDone || 0));
+    p.newComplete = (p.newQuota || 0) > 0 ? (p.newDone || 0) >= p.newQuota : true;
+    p.reviewsRemaining = Math.max(0, (p.reviewsTarget || 0) - (p.reviewsDone || 0));
+    p.reviewsComplete = (p.reviewsTarget || 0) > 0 ? (p.reviewsDone || 0) >= p.reviewsTarget : true;
+  }
+
+  // Reconciliação: fonte da verdade é o DB (metas + disparo de conclusão).
+  async function reconcile() {
     try {
       const params = new URLSearchParams();
       if (state.activeProfile) params.set("profile", state.activeProfile);
       const p = await api(`/api/study-plan/progress?${params}`);
       last = p;
-      checkCrossings(p);
+      answersSinceSync = 0;
+      checkCrossings(p); // comemoração só no dado autoritativo do banco
       render();
     } catch {
       // silencioso: o indicador é auxiliar, não pode atrapalhar o estudo
     }
   }
 
-  // Após responder (study:progress), os contadores mudam → busca e checa conclusão.
-  document.addEventListener("study:progress", () => { refresh(); });
+  // A cada resposta: incrementa LOCALMENTE (0 query). nova = 1ª resposta da
+  // questão (answerStats.total==0 no envio) → newDone; senão → reviewsDone.
+  // Só vai ao DB se: ainda não temos base, cruzou a meta (confirmar+comemorar)
+  // ou passou o intervalo de reconciliação.
+  function onProgress(wasNew) {
+    if (!last) { reconcile(); return; }
+    answersSinceSync += 1;
+    if (wasNew) last.newDone = (last.newDone || 0) + 1;
+    else last.reviewsDone = (last.reviewsDone || 0) + 1;
+    recomputeDerived(last);
+    render();
+    const crossedNew = (last.newQuota || 0) > 0 && last.newDone >= last.newQuota && !prevComplete.news;
+    const crossedRev = (last.reviewsTarget || 0) > 0 && last.reviewsDone >= last.reviewsTarget && !prevComplete.reviews;
+    if (crossedNew || crossedRev || answersSinceSync >= RECONCILE_EVERY) reconcile();
+  }
+
+  document.addEventListener("study:progress", (event) => {
+    // Só a resposta de QUESTÃO manda wasNew (boolean). Outros disparos (ex.:
+    // flashcard/law-cloze) não mexem na contagem de novas x revisão de questões.
+    if (typeof event.detail?.wasNew === "boolean") onProgress(event.detail.wasNew);
+  });
   // Ao trocar de questão só re-renderiza a visibilidade (sem nova requisição).
   document.addEventListener("study:meta-refresh", () => { render(); });
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
-  refresh();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) reconcile(); });
+  reconcile();
 })();
 
 /* ============================================================
