@@ -4207,6 +4207,12 @@ function renderQuestionEditPanel(question) {
           ${questionCoreAnswerOptions(question, currentAnswer)}
         </select>
       </label>
+      <label class="teaching-edit-field">
+        <span>2º gabarito (opcional — dupla resposta por atualização)</span>
+        <select name="secondaryAnswer">
+          ${questionCoreAnswerOptions(question, question?.answering?.secondaryAnswer || "")}
+        </select>
+      </label>
       <label class="checkline">
         <input type="checkbox" name="anulada" ${question?.metadata?.anulada ? "checked" : ""} />
         <span>Questão anulada (não pontua ±1 nem entra no estudo)</span>
@@ -4283,6 +4289,7 @@ async function saveQuestionCoreEdit(form) {
       body: JSON.stringify({
         statementText: formData.get("statementText"),
         officialAnswer: formData.get("officialAnswer"),
+        secondaryAnswer: formData.get("secondaryAnswer"),
         anulada: formData.get("anulada") === "on",
       }),
     });
@@ -6929,6 +6936,11 @@ function renderQuestionBadges(question) {
       '<span class="question-badge is-outdated">Desatualizada</span>',
     );
   }
+  if (meta?.hasDualAnswer) {
+    badges.push(
+      '<span class="question-badge is-dual-answer" title="Esta questão tem 2 gabaritos válidos (atualização da lei/entendimento). Os dois aparecem ao responder.">⚖️ 2 gabaritos</span>',
+    );
+  }
   if (question?.normativeTeachingComment?.exists) {
     badges.push(
       '<span class="question-badge is-normative">Comentário atualizado</span>',
@@ -7439,6 +7451,19 @@ function renderSelectedAlternative() {
   els.alternatives.classList.toggle("is-answered", Boolean(result));
 }
 
+// Questão com 2 gabaritos (dupla resposta por atualização): mostra os DOIS
+// aceitos só APÓS responder (opção B). "" quando não é dupla.
+function dualAnswerNoteHtml() {
+  const q = state.currentQuestion;
+  const sec = q?.metadata?.hasDualAnswer ? String(q?.answering?.secondaryAnswer || "") : "";
+  if (!sec) return "";
+  const primary = displayAnswerForCurrentQuestion(
+    state.answerResult?.expectedAnswer || q?.answering?.studyAnswer || "",
+  );
+  const secondary = displayAnswerForCurrentQuestion(sec);
+  return ` <span class="answer-result-dual" title="Questão com dupla resposta por atualização — os dois são aceitos">⚖️ 2 gabaritos válidos: <strong>${escapeHtml(primary)}</strong> e <strong>${escapeHtml(secondary)}</strong>.</span>`;
+}
+
 function renderAnswerResultBox() {
   const result = state.answerResult;
   if (!result) {
@@ -7455,13 +7480,13 @@ function renderAnswerResultBox() {
     els.answerResult.className = "answer-result is-correct";
     els.answerResult.innerHTML = `
       <span class="answer-result-icon" aria-hidden="true">✓</span>
-      <span><strong>Você acertou!</strong> Muito bem! ${resolution}${normative}${ai}</span>
+      <span><strong>Você acertou!</strong> Muito bem!${dualAnswerNoteHtml()} ${resolution}${normative}${ai}</span>
     `;
   } else if (result.isCorrect === 0) {
     els.answerResult.className = "answer-result is-wrong";
     els.answerResult.innerHTML = `
       <span class="answer-result-icon" aria-hidden="true">×</span>
-      <span><strong>Você errou!</strong> Gabarito: <strong>${escapeHtml(displayAnswerForCurrentQuestion(result.expectedAnswer || ""))}</strong>. ${resolution}${normative}${ai}</span>
+      <span><strong>Você errou!</strong> Gabarito: <strong>${escapeHtml(displayAnswerForCurrentQuestion(result.expectedAnswer || ""))}</strong>.${dualAnswerNoteHtml()} ${resolution}${normative}${ai}</span>
     `;
   } else {
     els.answerResult.className = "answer-result";

@@ -9577,6 +9577,18 @@ async function saveQuestionCoreEdit(questionId, body) {
   const officialAnswer = normalizedAnswer.answer;
   const officialAnswerSource = officialAnswer ? 'operator_edit' : '';
 
+  // 2º gabarito (opcional): questão com DUPLA resposta por atualização. Vazio =
+  // sem 2º gabarito. Não pode ser igual ao principal (senão não são "dois").
+  const requestedSecondary = String(body?.secondaryAnswer ?? '').trim();
+  const normalizedSecondary = requestedSecondary
+    ? normalizeExpectedAnswerForScoring(question, alternatives, requestedSecondary)
+    : { answer: '', reason: '' };
+  if (requestedSecondary && !normalizedSecondary.answer) {
+    return { error: 'Segundo gabarito invalido para o tipo da questao.' };
+  }
+  const secondaryAnswer = (normalizedSecondary.answer && normalizedSecondary.answer !== officialAnswer)
+    ? normalizedSecondary.answer : '';
+
   const questionSets = [
     'statement_text = ?',
     'statement_html = ?',
@@ -9597,6 +9609,11 @@ async function saveQuestionCoreEdit(questionId, body) {
   if (typeof body?.anulada === 'boolean' && tableColumnExists('questions', 'anulada')) {
     questionSets.push('anulada = ?');
     questionParams.push(body.anulada ? 1 : 0);
+  }
+  // 2º gabarito: grava quando o editor envia o campo (mesmo vazio, para limpar).
+  if (typeof body?.secondaryAnswer !== 'undefined' && tableColumnExists('questions', 'secondary_answer')) {
+    questionSets.push('secondary_answer = ?');
+    questionParams.push(secondaryAnswer);
   }
   if (tableColumnExists('questions', 'updated_at')) {
     questionSets.push('updated_at = CURRENT_TIMESTAMP');
@@ -10416,6 +10433,7 @@ async function getQuestion(questionId) {
       tipo: question.type_question || '',
       anulada: Boolean(question.anulada),
       desatualizada: Boolean(question.desatualizada),
+      hasDualAnswer: Boolean(String(question.secondary_answer || '').trim()),
       isUnpublished: Boolean(contranPrfUnpublished?.exists),
       origin: contranPrfUnpublished?.origin || '',
       // Item CERTO/ERRADO derivado de uma questão original (id do pai na url).
@@ -10435,6 +10453,7 @@ async function getQuestion(questionId) {
       historicalAnswerSource: question.historical_answer_source || '',
       studyAnswer: correction.expectedAnswer || '',
       studyAnswerSource: correction.answerSource || '',
+      secondaryAnswer: String(question.secondary_answer || '').trim(),
       correctionMode: correction.mode || '',
       currentLawStatus: correction.currentLawStatus || '',
       nonScoringReason: correction.nonScoringReason || '',
@@ -10558,6 +10577,7 @@ function saveAnswer(questionId, body) {
       q.desatualizada,
       q.official_answer,
       q.official_answer_source,
+      q.secondary_answer,
       c.extracted_answer,
       (
         SELECT nq.answer
@@ -10588,7 +10608,19 @@ function saveAnswer(questionId, body) {
   const currentLawAnswer = getCurrentLawAnswer(questionId);
   const correction = resolveCurrentLawCorrection(question, currentLawAnswer, alternatives);
   const expected = correction.expectedAnswer;
-  const isCorrect = correction.canScore && expected ? Number(matchesExpectedAnswer(alternative, expected)) : null;
+  // 2º gabarito (dupla resposta por atualização): a questão passa a ter DOIS
+  // gabaritos válidos — acerta quem marca o principal OU o secundário. Só uma
+  // comparação em memória, sem query nova.
+  const secondaryRaw = String(question.secondary_answer || '').trim();
+  const secondary = secondaryRaw
+    ? normalizeExpectedAnswerForScoring(question, alternatives, secondaryRaw).answer
+    : '';
+  const isCorrect = correction.canScore && expected
+    ? Number(
+        matchesExpectedAnswer(alternative, expected)
+        || (secondary && matchesExpectedAnswer(alternative, secondary))
+      )
+    : null;
   const attemptMeta = normalizeAttemptMeta(body, isCorrect);
   const storedCorrectionMode = correction.canScore ? correction.mode : 'non_scoring';
 

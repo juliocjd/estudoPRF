@@ -663,6 +663,20 @@ button.stat.stat-action:active { transform: translateY(1px); }
   color: #92400e;
 }
 
+/* Selo "2 gabaritos" (dupla resposta por atualização). */
+.question-badge.is-dual-answer {
+  border-color: rgba(124, 58, 237, 0.32);
+  background: rgba(124, 58, 237, 0.10);
+  color: #6d28d9;
+}
+
+/* Nota dos dois gabaritos no resultado (após responder). */
+.answer-result-dual {
+  display: inline-block;
+  margin-left: 4px;
+  font-weight: 600;
+}
+
 .question-badge.is-canceled,
 .question-badge.is-no-answer,
 .question-badge.is-last-wrong,
