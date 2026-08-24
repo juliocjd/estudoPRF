@@ -1073,6 +1073,24 @@ body.is-report-page {
   font-size: 13px;
 }
 
+/* Bordas/padding das células (tabelas coladas do NotebookLM etc.). Antes só a
+   variante .tabela-questao tinha borda, então tabela colada saía "grudada". */
+.statement table th,
+.statement table td,
+.support-body table th,
+.support-body table td {
+  border: 1px solid var(--border);
+  padding: 6px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.statement table th,
+.support-body table th {
+  background: var(--surface-muted);
+  font-weight: 600;
+}
+
 .statement-association-table {
   width: 100%;
   table-layout: fixed;

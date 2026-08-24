@@ -5047,6 +5047,30 @@ async function handleHistoricalCommentImageInput(input, event) {
 // Detecta se um texto colado é markdown (saída do NotebookLM). No celular o
 // clipboard traz só texto puro, então o markdown aparece cru (cheio de *); no
 // desktop vinha HTML formatado. Convertendo aqui, funciona igual nos dois.
+// Linha separadora de tabela markdown (ex.: "| --- | :---: |"): só |, :, -, espaços,
+// com pelo menos um traço e um pipe.
+function isMarkdownTableSeparator(line) {
+  const t = String(line || "").trim();
+  return t.length > 0 && /^[|:\-\s]+$/.test(t) && /-/.test(t) && /\|/.test(t);
+}
+// Divide uma linha "| a | b | c |" nas células (ignora pipes escapados \|).
+function splitMarkdownTableCells(row) {
+  let t = String(row || "").trim();
+  if (t.startsWith("|")) t = t.slice(1);
+  if (t.endsWith("|")) t = t.slice(0, -1);
+  return t.split(/(?<!\\)\|/).map((c) => c.replace(/\\\|/g, "|").trim());
+}
+// Tem uma tabela markdown? (linha com | seguida de uma linha separadora)
+function hasMarkdownTable(text) {
+  const lines = String(text || "").replace(/\r/g, "").split("\n");
+  for (let i = 0; i < lines.length - 1; i += 1) {
+    if (/\|/.test(lines[i]) && lines[i].trim() && isMarkdownTableSeparator(lines[i + 1])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function looksLikeMarkdown(text) {
   if (!text) return false;
   return (
@@ -5054,6 +5078,7 @@ function looksLikeMarkdown(text) {
     || /^\s*#{1,6}\s+\S/m.test(text) // ### título
     || /^\s*[-*]\s+\S/m.test(text) // - lista
     || /^\s*>\s+\S/m.test(text) // > citação
+    || hasMarkdownTable(text) // | tabela |
   );
 }
 
@@ -5070,6 +5095,25 @@ function markdownToHistoricalHtml(md) {
   while (i < lines.length) {
     const l = lines[i];
     if (!l.trim()) { i += 1; continue; }
+    // Tabela markdown: linha "| a | b |" seguida de separadora "| --- | --- |".
+    if (/\|/.test(l) && i + 1 < lines.length && isMarkdownTableSeparator(lines[i + 1])) {
+      const header = splitMarkdownTableCells(l);
+      i += 2; // pula cabeçalho + separadora
+      const rows = [];
+      while (
+        i < lines.length && lines[i].trim() && /\|/.test(lines[i])
+        && !isMarkdownTableSeparator(lines[i])
+      ) {
+        rows.push(splitMarkdownTableCells(lines[i]));
+        i += 1;
+      }
+      const thead = `<thead><tr>${header.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead>`;
+      const tbody = rows.length
+        ? `<tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("")}</tbody>`
+        : "";
+      out.push(`<table>${thead}${tbody}</table>`);
+      continue;
+    }
     if (/^\s*#{1,6}\s+/.test(l)) {
       out.push(`<p><strong>${inline(l.replace(/^\s*#{1,6}\s+/, ""))}</strong></p>`);
       i += 1; continue;
