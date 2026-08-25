@@ -852,6 +852,7 @@ body.is-report-page {
 .question-card {
   grid-column: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .inline-support-card {
@@ -4867,8 +4868,61 @@ body.is-report-page {
     min-height: 0;
   }
 
+  /* Mobile: em vez de esconder o cabeçalho (o que tirava copiar + editar),
+     mostra só os DOIS botões flutuando no canto superior direito do card —
+     acesso sem ocupar altura (o título "Enunciado" e o status ficam ocultos). */
   .question-card-head {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    z-index: 5;
+    width: auto;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .question-card-head .question-card-title {
     display: none;
+  }
+
+  .question-card-head-actions {
+    width: auto;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .question-card-head-actions #questionQuickStatus {
+    display: none;
+  }
+
+  /* Compactos, cabendo no respiro de 28px do topo do enunciado (acima do texto,
+     sem sobrepor) e legíveis (fundo próprio). */
+  .question-card-head-actions .button {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    flex: 0 0 auto;
+    padding: 2px 7px;
+    min-height: 0;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  /* "Editar questão" vira ícone ✎ compacto no mobile. */
+  .question-card-head-actions #questionEditToggle {
+    font-size: 0;
+    padding: 2px 7px;
+  }
+
+  .question-card-head-actions #questionEditToggle::before {
+    content: "✎";
+    font-size: 14px;
+    line-height: 1.3;
   }
 
   .question-card-head span {
