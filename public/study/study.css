@@ -849,14 +849,24 @@ body.is-report-page {
   box-shadow: var(--shadow-sm);
 }
 
-.question-card {
+/* Coluna esquerda: enunciado + explicação empilhados JUNTOS, independentes da
+   altura do painel de resposta (coluna 2). Antes eram 2 células de grid com o
+   .answer-panel spanando 2 linhas — quando as alternativas eram mais altas que o
+   enunciado curto, a linha 1 esticava e sobrava um vão até a explicação. */
+.question-column {
   grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.question-card {
   overflow: hidden;
   position: relative;
 }
 
 .inline-support-card {
-  grid-column: 1;
   display: grid;
   overflow: hidden;
 }
@@ -867,7 +877,6 @@ body.is-report-page {
 
 .answer-panel {
   grid-column: 2;
-  grid-row: 1 / span 2;
 }
 
 .study-layout.is-outdated-question .question-card,
