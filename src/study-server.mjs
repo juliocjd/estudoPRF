@@ -5885,10 +5885,24 @@ const MATERIA_RECENT_CAP = 2;
 const ASSUNTO_RECENT_WINDOW = 10;
 const ASSUNTO_RECENT_CAP = 1;
 
-// Contagens de matéria E assunto das últimas servidas em UMA consulta só
-// (evita 2 idas ao banco por troca de questão).
+// Diversidade por LEI: leis fragmentadas em vários assuntos (ex.: 9.099 em 6
+// sub-temas) burlavam a trava por assunto — cada sub-tema era um "assunto novo"
+// e a lei monopolizava. No máx. LEI_RECENT_CAP das últimas LEI_RECENT_WINDOW
+// podem ser da mesma lei. Assuntos sem número de lei não entram nesta trava.
+const LEI_RECENT_WINDOW = 10;
+const LEI_RECENT_CAP = 2;
+
+// Extrai o número da lei do assunto (ex.: "...Lei nº 9.099/1995" -> "9.099";
+// "arts. 155 e 156 do CP" -> "" pois não cita lei numerada).
+function extractLawKey(assunto) {
+  const m = String(assunto || '').match(/\b(\d{1,3}\.\d{3})\b/);
+  return m ? m[1] : '';
+}
+
+// Contagens de matéria, assunto E lei das últimas servidas em UMA consulta só
+// (evita idas extras ao banco por troca de questão).
 function recentServedMateriaAssunto() {
-  const window = Math.max(MATERIA_RECENT_WINDOW, ASSUNTO_RECENT_WINDOW);
+  const window = Math.max(MATERIA_RECENT_WINDOW, ASSUNTO_RECENT_WINDOW, LEI_RECENT_WINDOW);
   const rows = db.prepare(`
     SELECT COALESCE(q.materia, '') AS materia, COALESCE(q.assunto, '') AS assunto
     FROM study_served_questions ss
@@ -5898,11 +5912,16 @@ function recentServedMateriaAssunto() {
   `).all(window);
   const materias = new Map();
   const assuntos = new Map();
+  const leis = new Map();
   rows.forEach((row, i) => {
     if (i < MATERIA_RECENT_WINDOW) materias.set(row.materia, (materias.get(row.materia) || 0) + 1);
     if (i < ASSUNTO_RECENT_WINDOW) assuntos.set(row.assunto, (assuntos.get(row.assunto) || 0) + 1);
+    if (i < LEI_RECENT_WINDOW) {
+      const lei = extractLawKey(row.assunto);
+      if (lei) leis.set(lei, (leis.get(lei) || 0) + 1);
+    }
   });
-  return { materias, assuntos };
+  return { materias, assuntos, leis };
 }
 
 // Fração de novas nos últimos serviços marcados. null = sem histórico marcado.
@@ -5938,12 +5957,19 @@ function recentServedMateriaCounts(window = MATERIA_RECENT_WINDOW) {
 // Escolhe o 1º candidato "diverso" (matéria E assunto ainda dentro da cota
 // recente). Se não houver, prioriza NÃO repetir o assunto (o que mais cansa),
 // depois não repetir a matéria; por fim o de maior score. Nunca fica vazio.
-function pickWithMateriaDiversity(candidates, recentCounts, recentAssuntos = new Map()) {
+function pickWithMateriaDiversity(candidates, recentCounts, recentAssuntos = new Map(), recentLeis = new Map()) {
   if (!candidates.length) return null;
   const assuntoOk = (row) => (recentAssuntos.get(row.assunto || '') || 0) < ASSUNTO_RECENT_CAP;
   const materiaOk = (row) => (recentCounts.get(row.materia || '') || 0) < MATERIA_RECENT_CAP;
+  // Lei fragmentada não monopoliza: assunto sem lei numerada sempre passa.
+  const leiOk = (row) => {
+    const lei = extractLawKey(row.assunto);
+    return !lei || (recentLeis.get(lei) || 0) < LEI_RECENT_CAP;
+  };
   return (
-    candidates.find((row) => materiaOk(row) && assuntoOk(row))
+    candidates.find((row) => materiaOk(row) && assuntoOk(row) && leiOk(row))
+    || candidates.find((row) => assuntoOk(row) && leiOk(row))
+    || candidates.find((row) => materiaOk(row) && assuntoOk(row))
     || candidates.find(assuntoOk)
     || candidates.find(materiaOk)
     || candidates[0]
@@ -5997,29 +6023,29 @@ function getAdaptiveTargetRow(searchParams, opts) {
   }
   const queue = getAdaptiveQueueRows(searchParams, opts);
   if (!queue.length) return null;
-  const { materias: recentMaterias, assuntos: recentAssuntos } = recentServedMateriaAssunto();
+  const { materias: recentMaterias, assuntos: recentAssuntos, leis: recentLeis } = recentServedMateriaAssunto();
   // Planos de revisão/reparo: o pool já vem filtrado (só vencidas / só erros),
   // então serve o melhor sem aplicar a cota de novas — senão o "Revisar" tenta
   // intercalar questões novas.
   if (plan === 'revisar_hoje' || plan === 'revisar_erros') {
-    return pickWithMateriaDiversity(queue, recentMaterias, recentAssuntos) || queue[0];
+    return pickWithMateriaDiversity(queue, recentMaterias, recentAssuntos, recentLeis) || queue[0];
   }
   const ratio = recentNewQuestionRatio();
   const wantNew = ratio === null || ratio < NEW_QUESTION_TARGET_RATIO;
   if (wantNew) {
-    const fresh = pickWithMateriaDiversity(queue.filter((row) => row.neverAnswered), recentMaterias, recentAssuntos);
+    const fresh = pickWithMateriaDiversity(queue.filter((row) => row.neverAnswered), recentMaterias, recentAssuntos, recentLeis);
     if (fresh) return fresh;
     // Nenhuma inédita no topo da fila (revisões dominam o score) → busca dirigida.
     const freshParams = new URLSearchParams(searchParams);
     freshParams.set('unanswered', '1');
     const targeted = getAdaptiveQueueRows(freshParams, { ...opts, limit: 20 });
-    const pickedFresh = pickWithMateriaDiversity(targeted, recentMaterias, recentAssuntos);
+    const pickedFresh = pickWithMateriaDiversity(targeted, recentMaterias, recentAssuntos, recentLeis);
     if (pickedFresh) return pickedFresh;
   } else {
-    const review = pickWithMateriaDiversity(queue.filter((row) => !row.neverAnswered), recentMaterias, recentAssuntos);
+    const review = pickWithMateriaDiversity(queue.filter((row) => !row.neverAnswered), recentMaterias, recentAssuntos, recentLeis);
     if (review) return review;
   }
-  return pickWithMateriaDiversity(queue, recentMaterias, recentAssuntos) || queue[0];
+  return pickWithMateriaDiversity(queue, recentMaterias, recentAssuntos, recentLeis) || queue[0];
 }
 
 function scoreAdaptiveQuestion(row, context) {
