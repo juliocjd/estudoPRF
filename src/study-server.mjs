@@ -5881,8 +5881,10 @@ const MATERIA_RECENT_CAP = 2;
 // Diversidade por ASSUNTO (prática intercalada): evita servir o mesmo assunto
 // repetidamente (ex.: só "transporte escolar" ou só "desconcentração"). No máx.
 // ASSUNTO_RECENT_CAP das últimas ASSUNTO_RECENT_WINDOW podem ser do mesmo assunto.
-// Janela ampliada (6→10) a pedido: o mesmo assunto não reaparece por mais tempo.
-const ASSUNTO_RECENT_WINDOW = 10;
+// Janela 10→20 (2026-08-27): com o rodízio de matérias, um assunto servido no
+// ciclo anterior saía da janela de 10 e voltava a monopolizar (ex.: Lei de
+// Drogas só "tratamento do usuário"). 20 lembra o assunto atravessando o ciclo.
+const ASSUNTO_RECENT_WINDOW = 20;
 const ASSUNTO_RECENT_CAP = 1;
 
 // Diversidade por LEI: leis fragmentadas em vários assuntos (ex.: 9.099 em 6
@@ -5966,13 +5968,22 @@ function pickWithMateriaDiversity(candidates, recentCounts, recentAssuntos = new
     const lei = extractLawKey(row.assunto);
     return !lei || (recentLeis.get(lei) || 0) < LEI_RECENT_CAP;
   };
+  // Último recurso (todos os candidatos falham na diversidade): em vez de repetir
+  // o de MAIOR SCORE (que era o mesmo assunto de novo), serve o de assunto MENOS
+  // servido recentemente — garante a troca mesmo na fila dominada. Em memória.
+  const leastRecentAssunto = (list) => list.reduce(
+    (best, row) => (recentAssuntos.get(row.assunto || '') || 0) < (recentAssuntos.get(best.assunto || '') || 0) ? row : best,
+    list[0],
+  );
   return (
     candidates.find((row) => materiaOk(row) && assuntoOk(row) && leiOk(row))
     || candidates.find((row) => assuntoOk(row) && leiOk(row))
     || candidates.find((row) => materiaOk(row) && assuntoOk(row))
     || candidates.find(assuntoOk)
-    || candidates.find(materiaOk)
-    || candidates[0]
+    // Nenhum assunto "novo" sobrou: em vez de repetir o de maior score, pega o
+    // assunto MENOS servido recentemente (prefere matéria não-saturada).
+    || leastRecentAssunto(candidates.filter(materiaOk))
+    || leastRecentAssunto(candidates)
   );
 }
 
