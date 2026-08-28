@@ -575,6 +575,17 @@
             <div id="answerResult" class="answer-result" hidden></div>
 
             <div class="answer-actions">
+              <div
+                id="confidenceButtons"
+                class="confidence-buttons"
+                role="group"
+                aria-label="Como você respondeu"
+                hidden
+              >
+                <button type="button" class="conf-btn conf-sabia" data-confidence="easy" disabled>Sabia</button>
+                <button type="button" class="conf-btn conf-hesitei" data-confidence="doubt" disabled>Hesitei</button>
+                <button type="button" class="conf-btn conf-chutei" data-confidence="guess" disabled>Chutei</button>
+              </div>
               <button
                 id="submitAnswer"
                 class="button button-primary"

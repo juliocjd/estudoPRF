@@ -6867,7 +6867,7 @@ function saveExamSimulationAnswer(simulationId, body) {
     expected,
     normalized.isCorrect,
     score,
-    validChoice(body?.confidence, ['sure', 'doubt', 'guess'], ''),
+    validChoice(body?.confidence, ['sure', 'easy', 'doubt', 'guess'], ''),
     Number.isFinite(elapsedMs) ? Math.max(0, Math.round(elapsedMs)) : null,
     item.id
   );
@@ -10770,7 +10770,7 @@ function saveQuestionEvent(questionId, body) {
 }
 
 function normalizeAttemptMeta(body, isCorrect) {
-  const confidence = validChoice(body?.confidence, ['sure', 'doubt', 'guess'], 'sure');
+  const confidence = validChoice(body?.confidence, ['sure', 'easy', 'doubt', 'guess'], 'sure');
   const errorType = isCorrect === 0
     ? validChoice(body?.errorType, ['content', 'interpretation', 'confusion', 'memory', 'outdated', 'misclick', 'other'], 'other')
     : '';

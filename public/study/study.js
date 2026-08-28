@@ -289,6 +289,7 @@ const els = {
   confidenceSelect: document.querySelector("#confidenceSelect"),
   confidenceOptions: document.querySelector("#confidenceOptions"),
   submitAnswer: document.querySelector("#submitAnswer"),
+  confidenceButtons: document.querySelector("#confidenceButtons"),
   secondaryExplain: document.querySelector("#secondaryExplain"),
   skipQuestion: document.querySelector("#skipQuestion"),
   similarQuestions: document.querySelector("#similarQuestions"),
@@ -1617,56 +1618,17 @@ function bindEvents() {
       }
       return;
     }
+    // Fase de resposta via ENTER/teclado: confiança padrão "Hesitei" (neutra).
+    // Os cliques usam os 3 botões de confiança (handler abaixo).
+    await respondWithConfidence("doubt");
+  });
 
-    const selected = new FormData(els.answerForm).get("answer");
-    if (!state.selectedId || !selected) {
-      return;
-    }
-
-    // Questão sendo respondida agora. Se o usuário navegar (Pular/seta) durante
-    // o await, não podemos aplicar o resultado desta na questão seguinte.
-    const answeredId = state.selectedId;
-    // nova (nunca respondida) x revisão (já tinha resposta), decidido ANTES do
-    // envio — alimenta o incremento local do #metaDayProgress (opção 3, sem query).
-    const wasNew = Number(state.currentQuestion?.answerStats?.total || 0) === 0;
-    els.submitAnswer.disabled = true;
-    const elapsedMs = getQuestionElapsedMs();
-    pauseQuestionTimer();
-    try {
-      const result = await api(`/api/questions/${answeredId}/answer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          answer: selected,
-          confidence: els.confidenceSelect.value,
-          elapsedMs,
-          studyMode: state.studyMode,
-          sessionId: state.sessionId,
-          sawComment: state.sawComment,
-          openedTheory: state.openedTheory,
-        }),
-      });
-      // A resposta já está gravada aqui; avisa o painel antes de renderizar,
-      // para que um erro de renderização não impeça a atualização dos contadores.
-      document.dispatchEvent(new CustomEvent("study:progress", { detail: { wasNew } }));
-      // Corrida: se navegou para outra questão durante o envio, a resposta foi
-      // salva (contadores atualizam), mas NÃO aplicar o resultado na questão atual.
-      if (state.selectedId !== answeredId) {
-        return;
-      }
-      // Erro ao RENDERIZAR não é erro ao SALVAR: a resposta já foi persistida.
-      // Isolar evita o falso "não foi possível registrar" que convidava a
-      // responder de novo (resposta duplicada).
-      try {
-        renderAnswerResult(result);
-      } catch (renderError) {
-        console.error("Falha ao renderizar resultado (resposta já salva):", renderError);
-      }
-      loadStats().catch(() => {});
-    } catch (error) {
-      syncQuestionTimerTracking();
-      showAnswerSubmitError(error);
-    }
+  // Opção B: os 3 botões [Sabia|Hesitei|Chutei] SUBSTITUEM o "Responder" — cada
+  // um responde já com a confiança escolhida (uma requisição só, sem re-agendar).
+  els.confidenceButtons?.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-confidence]");
+    if (!btn || btn.disabled) return;
+    respondWithConfidence(btn.dataset.confidence);
   });
 
   els.alternatives.addEventListener("click", (event) => {
@@ -6666,7 +6628,67 @@ function supportTabRequiresAnswer(tab) {
   ].includes(tab);
 }
 
+// Responde a questão atual com a confiança escolhida (opção B). O FSRS grada:
+// easy (Sabia) → intervalo grande; doubt (Hesitei) → normal; guess (Chutei) →
+// volta em ~2 dias. Uma requisição só (a mesma de responder), zero re-agendar.
+async function respondWithConfidence(confidence) {
+  const selected = new FormData(els.answerForm).get("answer");
+  if (!state.selectedId || !selected) return;
+  const answeredId = state.selectedId;
+  // nova x revisão decidido ANTES do envio (alimenta o #metaDayProgress local).
+  const wasNew = Number(state.currentQuestion?.answerStats?.total || 0) === 0;
+  els.submitAnswer.disabled = true;
+  els.confidenceButtons?.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+  const elapsedMs = getQuestionElapsedMs();
+  pauseQuestionTimer();
+  try {
+    const result = await api(`/api/questions/${answeredId}/answer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        answer: selected,
+        confidence,
+        elapsedMs,
+        studyMode: state.studyMode,
+        sessionId: state.sessionId,
+        sawComment: state.sawComment,
+        openedTheory: state.openedTheory,
+      }),
+    });
+    document.dispatchEvent(new CustomEvent("study:progress", { detail: { wasNew } }));
+    if (state.selectedId !== answeredId) return;
+    try {
+      renderAnswerResult(result);
+    } catch (renderError) {
+      console.error("Falha ao renderizar resultado (resposta já salva):", renderError);
+    }
+    loadStats().catch(() => {});
+  } catch (error) {
+    syncQuestionTimerTracking();
+    showAnswerSubmitError(error);
+  }
+}
+
+// Mostra o controle [Sabia|Hesitei|Chutei] no lugar do "Responder" na fase de
+// resposta; some (e o "Próxima" reaparece) depois de responder. Habilita só com
+// alternativa marcada. Chamado ao fim de updateAnswerActions().
+function syncConfidenceButtons() {
+  if (!els.confidenceButtons) return;
+  const inRespond = els.submitAnswer.dataset.action === "respond";
+  const selected = Boolean(new FormData(els.answerForm).get("answer"));
+  els.confidenceButtons.hidden = !inRespond;
+  els.submitAnswer.hidden = inRespond; // os 3 botões substituem o "Responder"
+  els.confidenceButtons.querySelectorAll("button").forEach((b) => {
+    b.disabled = !selected || els.submitAnswer.disabled;
+  });
+}
+
 function updateAnswerActions() {
+  updateAnswerActionsCore();
+  syncConfidenceButtons();
+}
+
+function updateAnswerActionsCore() {
   const selected = new FormData(els.answerForm).get("answer");
   const question = state.currentQuestion;
   const result = state.answerResult;

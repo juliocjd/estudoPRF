@@ -1627,6 +1627,50 @@ body.is-report-page {
   min-height: 44px;
 }
 
+/* Opção B: controle segmentado [Sabia|Hesitei|Chutei] no lugar do "Responder".
+   Ocupa a linha inteira; 3 botões iguais → cabe bem no mobile, mesma altura. */
+.confidence-buttons {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+}
+
+.confidence-buttons[hidden] {
+  display: none;
+}
+
+.confidence-buttons .conf-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confidence-buttons .conf-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Dicas de cor pra achar rápido (só quando clicável). */
+.confidence-buttons .conf-sabia:not(:disabled) {
+  border-color: rgba(22, 163, 74, 0.5);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.confidence-buttons .conf-chutei:not(:disabled) {
+  border-color: rgba(217, 119, 6, 0.5);
+  background: var(--warning-soft);
+  color: #b45309;
+}
+
 .study-status-control {
   display: grid;
   gap: 10px;
