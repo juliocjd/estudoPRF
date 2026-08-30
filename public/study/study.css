@@ -3462,6 +3462,27 @@ body.is-report-page {
   border-radius: var(--radius-sm);
 }
 
+/* Imagem redimensionável: o span embrulha a imagem; sua largura (definida ao
+   arrastar a alça) fica no style inline e persiste no HTML salvo. */
+.hc-img-wrap {
+  display: inline-block;
+  overflow: hidden;
+  max-width: 100%;
+  line-height: 0;
+  vertical-align: top;
+}
+
+.hc-img-wrap img {
+  width: 100%;
+  height: auto;
+}
+
+/* Alça de redimensionamento só no editor (na leitura só mostra o tamanho salvo). */
+.historical-comment-editor .hc-img-wrap {
+  resize: horizontal;
+  min-width: 48px;
+}
+
 .historical-comment-option {
   display: inline-flex;
   gap: 8px;

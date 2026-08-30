@@ -5235,8 +5235,25 @@ function scheduleHistoricalTablePreparation(editor) {
   });
 }
 
+// Torna cada imagem redimensionável: embrulha num span com CSS `resize`. A
+// largura escolhida vira estilo inline no span → persiste no HTML salvo (o
+// sanitizador mantém class/style/contenteditable). Idempotente.
+function prepareHistoricalCommentImages(editor) {
+  if (!editor) return;
+  editor.querySelectorAll("img").forEach((img) => {
+    const parent = img.parentElement;
+    if (parent && parent.classList.contains("hc-img-wrap")) return;
+    const wrap = document.createElement("span");
+    wrap.className = "hc-img-wrap";
+    wrap.setAttribute("contenteditable", "false");
+    img.replaceWith(wrap);
+    wrap.appendChild(img);
+  });
+}
+
 function prepareHistoricalCommentTables(editor) {
   if (!editor) return;
+  prepareHistoricalCommentImages(editor);
   editor
     .querySelectorAll(".historical-column-resizer")
     .forEach((handle) => handle.remove());
