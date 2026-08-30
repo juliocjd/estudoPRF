@@ -4093,11 +4093,14 @@ function buildQuestionCopyText(question) {
   const stmt = String(question?.statementText || "").trim();
   if (stmt) parts.push(stmt);
   const alts = question?.alternatives || [];
+  // CERTO/ERRADO: as opções são só "Certo"/"Errado", sem letra A)/B).
+  const isCE = String(question?.metadata?.tipo || "").toUpperCase() === "CERTO_ERRADO";
   if (alts.length) {
     parts.push("");
     for (const a of alts) {
-      const letter = a.displayLetter || a.letter || "";
       const text = String(a.text || "").trim();
+      if (isCE) { parts.push(text); continue; }
+      const letter = a.displayLetter || a.letter || "";
       parts.push(letter ? `${letter}) ${text}` : text);
     }
   }
