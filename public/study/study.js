@@ -487,7 +487,12 @@ async function boot() {
   if (studyState.resumeLast) {
     await loadResumeTarget();
   } else {
-    await loadQuestions();
+    // Abertura padrão = estudo adaptativo (respeita agendamento FSRS + cota
+    // diária de novas × vencidas), usando os filtros persistidos de matéria/ano.
+    // Antes caía em loadQuestions() (modo lista), que ignora o agendamento e a
+    // cota — trazia questões não-vencidas e estourava as novas. "Ver todas" e
+    // busca seguem no modo lista (loadCurrentModeTarget respeita o studyMode).
+    await loadCurrentModeTarget();
   }
 }
 

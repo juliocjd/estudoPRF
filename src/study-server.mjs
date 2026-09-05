@@ -5868,9 +5868,10 @@ function distinctMateriasInScope(searchParams, opts) {
 
 // Cota de questões novas: sem isso, revisão vencida (+150) sempre supera
 // questão nova (+90), e um backlog de revisões trava o avanço no conteúdo.
-// Alvo de ~metade das questões servidas serem inéditas, medido numa janela
-// curta pelo servedContext.isNew gravado a cada serviço.
-const NEW_QUESTION_TARGET_RATIO = 0.5;
+// OBS: a proporção fixa de 50% foi SUBSTITUÍDA pela cota-aware dinâmica em
+// getAdaptiveTargetRow (getDailyNewQuota/getDailyQuotaState) — a constante fica
+// só como referência histórica. A janela curta ainda mede o servedContext.isNew.
+const NEW_QUESTION_TARGET_RATIO = 0.5; // legado (não usado no balanceamento atual)
 const NEW_QUESTION_WINDOW = 6;
 // Trava de diversidade: no máx. MATERIA_RECENT_CAP das últimas
 // MATERIA_RECENT_WINDOW questões podem ser da mesma matéria. Evita uma matéria
@@ -5940,6 +5941,53 @@ function recentNewQuestionRatio(window = NEW_QUESTION_WINDOW) {
     .filter((c) => c && typeof c.isNew === 'boolean');
   if (!tagged.length) return null;
   return tagged.filter((c) => c.isNew).length / tagged.length;
+}
+
+// --- Cota diária de novas × vencidas (quota-aware) -------------------------
+// O motor prioriza as VENCIDAS e intercala novas só até bater a cota do dia,
+// usando uma proporção dinâmica (novasRestantes / (novasRestantes+vencidas)).
+// Assim as novas terminam junto com as vencidas e nunca estouram o objetivo.
+// CPU: a cota muda devagar → cache de 5 min; novas-hoje + vencidas vêm numa
+// ÚNICA query (1 round-trip no bridge) para não pesar no Vercel.
+let _dailyNewQuotaCache = { at: 0, value: null };
+function getDailyNewQuota() {
+  const now = Date.now();
+  if (_dailyNewQuotaCache.value !== null && now - _dailyNewQuotaCache.at < 300000) {
+    return _dailyNewQuotaCache.value;
+  }
+  let value = STUDY_PLAN_MAX_NEW_PER_DAY;
+  try {
+    const plan = getStudyPlanProgress(new URLSearchParams());
+    if (plan && Number.isFinite(Number(plan.newQuota))) value = Number(plan.newQuota);
+  } catch { /* fallback = teto de novas/dia */ }
+  _dailyNewQuotaCache = { at: now, value };
+  return value;
+}
+
+// Novas respondidas hoje (1ª resposta hoje) + vencidas pendentes — 1 query só.
+// Cache curto (15s): os contadores mudam ±1 por resposta e a cota é alvo suave;
+// o interleave fino vem do recentNewQuestionRatio. Evita varrer study_answers a
+// cada "próxima" (GROUP BY é O(n)) → poupa CPU no Vercel.
+let _dailyQuotaStateCache = { at: 0, value: null };
+function getDailyQuotaState() {
+  const now = Date.now();
+  if (_dailyQuotaStateCache.value && now - _dailyQuotaStateCache.at < 15000) {
+    return _dailyQuotaStateCache.value;
+  }
+  const spStart = saoPauloToday().startSql;
+  const row = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM (
+         SELECT question_id, MIN(answered_at) AS first_at
+         FROM study_answers GROUP BY question_id
+       ) t WHERE t.first_at >= ?) AS new_today,
+      (SELECT COUNT(*) FROM question_mastery
+         WHERE next_due_at IS NOT NULL AND CAST(next_due_at AS TEXT) != ''
+           AND next_due_at <= CURRENT_TIMESTAMP) AS due_now
+  `).get(spStart) || {};
+  const value = { newToday: Number(row.new_today || 0), dueNow: Number(row.due_now || 0) };
+  _dailyQuotaStateCache = { at: now, value };
+  return value;
 }
 
 // Quantas das últimas questões servidas são de cada matéria.
@@ -6041,8 +6089,18 @@ function getAdaptiveTargetRow(searchParams, opts) {
   if (plan === 'revisar_hoje' || plan === 'revisar_erros') {
     return pickWithMateriaDiversity(queue, recentMaterias, recentAssuntos, recentLeis) || queue[0];
   }
+  // Cota-aware: prioriza VENCIDAS e intercala novas até a cota do dia. A
+  // proporção-alvo de novas é dinâmica (novasRestantes / (novasRestantes +
+  // vencidas)), então: cota batida → só vencidas; sem vencidas → completa as
+  // novas; ambas pendentes → intercala na medida certa (prioriza vencidas
+  // quando elas são a maioria). Substitui a proporção fixa de 50%.
+  const newQuota = getDailyNewQuota();
+  const { newToday, dueNow } = getDailyQuotaState();
+  const newRemaining = Math.max(0, newQuota - newToday);
+  const denom = newRemaining + dueNow;
+  const targetRatio = denom > 0 ? (newRemaining / denom) : (newRemaining > 0 ? 1 : 0);
   const ratio = recentNewQuestionRatio();
-  const wantNew = ratio === null || ratio < NEW_QUESTION_TARGET_RATIO;
+  const wantNew = newRemaining > 0 && (ratio === null || ratio < targetRatio);
   if (wantNew) {
     const fresh = pickWithMateriaDiversity(queue.filter((row) => row.neverAnswered), recentMaterias, recentAssuntos, recentLeis);
     if (fresh) return fresh;
