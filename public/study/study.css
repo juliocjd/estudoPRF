@@ -3174,6 +3174,12 @@ body.is-report-page {
 
 .historical-comment-toolbar.is-editing {
   justify-content: space-between;
+  /* Desktop: a barra de ferramentas fica fixa no topo enquanto se edita, para os
+     botões estarem sempre acessíveis ao rolar o editor. No mobile isso é desligado
+     (position: static) na media query, porque lá falta espaço na tela. */
+  position: sticky;
+  top: 0;
+  z-index: 6;
 }
 
 .historical-format-tools,
@@ -4705,11 +4711,8 @@ body.is-report-page {
   .historical-comment-toolbar.is-editing {
     align-items: stretch;
     flex-direction: column;
-    /* No mobile falta espaço: a barra fica fixa no topo enquanto se edita, para
-       os botões de formatação estarem sempre acessíveis ao rolar o editor. */
-    position: sticky;
-    top: 0;
-    z-index: 6;
+    /* No mobile falta espaço: a barra NÃO fica fixa (rola junto com a página). */
+    position: static;
   }
 
   .historical-format-tools {

@@ -1542,12 +1542,9 @@ function bindEvents() {
   });
 
   // Backspace no INÍCIO de um bloco recuado remove o recuo (outdent), em vez de
-  // apagar caractere — comportamento de editor de texto. Só no DESKTOP: no mobile
-  // falta espaço e o teclado virtual torna o gesto imprevisível (o usuário pediu
-  // explicitamente que valha só no desktop).
+  // apagar caractere — comportamento de editor de texto. Vale em desktop E mobile.
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Backspace" || event.altKey || event.ctrlKey || event.metaKey) return;
-    if (mobileLayoutQuery.matches) return; // desktop-only
     const editor = event.target?.closest?.("[data-historical-comment-editor]");
     if (!editor) return;
     const sel = window.getSelection();
