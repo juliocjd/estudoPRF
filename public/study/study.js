@@ -1541,6 +1541,24 @@ function bindEvents() {
     }
   });
 
+  // Backspace no INÍCIO de um bloco recuado remove o recuo (outdent), em vez de
+  // apagar caractere — comportamento de editor de texto. Só no DESKTOP: no mobile
+  // falta espaço e o teclado virtual torna o gesto imprevisível (o usuário pediu
+  // explicitamente que valha só no desktop).
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Backspace" || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (mobileLayoutQuery.matches) return; // desktop-only
+    const editor = event.target?.closest?.("[data-historical-comment-editor]");
+    if (!editor) return;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    if (!historicalEditorIndentAncestor(range.startContainer, editor)) return;
+    if (!caretAtHistoricalBlockStart(range, editor)) return;
+    event.preventDefault();
+    document.execCommand("outdent");
+  });
+
   document.addEventListener(
     "pointerdown",
     handleHistoricalTableResizePointerDown,
@@ -4771,6 +4789,38 @@ async function copyTextFromElement(text, button, successLabel) {
   window.setTimeout(() => {
     button.textContent = original;
   }, 1200);
+}
+
+// Sobe do nó do cursor até o editor; devolve o 1º ancestral "recuado" — um
+// <blockquote> (o que execCommand('indent') gera por padrão) ou um bloco com
+// margin-left > 0 (quando o indent usa CSS via styleWithCSS). null = sem recuo.
+// Só margin-left conta: padding-left NÃO, senão listas (<ul>/<li>, que têm
+// padding pro marcador) disparariam outdent por engano no início do item.
+function historicalEditorIndentAncestor(node, editor) {
+  let el = node?.nodeType === 1 ? node : node?.parentElement;
+  while (el && el !== editor) {
+    if (el.tagName === "BLOCKQUOTE") return el;
+    if ((parseFloat(window.getComputedStyle(el).marginLeft) || 0) > 0) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+// true se o cursor está no começo do bloco atual (nada de texto antes dele
+// dentro do bloco) — só aí o Backspace vira outdent; no meio do texto, apaga
+// caractere normalmente.
+function caretAtHistoricalBlockStart(range, editor) {
+  const BLOCK_TAGS = new Set(["P", "DIV", "LI", "BLOCKQUOTE", "H1", "H2", "H3", "H4", "PRE"]);
+  let block = range.startContainer;
+  block = block.nodeType === 1 ? block : block.parentElement;
+  while (block && block !== editor && !BLOCK_TAGS.has(block.tagName)) {
+    block = block.parentElement;
+  }
+  const scope = block && block !== editor ? block : editor;
+  const probe = range.cloneRange();
+  probe.selectNodeContents(scope);
+  probe.setEnd(range.startContainer, range.startOffset);
+  return probe.toString().length === 0;
 }
 
 function historicalCommentToolbar({ editing }) {

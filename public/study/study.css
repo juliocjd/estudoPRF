@@ -4705,6 +4705,11 @@ body.is-report-page {
   .historical-comment-toolbar.is-editing {
     align-items: stretch;
     flex-direction: column;
+    /* No mobile falta espaço: a barra fica fixa no topo enquanto se edita, para
+       os botões de formatação estarem sempre acessíveis ao rolar o editor. */
+    position: sticky;
+    top: 0;
+    z-index: 6;
   }
 
   .historical-format-tools {
